@@ -12,6 +12,11 @@ const deckCode = ref(""); // デッキコード
 const showDeckCodeModal = ref(false); // デッキコードモーダル表示状態
 const importDeckCode = ref(""); // インポート用デッキコード
 
+// UI/UX改善のための新しい状態
+const toast = ref({ show: false, message: "", type: "info" }); // トーストメッセージ
+const isSaving = ref(false); // 保存中状態
+const isGeneratingCode = ref(false); // コード生成中状態
+
 // ソートとフィルターの状態
 const filterCriteria = ref({
   text: "",
@@ -334,10 +339,18 @@ const totalDeckCards = computed(() => {
 
 // --- デッキ操作 ---
 
+// トーストメッセージ表示
+const showToast = (message, type = "info", duration = 3000) => {
+  toast.value = { show: true, message, type };
+  setTimeout(() => {
+    toast.value.show = false;
+  }, duration);
+};
+
 // 選べるカードをタップしたとき（デッキに追加）
 const addCardToDeck = (card) => {
   if (totalDeckCards.value >= 60) {
-    alert("デッキは60枚までです！");
+    showToast("デッキは60枚までです！", "warning");
     return;
   }
 
@@ -348,21 +361,32 @@ const addCardToDeck = (card) => {
   if (existingCardIndex > -1) {
     if (deckCards.value[existingCardIndex].count < 4) {
       deckCards.value[existingCardIndex].count++;
+      showToast(
+        `${card.name} を追加しました (${deckCards.value[existingCardIndex].count}/4)`,
+        "success",
+        2000
+      );
+    } else {
+      showToast("同じカードは4枚まで追加できます", "warning");
     }
   } else {
     deckCards.value.push({ card: card, count: 1 });
+    showToast(`${card.name} をデッキに追加しました`, "success", 2000);
   }
 };
 
 // デッキ内のカード枚数を増やす
 const incrementCardCount = (cardId) => {
   if (totalDeckCards.value >= 60) {
-    alert("デッキは60枚までです！");
+    showToast("デッキは60枚までです！", "warning");
     return;
   }
   const item = deckCards.value.find((item) => item.card.id === cardId);
   if (item && item.count < 4) {
     item.count++;
+    showToast(`${item.card.name} を追加 (${item.count}/4)`, "success", 1500);
+  } else if (item && item.count >= 4) {
+    showToast("同じカードは4枚まで追加できます", "warning");
   }
 };
 
@@ -371,9 +395,11 @@ const decrementCardCount = (cardId) => {
   const item = deckCards.value.find((item) => item.card.id === cardId);
   if (item && item.count > 1) {
     item.count--;
+    showToast(`${item.card.name} を削除 (${item.count}/4)`, "info", 1500);
   } else if (item && item.count === 1) {
     // 1枚になったら削除
     removeCardFromDeck(cardId);
+    showToast(`${item.card.name} をデッキから削除しました`, "info", 1500);
   }
 };
 
@@ -389,17 +415,14 @@ const resetDeck = () => {
     deckName.value = "新しいデッキ";
     localStorage.removeItem("deckCards_k"); // ローカルストレージからも削除
     localStorage.removeItem("deckName_k");
+    showToast("デッキをリセットしました", "info");
   }
 };
 
 // --- 画像保存 ---
 
 const saveDeckAsPng = async () => {
-  const saveButton = document.querySelector('button[title="デッキ画像を保存"]');
-  if (saveButton) {
-    saveButton.disabled = true;
-    saveButton.textContent = "保存中...";
-  }
+  isSaving.value = true;
 
   try {
     const container = document.createElement("div");
@@ -500,13 +523,11 @@ const saveDeckAsPng = async () => {
     link.download = filename;
     link.href = canvas.toDataURL("image/png");
     link.click();
+    showToast(`デッキ画像を保存しました: ${filename}`, "success");
   } catch (e) {
     handleError(e, "デッキ画像の保存に失敗しました");
   } finally {
-    if (saveButton) {
-      saveButton.disabled = false;
-      saveButton.textContent = "保存";
-    }
+    isSaving.value = false;
   }
 };
 
@@ -606,12 +627,16 @@ const decodeDeckCode = (code) => {
 
 // デッキコードを生成して表示
 const generateAndShowDeckCode = () => {
+  isGeneratingCode.value = true;
   try {
     deckCode.value = encodeDeckCode(deckCards.value);
     showDeckCodeModal.value = true;
+    showToast("デッキコードを生成しました", "success");
   } catch (e) {
     console.error("デッキコードの生成に失敗しました:", e);
-    alert("デッキコードの生成に失敗しました。");
+    showToast("デッキコードの生成に失敗しました", "error");
+  } finally {
+    isGeneratingCode.value = false;
   }
 };
 
@@ -620,10 +645,10 @@ const copyDeckCode = () => {
   navigator.clipboard
     .writeText(deckCode.value)
     .then(() => {
-      alert("デッキコードをコピーしました");
+      showToast("デッキコードをコピーしました", "success");
     })
     .catch(() => {
-      alert("デッキコードのコピーに失敗しました");
+      showToast("デッキコードのコピーに失敗しました", "error");
     });
 };
 
@@ -635,174 +660,478 @@ const importDeckFromCode = () => {
       deckCards.value = importedCards;
       importDeckCode.value = "";
       showDeckCodeModal.value = false;
+      showToast("デッキコードをインポートしました", "success");
     } else {
-      alert("有効なカードが見つかりませんでした");
+      showToast("有効なカードが見つかりませんでした", "warning");
     }
   } catch (e) {
     console.error("デッキコードの復元に失敗しました:", e);
-    alert("デッキコードの復元に失敗しました。正しいコードを入力してください。");
+    showToast(
+      "デッキコードの復元に失敗しました。正しいコードを入力してください。",
+      "error"
+    );
   }
 };
 
 // エラーハンドリングの強化
 const handleError = (error, message) => {
   console.error(message, error);
-  alert(`${message}\n${error.message}`);
+  showToast(`${message}: ${error.message}`, "error", 5000);
 };
 </script>
 
 <template>
-  <div class="flex flex-col h-screen bg-gray-800 text-gray-100 font-sans">
+  <div
+    class="flex flex-col h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100 font-sans relative overflow-hidden"
+  >
+    <!-- 背景アニメーション -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+      <div
+        class="absolute -top-1/2 -right-1/2 w-full h-full bg-gradient-to-br from-blue-500/5 to-purple-600/5 rounded-full blur-3xl animate-pulse"
+      ></div>
+      <div
+        class="absolute -bottom-1/2 -left-1/2 w-full h-full bg-gradient-to-tr from-emerald-500/5 to-cyan-500/5 rounded-full blur-3xl animate-pulse"
+        style="animation-delay: 2s"
+      ></div>
+    </div>
+
     <!-- デッキセクション -->
     <div
-      class="flex flex-col flex-grow-0 h-1/2 p-2 border-b border-gray-700 overflow-hidden"
+      class="flex flex-col flex-grow-0 h-1/2 p-4 border-b border-slate-700/50 overflow-hidden relative z-10 backdrop-blur-sm"
     >
-      <div class="flex items-center justify-between mb-2 px-2 flex-wrap gap-2">
+      <div class="flex items-center justify-between mb-4 px-2 flex-wrap gap-3">
         <div class="flex items-center flex-grow min-w-[200px]">
-          <label for="deckName" class="mr-2 text-sm whitespace-nowrap"
+          <label
+            for="deckName"
+            class="mr-3 text-sm font-medium text-slate-300 whitespace-nowrap"
             >デッキ名:</label
           >
           <input
             id="deckName"
             type="text"
             v-model="deckName"
-            class="flex-grow px-2 py-1 text-sm rounded bg-gray-700 border border-gray-600 focus:outline-none focus:ring focus:border-blue-500"
+            class="flex-grow px-4 py-2 text-sm rounded-lg bg-slate-800/80 border border-slate-600/50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 backdrop-blur-sm placeholder-slate-400"
             placeholder="デッキ名を入力"
           />
         </div>
 
-        <div class="flex flex-wrap gap-2">
+        <div class="flex flex-wrap gap-3">
           <button
             @click="generateAndShowDeckCode"
-            class="px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition duration-200 whitespace-nowrap"
+            :disabled="deckCards.length === 0 || isGeneratingCode"
+            class="group relative px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-sm font-medium hover:from-blue-700 hover:to-blue-800 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all duration-200 whitespace-nowrap shadow-lg hover:shadow-blue-500/25"
             title="デッキコードを生成"
           >
-            コード生成
+            <span v-if="!isGeneratingCode" class="flex items-center gap-2">
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                ></path>
+              </svg>
+              コード生成
+            </span>
+            <span v-else class="flex items-center gap-2">
+              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              生成中...
+            </span>
           </button>
           <button
             @click="saveDeckAsPng"
-            class="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition duration-200 whitespace-nowrap"
-            :disabled="deckCards.length === 0"
+            :disabled="deckCards.length === 0 || isSaving"
+            class="group relative px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-lg text-sm font-medium hover:from-emerald-700 hover:to-emerald-800 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all duration-200 whitespace-nowrap shadow-lg hover:shadow-emerald-500/25"
             title="デッキ画像を保存"
           >
-            保存
+            <span v-if="!isSaving" class="flex items-center gap-2">
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                ></path>
+              </svg>
+              保存
+            </span>
+            <span v-else class="flex items-center gap-2">
+              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              保存中...
+            </span>
           </button>
           <button
             @click="resetDeck"
-            class="px-3 py-1.5 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition duration-200 whitespace-nowrap"
             :disabled="deckCards.length === 0"
+            class="group relative px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg text-sm font-medium hover:from-red-700 hover:to-red-800 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all duration-200 whitespace-nowrap shadow-lg hover:shadow-red-500/25"
             title="デッキをリセット"
           >
-            リセット
+            <span class="flex items-center gap-2">
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                ></path>
+              </svg>
+              リセット
+            </span>
           </button>
         </div>
       </div>
 
-      <div class="text-center text-sm mb-2">
-        合計枚数: {{ totalDeckCards }} / 60
+      <div class="text-center mb-4">
+        <div
+          class="inline-flex items-center gap-3 px-4 py-2 bg-slate-800/60 backdrop-blur-sm rounded-lg border border-slate-600/50"
+        >
+          <span class="text-sm font-medium text-slate-300">合計枚数:</span>
+          <span
+            class="text-lg font-bold"
+            :class="[
+              totalDeckCards === 60
+                ? 'text-green-400'
+                : totalDeckCards > 50
+                ? 'text-yellow-400'
+                : 'text-slate-100',
+            ]"
+          >
+            {{ totalDeckCards }}
+          </span>
+          <span class="text-sm text-slate-400">/ 60</span>
+          <div class="w-24 h-2 bg-slate-700 rounded-full overflow-hidden">
+            <div
+              class="h-full transition-all duration-300 rounded-full"
+              :class="[
+                totalDeckCards === 60
+                  ? 'bg-green-500'
+                  : totalDeckCards > 50
+                  ? 'bg-yellow-500'
+                  : 'bg-blue-500',
+              ]"
+              :style="{ width: `${(totalDeckCards / 60) * 100}%` }"
+            ></div>
+          </div>
+        </div>
       </div>
 
       <div
         id="chosen-deck-grid"
-        class="flex-grow overflow-y-auto grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 p-2 bg-gray-700 rounded"
+        class="flex-grow overflow-y-auto grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 p-4 bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-700/50 shadow-xl"
       >
         <div
           v-for="item in sortedDeckCards"
           :key="item.card.id"
-          class="flex flex-col items-center relative h-fit"
+          class="group flex flex-col items-center relative h-fit transition-all duration-200 hover:scale-105"
         >
-          <div class="w-full relative">
+          <div
+            class="w-full relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+          >
             <img
               :src="getCardImageUrl(item.card.id)"
               @error="handleImageError"
               :alt="item.card.name"
-              class="block w-full h-full object-cover rounded"
+              class="block w-full h-full object-cover transition-transform duration-200 group-hover:scale-110"
             />
             <div
-              class="absolute bottom-0 left-0 right-0 h-1/6 bg-gray-900/50 rounded-b"
+              class="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-slate-900/80 via-slate-900/40 to-transparent rounded-b-lg"
             ></div>
+            <div
+              class="absolute top-2 left-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+            >
+              <div
+                class="text-xs font-medium text-white bg-slate-900/80 rounded px-2 py-1 backdrop-blur-sm truncate"
+              >
+                {{ item.card.name }}
+              </div>
+            </div>
           </div>
 
           <div
-            class="absolute bottom-1 flex items-center justify-center space-x-1"
+            class="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex items-center justify-center space-x-2"
           >
             <button
               @click="decrementCardCount(item.card.id)"
-              class="w-6 h-6 sm:w-8 sm:h-8 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center leading-none transition duration-200"
+              class="w-7 h-7 sm:w-9 sm:h-9 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-full flex items-center justify-center leading-none transition-all duration-200 shadow-lg hover:shadow-red-500/25 hover:scale-110"
             >
-              －
+              <svg
+                class="w-3 h-3 sm:w-4 sm:h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M20 12H4"
+                ></path>
+              </svg>
             </button>
-            <span
-              class="w-6 h-6 sm:w-8 sm:h-8 font-bold text-center flex items-center justify-center"
-              >{{ item.count }}</span
+            <div
+              class="w-8 h-7 sm:w-10 sm:h-9 font-bold text-center flex items-center justify-center bg-slate-900/80 backdrop-blur-sm rounded-lg border border-slate-600/50 text-white text-sm sm:text-base"
             >
+              {{ item.count }}
+            </div>
             <button
               @click="incrementCardCount(item.card.id)"
-              class="w-6 h-6 sm:w-8 sm:h-8 bg-green-600 hover:bg-green-700 text-white rounded-full flex items-center justify-center leading-none transition duration-200"
+              class="w-7 h-7 sm:w-9 sm:h-9 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-full flex items-center justify-center leading-none transition-all duration-200 shadow-lg hover:shadow-emerald-500/25 hover:scale-110 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed disabled:hover:scale-100"
               :disabled="item.count >= 4 || totalDeckCards >= 60"
             >
-              ＋
+              <svg
+                class="w-3 h-3 sm:w-4 sm:h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                ></path>
+              </svg>
             </button>
           </div>
         </div>
         <div
           v-if="deckCards.length === 0"
-          class="col-span-full text-center text-gray-400 mt-4 text-sm"
+          class="col-span-full text-center mt-8"
         >
-          デッキにカードがありません。<br />下の一覧からカードをタップして追加してください。
+          <div class="flex flex-col items-center gap-4 p-8">
+            <div
+              class="w-16 h-16 bg-slate-700/50 rounded-full flex items-center justify-center"
+            >
+              <svg
+                class="w-8 h-8 text-slate-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                ></path>
+              </svg>
+            </div>
+            <div class="text-slate-400 text-center">
+              <p class="text-lg font-medium mb-1">デッキが空です</p>
+              <p class="text-sm">
+                下の一覧からカードをタップして追加してください
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- カード一覧セクション -->
-    <div class="flex flex-col flex-grow h-1/2 p-2 overflow-hidden">
-      <div class="flex items-center justify-between mb-2 px-2">
-        <h2 class="text-lg font-semibold">カード一覧</h2>
+    <div
+      class="flex flex-col flex-grow h-1/2 p-4 overflow-hidden relative z-10"
+    >
+      <div class="flex items-center justify-between mb-4 px-2">
+        <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
+          <svg
+            class="w-6 h-6 text-blue-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+            ></path>
+          </svg>
+          カード一覧
+        </h2>
         <button
           @click="openFilterModal"
-          class="px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition duration-200"
+          class="group px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-sm font-medium hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-blue-500/25"
           title="フィルター・検索"
         >
-          検索/絞り込み
+          <span class="flex items-center gap-2">
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.414A1 1 0 013 6.586V4z"
+              ></path>
+            </svg>
+            検索/絞り込み
+          </span>
         </button>
       </div>
 
       <div
-        class="flex-grow overflow-y-auto grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 p-2 bg-gray-700 rounded"
+        class="flex-grow overflow-y-auto grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 p-4 bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-700/50 shadow-xl"
       >
-        <div
-          v-if="isLoading"
-          class="col-span-full text-center text-gray-400 mt-4 text-sm"
-        >
-          カードデータを読み込み中...
+        <div v-if="isLoading" class="col-span-full text-center mt-8">
+          <div class="flex flex-col items-center gap-4 p-8">
+            <div
+              class="animate-spin rounded-full h-16 w-16 border-4 border-slate-600 border-t-blue-500"
+            ></div>
+            <div class="text-slate-400 text-center">
+              <p class="text-lg font-medium mb-1">読み込み中...</p>
+              <p class="text-sm">カードデータを取得しています</p>
+            </div>
+          </div>
         </div>
-        <div
-          v-else-if="error"
-          class="col-span-full text-center text-red-400 mt-4 text-sm"
-        >
-          エラー: {{ error }}
+        <div v-else-if="error" class="col-span-full text-center mt-8">
+          <div class="flex flex-col items-center gap-4 p-8">
+            <div
+              class="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center"
+            >
+              <svg
+                class="w-8 h-8 text-red-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                ></path>
+              </svg>
+            </div>
+            <div class="text-red-400 text-center">
+              <p class="text-lg font-medium mb-1">エラーが発生しました</p>
+              <p class="text-sm">{{ error }}</p>
+            </div>
+          </div>
         </div>
         <div
           v-else-if="sortedAndFilteredAvailableCards.length === 0"
-          class="col-span-full text-center text-gray-400 mt-4 text-sm"
+          class="col-span-full text-center mt-8"
         >
-          条件に一致するカードが見つかりません。
+          <div class="flex flex-col items-center gap-4 p-8">
+            <div
+              class="w-16 h-16 bg-slate-700/50 rounded-full flex items-center justify-center"
+            >
+              <svg
+                class="w-8 h-8 text-slate-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                ></path>
+              </svg>
+            </div>
+            <div class="text-slate-400 text-center">
+              <p class="text-lg font-medium mb-1">カードが見つかりません</p>
+              <p class="text-sm">検索条件を変更してみてください</p>
+            </div>
+          </div>
         </div>
         <div
           v-else
           v-for="card in sortedAndFilteredAvailableCards"
           :key="card.id"
-          class="flex flex-col items-center cursor-pointer transition duration-200"
+          class="group flex flex-col items-center cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95"
           @click="addCardToDeck(card)"
           title="デッキに追加"
         >
-          <div class="w-full">
+          <div
+            class="w-full relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+          >
             <img
               :src="getCardImageUrl(card.id)"
               @error="handleImageError"
               :alt="card.name"
-              class="block w-full h-full object-cover rounded"
+              class="block w-full h-full object-cover transition-transform duration-200 group-hover:scale-110"
             />
+            <div
+              class="absolute inset-0 bg-gradient-to-t from-slate-900/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+            ></div>
+            <div
+              class="absolute top-2 left-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+            >
+              <div
+                class="text-xs font-medium text-white bg-slate-900/80 rounded px-2 py-1 backdrop-blur-sm truncate"
+              >
+                {{ card.name }}
+              </div>
+            </div>
+            <div
+              class="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+            >
+              <div
+                class="w-8 h-8 bg-emerald-500/90 backdrop-blur-sm rounded-full flex items-center justify-center"
+              >
+                <svg
+                  class="w-4 h-4 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                  ></path>
+                </svg>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -954,6 +1283,107 @@ const handleError = (error, message) => {
             </button>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- トーストメッセージ -->
+    <div
+      v-if="toast.show"
+      class="fixed top-4 right-4 z-[100] transform transition-all duration-300 ease-in-out"
+      :class="
+        toast.show ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
+      "
+    >
+      <div
+        class="flex items-center gap-3 px-4 py-3 rounded-lg shadow-xl backdrop-blur-sm border max-w-sm"
+        :class="{
+          'bg-emerald-500/90 border-emerald-400/50 text-white':
+            toast.type === 'success',
+          'bg-red-500/90 border-red-400/50 text-white': toast.type === 'error',
+          'bg-yellow-500/90 border-yellow-400/50 text-white':
+            toast.type === 'warning',
+          'bg-blue-500/90 border-blue-400/50 text-white': toast.type === 'info',
+        }"
+      >
+        <div class="flex-shrink-0">
+          <svg
+            v-if="toast.type === 'success'"
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M5 13l4 4L19 7"
+            ></path>
+          </svg>
+          <svg
+            v-else-if="toast.type === 'error'"
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            ></path>
+          </svg>
+          <svg
+            v-else-if="toast.type === 'warning'"
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.728-.833-2.598 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+            ></path>
+          </svg>
+          <svg
+            v-else
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            ></path>
+          </svg>
+        </div>
+        <div class="flex-1">
+          <p class="text-sm font-medium">{{ toast.message }}</p>
+        </div>
+        <button
+          @click="toast.show = false"
+          class="flex-shrink-0 ml-2 text-white/80 hover:text-white transition-colors duration-200"
+        >
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            ></path>
+          </svg>
+        </button>
       </div>
     </div>
   </div>
