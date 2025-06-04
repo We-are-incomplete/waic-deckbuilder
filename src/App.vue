@@ -1,28 +1,59 @@
-<script setup>
-import { ref, computed, onMounted, watch } from "vue";
+<script setup lang="ts">
+import {
+  ref,
+  computed,
+  onMounted,
+  watch,
+  type Ref,
+  type ComputedRef,
+} from "vue";
 import html2canvas from "html2canvas-pro";
+
+// ===================================
+// 型定義 - Type Definitions
+// ===================================
+
+interface Card {
+  id: string;
+  name: string;
+  kind: string;
+  type: string | string[];
+  tags?: string[];
+}
+
+interface DeckCard {
+  card: Card;
+  count: number;
+}
+
+interface FilterCriteria {
+  text: string;
+  kind: string[];
+  type: string[];
+  tags: string[];
+}
 
 // ===================================
 // 状態管理 - State Management
 // ===================================
 
 // カードデータ関連
-const availableCards = ref([]); // 全てのカードデータ
-const deckCards = ref([]); // デッキに入っているカード { card: {}, count: N } の形式
-const deckName = ref("新しいデッキ"); // デッキ名
-const deckCode = ref(""); // デッキコード
-const importDeckCode = ref(""); // インポート用デッキコード
+const availableCards: Ref<Card[]> = ref([]); // 全てのカードデータ
+const deckCards: Ref<DeckCard[]> = ref([]); // デッキに入っているカード { card: {}, count: N } の形式
+const deckName: Ref<string> = ref("新しいデッキ"); // デッキ名
+const deckCode: Ref<string> = ref(""); // デッキコード
+const importDeckCode: Ref<string> = ref(""); // インポート用デッキコード
 
 // UI状態管理
-const isLoading = ref(true); // データ読み込み中フラグ
-const error = ref(null); // エラーメッセージ
-const isSaving = ref(false); // 保存中状態
-const isGeneratingCode = ref(false); // コード生成中状態
-const showDeckCodeModal = ref(false); // デッキコードモーダル表示状態
-const isFilterModalOpen = ref(false); // フィルターモーダル表示状態
+const isLoading: Ref<boolean> = ref(true); // データ読み込み中フラグ
+const error: Ref<string | null> = ref(null); // エラーメッセージ
+const isSaving: Ref<boolean> = ref(false); // 保存中状態
+const isGeneratingCode: Ref<boolean> = ref(false); // コード生成中状態
+const showDeckCodeModal: Ref<boolean> = ref(false); // デッキコードモーダル表示状態
+const isFilterModalOpen: Ref<boolean> = ref(false); // フィルターモーダル表示状態
 
 // フィルター・検索関連
-const filterCriteria = ref({
+const filterCriteria: Ref<FilterCriteria> = ref({
   text: "",
   kind: [],
   type: [],
@@ -33,11 +64,21 @@ const filterCriteria = ref({
 // 定数定義 - Constants
 // ===================================
 
-const allKinds = ["Artist", "Song", "Magic", "Direction"];
-const allTypes = ["赤", "青", "黄", "白", "黒", "全", "即時", "装備", "設置"];
+const allKinds: string[] = ["Artist", "Song", "Magic", "Direction"];
+const allTypes: string[] = [
+  "赤",
+  "青",
+  "黄",
+  "白",
+  "黒",
+  "全",
+  "即時",
+  "装備",
+  "設置",
+];
 
 // 優先タグのリスト（重要なタグを先頭に表示）
-const priorityTags = [
+const priorityTags: string[] = [
   "V.W.P",
   "花譜",
   "理芽",
@@ -87,16 +128,19 @@ const priorityTags = [
 // ===================================
 
 // デバウンス関数
-const debounce = (fn, delay) => {
-  let timeoutId;
-  return (...args) => {
+const debounce = <T extends (...args: any[]) => any>(
+  fn: T,
+  delay: number
+): ((...args: Parameters<T>) => void) => {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  return (...args: Parameters<T>) => {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => fn(...args), delay);
   };
 };
 
 // 自然順ソート関数 (ID用: AA-1, AA-2, ..., AA-10)
-const naturalSort = (a, b) => {
+const naturalSort = (a: string, b: string): number => {
   const regex = /(\d+)|(\D+)/g;
   const tokensA = a.match(regex);
   const tokensB = b.match(regex);
@@ -128,19 +172,22 @@ const naturalSort = (a, b) => {
 };
 
 // 種類ソート関数
-const kindSort = (a, b) => {
+const kindSort = (a: { kind: string }, b: { kind: string }): number => {
   const indexA = allKinds.indexOf(a.kind);
   const indexB = allKinds.indexOf(b.kind);
   return indexA - indexB;
 };
 
 // タイプソート関数
-const typeSort = (a, b) => {
-  const getEarliestTypeIndex = (cardTypes) => {
+const typeSort = (
+  a: { type: string | string[] },
+  b: { type: string | string[] }
+): number => {
+  const getEarliestTypeIndex = (cardTypes: string | string[]): number => {
     if (!cardTypes) return allTypes.length;
     const types = Array.isArray(cardTypes) ? cardTypes : [cardTypes];
     let minIndex = allTypes.length;
-    types.forEach((type) => {
+    types.forEach((type: string) => {
       const index = allTypes.indexOf(type);
       if (index !== -1 && index < minIndex) {
         minIndex = index;
@@ -155,13 +202,13 @@ const typeSort = (a, b) => {
 };
 
 // フィルター処理関数
-const filterCards = (cards, criteria) => {
+const filterCards = (cards: Card[], criteria: FilterCriteria): Card[] => {
   const textLower = criteria.text.toLowerCase();
   const kindSet = new Set(criteria.kind);
   const typeSet = new Set(criteria.type);
   const tagSet = new Set(criteria.tags);
 
-  return cards.filter((card) => {
+  return cards.filter((card: Card) => {
     // テキスト検索
     if (
       textLower &&
@@ -169,7 +216,9 @@ const filterCards = (cards, criteria) => {
         card.name.toLowerCase().includes(textLower) ||
         card.id.toLowerCase().includes(textLower) ||
         (Array.isArray(card.tags) &&
-          card.tags.some((tag) => tag.toLowerCase().includes(textLower)))
+          card.tags.some((tag: string) =>
+            tag.toLowerCase().includes(textLower)
+          ))
       )
     ) {
       return false;
@@ -183,7 +232,7 @@ const filterCards = (cards, criteria) => {
     // タイプフィルター
     if (typeSet.size > 0) {
       const cardTypes = Array.isArray(card.type) ? card.type : [card.type];
-      if (!cardTypes.some((type) => typeSet.has(type))) {
+      if (!cardTypes.some((type: string) => typeSet.has(type))) {
         return false;
       }
     }
@@ -191,7 +240,10 @@ const filterCards = (cards, criteria) => {
     // タグフィルター
     if (
       tagSet.size > 0 &&
-      !(Array.isArray(card.tags) && card.tags.some((tag) => tagSet.has(tag)))
+      !(
+        Array.isArray(card.tags) &&
+        card.tags.some((tag: string) => tagSet.has(tag))
+      )
     ) {
       return false;
     }
@@ -204,27 +256,28 @@ const filterCards = (cards, criteria) => {
 // 画像関連 - Image Management
 // ===================================
 
-const cardCache = new Map();
+const cardCache = new Map<string, HTMLImageElement>();
 
 // 画像パス取得
-const getCardImageUrl = (cardId) => {
+const getCardImageUrl = (cardId: string): string => {
   return `/waic-deckbuilder/cards/${cardId}.avif`;
 };
 
 // 画像読み込みエラー処理
-const handleImageError = (event) => {
-  event.target.src = "/waic-deckbuilder/placeholder.avif";
-  event.target.onerror = null;
+const handleImageError = (event: Event): void => {
+  const target = event.target as HTMLImageElement;
+  target.src = "/waic-deckbuilder/placeholder.avif";
+  target.onerror = null;
 };
 
 // 画像のプリロード最適化
-const preloadImages = (cards) => {
+const preloadImages = (cards: Card[]): void => {
   const batchSize = 10;
-  const loadBatch = (startIndex) => {
+  const loadBatch = (startIndex: number): void => {
     const endIndex = Math.min(startIndex + batchSize, cards.length);
     const batch = cards.slice(startIndex, endIndex);
 
-    batch.forEach((card) => {
+    batch.forEach((card: Card) => {
       if (!cardCache.has(card.id)) {
         const img = new Image();
         img.src = getCardImageUrl(card.id);
@@ -245,28 +298,28 @@ const preloadImages = (cards) => {
 // ===================================
 
 // 全タグリスト（優先タグを先頭に配置）
-const allTags = computed(() => {
-  const tags = new Set();
-  availableCards.value.forEach((card) => {
+const allTags: ComputedRef<string[]> = computed(() => {
+  const tags = new Set<string>();
+  availableCards.value.forEach((card: Card) => {
     if (Array.isArray(card.tags)) {
-      card.tags.forEach((tag) => tags.add(tag));
+      card.tags.forEach((tag: string) => tags.add(tag));
     }
   });
 
   const priorityTagSet = new Set(priorityTags);
   const otherTags = Array.from(tags)
-    .filter((tag) => !priorityTagSet.has(tag))
+    .filter((tag: string) => !priorityTagSet.has(tag))
     .sort();
 
-  return [...priorityTags.filter((tag) => tags.has(tag)), ...otherTags];
+  return [...priorityTags.filter((tag: string) => tags.has(tag)), ...otherTags];
 });
 
 // ソート・フィルター済みカード一覧
-const sortedAndFilteredAvailableCards = computed(() => {
+const sortedAndFilteredAvailableCards: ComputedRef<Card[]> = computed(() => {
   const filtered = filterCards(availableCards.value, filterCriteria.value);
   const sorted = [...filtered];
 
-  sorted.sort((a, b) => {
+  sorted.sort((a: Card, b: Card) => {
     const kindComparison = kindSort(a, b);
     if (kindComparison !== 0) return kindComparison;
 
@@ -280,10 +333,10 @@ const sortedAndFilteredAvailableCards = computed(() => {
 });
 
 // ソート済みデッキカード
-const sortedDeckCards = computed(() => {
+const sortedDeckCards: ComputedRef<DeckCard[]> = computed(() => {
   const sorted = [...deckCards.value];
 
-  sorted.sort((a, b) => {
+  sorted.sort((a: DeckCard, b: DeckCard) => {
     const cardA = a.card;
     const cardB = b.card;
 
@@ -300,8 +353,11 @@ const sortedDeckCards = computed(() => {
 });
 
 // デッキの合計枚数
-const totalDeckCards = computed(() => {
-  return deckCards.value.reduce((sum, item) => sum + item.count, 0);
+const totalDeckCards: ComputedRef<number> = computed(() => {
+  return deckCards.value.reduce(
+    (sum: number, item: DeckCard) => sum + item.count,
+    0
+  );
 });
 
 // ===================================
@@ -309,7 +365,7 @@ const totalDeckCards = computed(() => {
 // ===================================
 
 // カードデータ読み込み
-const loadCards = async () => {
+const loadCards = async (): Promise<void> => {
   isLoading.value = true;
   error.value = null;
 
@@ -318,7 +374,7 @@ const loadCards = async () => {
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    const data = await response.json();
+    const data: Card[] = await response.json();
     availableCards.value = data;
     preloadImages(data);
   } catch (e) {
@@ -331,9 +387,9 @@ const loadCards = async () => {
 };
 
 // ローカルストレージ操作
-const saveDeckToLocalStorage = (deck) => {
+const saveDeckToLocalStorage = (deck: DeckCard[]): void => {
   try {
-    const simpleDeck = deck.map((item) => ({
+    const simpleDeck = deck.map((item: DeckCard) => ({
       id: item.card.id,
       count: item.count,
     }));
@@ -343,7 +399,7 @@ const saveDeckToLocalStorage = (deck) => {
   }
 };
 
-const loadDeckFromLocalStorage = () => {
+const loadDeckFromLocalStorage = (): void => {
   try {
     const savedDeck = localStorage.getItem("deckCards_k");
     const savedName = localStorage.getItem("deckName_k");
@@ -353,13 +409,13 @@ const loadDeckFromLocalStorage = () => {
     }
 
     if (savedDeck) {
-      const simpleDeck = JSON.parse(savedDeck);
+      const simpleDeck: { id: string; count: number }[] = JSON.parse(savedDeck);
       deckCards.value = simpleDeck
-        .map((item) => {
-          const card = availableCards.value.find((c) => c.id === item.id);
+        .map((item: { id: string; count: number }) => {
+          const card = availableCards.value.find((c: Card) => c.id === item.id);
           return card ? { card: card, count: item.count } : null;
         })
-        .filter((item) => item !== null);
+        .filter((item: DeckCard | null): item is DeckCard => item !== null);
     }
   } catch (e) {
     handleError(e, "保存されたデッキの読み込みに失敗しました");
@@ -373,16 +429,16 @@ const loadDeckFromLocalStorage = () => {
 // ===================================
 
 // エラーハンドリング
-const handleError = (error, message) => {
+const handleError = (error: any, message: string): void => {
   console.error(message, error);
 };
 
 // フィルターモーダル操作
-const openFilterModal = () => {
+const openFilterModal = (): void => {
   isFilterModalOpen.value = true;
 };
 
-const closeFilterModal = () => {
+const closeFilterModal = (): void => {
   isFilterModalOpen.value = false;
 };
 
@@ -391,13 +447,13 @@ const closeFilterModal = () => {
 // ===================================
 
 // カードをデッキに追加
-const addCardToDeck = (card) => {
+const addCardToDeck = (card: Card): void => {
   if (totalDeckCards.value >= 60) {
     return;
   }
 
   const existingCardIndex = deckCards.value.findIndex(
-    (item) => item.card.id === card.id
+    (item: DeckCard) => item.card.id === card.id
   );
 
   if (existingCardIndex > -1) {
@@ -410,19 +466,23 @@ const addCardToDeck = (card) => {
 };
 
 // カード枚数を増やす
-const incrementCardCount = (cardId) => {
+const incrementCardCount = (cardId: string): void => {
   if (totalDeckCards.value >= 60) {
     return;
   }
-  const item = deckCards.value.find((item) => item.card.id === cardId);
+  const item = deckCards.value.find(
+    (item: DeckCard) => item.card.id === cardId
+  );
   if (item && item.count < 4) {
     item.count++;
   }
 };
 
 // カード枚数を減らす
-const decrementCardCount = (cardId) => {
-  const item = deckCards.value.find((item) => item.card.id === cardId);
+const decrementCardCount = (cardId: string): void => {
+  const item = deckCards.value.find(
+    (item: DeckCard) => item.card.id === cardId
+  );
   if (item && item.count > 1) {
     item.count--;
   } else if (item && item.count === 1) {
@@ -431,12 +491,14 @@ const decrementCardCount = (cardId) => {
 };
 
 // カードをデッキから削除
-const removeCardFromDeck = (cardId) => {
-  deckCards.value = deckCards.value.filter((item) => item.card.id !== cardId);
+const removeCardFromDeck = (cardId: string): void => {
+  deckCards.value = deckCards.value.filter(
+    (item: DeckCard) => item.card.id !== cardId
+  );
 };
 
 // デッキをリセット
-const resetDeck = () => {
+const resetDeck = (): void => {
   if (confirm("デッキ内容を全てリセットしてもよろしいですか？")) {
     deckCards.value = [];
     deckName.value = "新しいデッキ";
@@ -450,23 +512,25 @@ const resetDeck = () => {
 // ===================================
 
 // デッキコードのエンコード
-const encodeDeckCode = (deck) => {
-  const cardIds = deck.flatMap((item) => Array(item.count).fill(item.card.id));
+const encodeDeckCode = (deck: DeckCard[]): string => {
+  const cardIds = deck.flatMap((item: DeckCard) =>
+    Array(item.count).fill(item.card.id)
+  );
   return cardIds.join("/");
 };
 
 // デッキコードのデコード
-const decodeDeckCode = (code) => {
+const decodeDeckCode = (code: string): DeckCard[] => {
   const cardIds = code.split("/");
-  const cardCounts = new Map();
+  const cardCounts = new Map<string, number>();
 
-  cardIds.forEach((id) => {
+  cardIds.forEach((id: string) => {
     cardCounts.set(id, (cardCounts.get(id) || 0) + 1);
   });
 
-  const cards = [];
+  const cards: DeckCard[] = [];
   for (const [id, count] of cardCounts) {
-    const card = availableCards.value.find((c) => c.id === id);
+    const card = availableCards.value.find((c: Card) => c.id === id);
     if (card) {
       cards.push({ card, count });
     }
@@ -476,7 +540,7 @@ const decodeDeckCode = (code) => {
 };
 
 // デッキコード生成・表示
-const generateAndShowDeckCode = () => {
+const generateAndShowDeckCode = (): void => {
   isGeneratingCode.value = true;
   try {
     deckCode.value = encodeDeckCode(deckCards.value);
@@ -489,7 +553,7 @@ const generateAndShowDeckCode = () => {
 };
 
 // デッキコードをコピー
-const copyDeckCode = () => {
+const copyDeckCode = (): void => {
   navigator.clipboard
     .writeText(deckCode.value)
     .then(() => {
@@ -501,7 +565,7 @@ const copyDeckCode = () => {
 };
 
 // デッキコードからインポート
-const importDeckFromCode = () => {
+const importDeckFromCode = (): void => {
   try {
     const importedCards = decodeDeckCode(importDeckCode.value);
     if (importedCards.length > 0) {
@@ -520,7 +584,7 @@ const importDeckFromCode = () => {
 // 画像保存機能 - Image Export
 // ===================================
 
-const saveDeckAsPng = async () => {
+const saveDeckAsPng = async (): Promise<void> => {
   isSaving.value = true;
 
   try {
@@ -558,7 +622,7 @@ const saveDeckAsPng = async () => {
     container.appendChild(grid);
 
     // カード追加
-    const cardPromises = sortedDeckCards.value.map(async (item) => {
+    const cardPromises = sortedDeckCards.value.map(async (item: DeckCard) => {
       const cardContainer = document.createElement("div");
       cardContainer.style.position = "relative";
 
@@ -577,9 +641,9 @@ const saveDeckAsPng = async () => {
       img.style.objectFit = "cover";
       img.style.borderRadius = "8px";
 
-      await new Promise((resolve) => {
-        img.onload = resolve;
-        img.onerror = resolve;
+      await new Promise<void>((resolve) => {
+        img.onload = () => resolve();
+        img.onerror = () => resolve();
       });
 
       cardContainer.appendChild(img);
@@ -643,13 +707,13 @@ onMounted(() => {
 // デッキ変更時のローカルストレージ保存
 watch(
   deckCards,
-  (newDeck) => {
+  (newDeck: DeckCard[]) => {
     saveDeckToLocalStorage(newDeck);
   },
   { deep: true }
 );
 
-watch(deckName, (newName) => {
+watch(deckName, (newName: string) => {
   localStorage.setItem("deckName_k", newName);
 });
 </script>
