@@ -697,140 +697,162 @@ const handleError = (error, message) => {
 
     <!-- デッキセクション -->
     <div
-      class="flex flex-col flex-grow-0 h-1/2 p-4 border-b border-slate-700/50 overflow-hidden relative z-10 backdrop-blur-sm"
+      class="flex flex-col flex-grow-0 h-1/2 p-2 sm:p-4 border-b border-slate-700/50 overflow-hidden relative z-10 backdrop-blur-sm"
     >
-      <div class="flex items-center justify-between mb-4 px-2 flex-wrap gap-3">
-        <div class="flex items-center flex-grow min-w-[200px]">
+      <!-- デッキ名入力 (モバイル優先) -->
+      <div class="mb-3 px-2">
+        <div class="flex items-center w-full">
           <label
             for="deckName"
-            class="mr-3 text-sm font-medium text-slate-300 whitespace-nowrap"
+            class="mr-2 sm:mr-3 text-xs sm:text-sm font-medium text-slate-300 whitespace-nowrap"
             >デッキ名:</label
           >
           <input
             id="deckName"
             type="text"
             v-model="deckName"
-            class="flex-grow px-4 py-2 text-sm rounded-lg bg-slate-800/80 border border-slate-600/50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 backdrop-blur-sm placeholder-slate-400"
+            class="flex-grow px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-lg bg-slate-800/80 border border-slate-600/50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 backdrop-blur-sm placeholder-slate-400"
             placeholder="デッキ名を入力"
           />
         </div>
-
-        <div class="flex flex-wrap gap-3">
-          <button
-            @click="generateAndShowDeckCode"
-            :disabled="deckCards.length === 0 || isGeneratingCode"
-            class="group relative px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-sm font-medium hover:from-blue-700 hover:to-blue-800 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all duration-200 whitespace-nowrap shadow-lg hover:shadow-blue-500/25"
-            title="デッキコードを生成"
-          >
-            <span v-if="!isGeneratingCode" class="flex items-center gap-2">
-              <svg
-                class="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                ></path>
-              </svg>
-              コード生成
-            </span>
-            <span v-else class="flex items-center gap-2">
-              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                ></circle>
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              生成中...
-            </span>
-          </button>
-          <button
-            @click="saveDeckAsPng"
-            :disabled="deckCards.length === 0 || isSaving"
-            class="group relative px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-lg text-sm font-medium hover:from-emerald-700 hover:to-emerald-800 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all duration-200 whitespace-nowrap shadow-lg hover:shadow-emerald-500/25"
-            title="デッキ画像を保存"
-          >
-            <span v-if="!isSaving" class="flex items-center gap-2">
-              <svg
-                class="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                ></path>
-              </svg>
-              保存
-            </span>
-            <span v-else class="flex items-center gap-2">
-              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                ></circle>
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              保存中...
-            </span>
-          </button>
-          <button
-            @click="resetDeck"
-            :disabled="deckCards.length === 0"
-            class="group relative px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg text-sm font-medium hover:from-red-700 hover:to-red-800 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all duration-200 whitespace-nowrap shadow-lg hover:shadow-red-500/25"
-            title="デッキをリセット"
-          >
-            <span class="flex items-center gap-2">
-              <svg
-                class="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                ></path>
-              </svg>
-              リセット
-            </span>
-          </button>
-        </div>
       </div>
 
-      <div class="text-center mb-4">
-        <div
-          class="inline-flex items-center gap-3 px-4 py-2 bg-slate-800/60 backdrop-blur-sm rounded-lg border border-slate-600/50"
+      <!-- ボタン群 (モバイル最適化) -->
+      <div class="flex flex-wrap gap-1.5 sm:gap-3 mb-3 px-2">
+        <button
+          @click="generateAndShowDeckCode"
+          :disabled="deckCards.length === 0 || isGeneratingCode"
+          class="group relative flex-1 min-w-0 px-2 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-md sm:rounded-lg text-xs sm:text-sm font-medium hover:from-blue-700 hover:to-blue-800 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-blue-500/25"
+          title="デッキコードを生成"
         >
-          <span class="text-sm font-medium text-slate-300">合計枚数:</span>
           <span
-            class="text-lg font-bold"
+            v-if="!isGeneratingCode"
+            class="flex items-center justify-center gap-1 sm:gap-2"
+          >
+            <svg
+              class="w-3 h-3 sm:w-4 sm:h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+              ></path>
+            </svg>
+            <span class="hidden sm:inline">コード生成</span>
+            <span class="sm:hidden">コード</span>
+          </span>
+          <span v-else class="flex items-center justify-center gap-1 sm:gap-2">
+            <svg
+              class="w-3 h-3 sm:w-4 sm:h-4 animate-spin"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              ></circle>
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+            生成中...
+          </span>
+        </button>
+        <button
+          @click="saveDeckAsPng"
+          :disabled="deckCards.length === 0 || isSaving"
+          class="group relative flex-1 min-w-0 px-2 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-md sm:rounded-lg text-xs sm:text-sm font-medium hover:from-emerald-700 hover:to-emerald-800 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-emerald-500/25"
+          title="デッキ画像を保存"
+        >
+          <span
+            v-if="!isSaving"
+            class="flex items-center justify-center gap-1 sm:gap-2"
+          >
+            <svg
+              class="w-3 h-3 sm:w-4 sm:h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              ></path>
+            </svg>
+            <span class="hidden sm:inline">保存</span>
+            <span class="sm:hidden">保存</span>
+          </span>
+          <span v-else class="flex items-center justify-center gap-1 sm:gap-2">
+            <svg
+              class="w-3 h-3 sm:w-4 sm:h-4 animate-spin"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              ></circle>
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+            保存中...
+          </span>
+        </button>
+        <button
+          @click="resetDeck"
+          :disabled="deckCards.length === 0"
+          class="group relative flex-1 min-w-0 px-2 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-md sm:rounded-lg text-xs sm:text-sm font-medium hover:from-red-700 hover:to-red-800 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-red-500/25"
+          title="デッキをリセット"
+        >
+          <span class="flex items-center justify-center gap-1 sm:gap-2">
+            <svg
+              class="w-3 h-3 sm:w-4 sm:h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              ></path>
+            </svg>
+            <span class="hidden sm:inline">リセット</span>
+            <span class="sm:hidden">リセット</span>
+          </span>
+        </button>
+      </div>
+
+      <!-- 合計枚数表示 (モバイル最適化) -->
+      <div class="text-center mb-2 sm:mb-4">
+        <div
+          class="inline-flex items-center gap-2 sm:gap-3 px-2 sm:px-4 py-1.5 sm:py-2 bg-slate-800/60 backdrop-blur-sm rounded-md sm:rounded-lg border border-slate-600/50"
+        >
+          <span class="text-xs sm:text-sm font-medium text-slate-300"
+            >合計枚数:</span
+          >
+          <span
+            class="text-sm sm:text-lg font-bold"
             :class="[
               totalDeckCards === 60
                 ? 'text-green-400'
@@ -841,8 +863,10 @@ const handleError = (error, message) => {
           >
             {{ totalDeckCards }}
           </span>
-          <span class="text-sm text-slate-400">/ 60</span>
-          <div class="w-24 h-2 bg-slate-700 rounded-full overflow-hidden">
+          <span class="text-xs sm:text-sm text-slate-400">/ 60</span>
+          <div
+            class="w-16 sm:w-24 h-1.5 sm:h-2 bg-slate-700 rounded-full overflow-hidden"
+          >
             <div
               class="h-full transition-all duration-300 rounded-full"
               :class="[
@@ -860,7 +884,7 @@ const handleError = (error, message) => {
 
       <div
         id="chosen-deck-grid"
-        class="flex-grow overflow-y-auto grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 p-4 bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-700/50 shadow-xl"
+        class="flex-grow overflow-y-auto grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 p-2 sm:p-4 bg-slate-800/40 backdrop-blur-sm rounded-lg sm:rounded-xl border border-slate-700/50 shadow-xl"
       >
         <div
           v-for="item in sortedDeckCards"
@@ -939,14 +963,14 @@ const handleError = (error, message) => {
         </div>
         <div
           v-if="deckCards.length === 0"
-          class="col-span-full text-center mt-8"
+          class="col-span-full text-center mt-4 sm:mt-8"
         >
-          <div class="flex flex-col items-center gap-4 p-8">
+          <div class="flex flex-col items-center gap-2 sm:gap-4 p-4 sm:p-8">
             <div
-              class="w-16 h-16 bg-slate-700/50 rounded-full flex items-center justify-center"
+              class="w-12 h-12 sm:w-16 sm:h-16 bg-slate-700/50 rounded-full flex items-center justify-center"
             >
               <svg
-                class="w-8 h-8 text-slate-400"
+                class="w-6 h-6 sm:w-8 sm:h-8 text-slate-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -960,8 +984,10 @@ const handleError = (error, message) => {
               </svg>
             </div>
             <div class="text-slate-400 text-center">
-              <p class="text-lg font-medium mb-1">デッキが空です</p>
-              <p class="text-sm">
+              <p class="text-base sm:text-lg font-medium mb-1">
+                デッキが空です
+              </p>
+              <p class="text-xs sm:text-sm">
                 下の一覧からカードをタップして追加してください
               </p>
             </div>
@@ -972,12 +998,14 @@ const handleError = (error, message) => {
 
     <!-- カード一覧セクション -->
     <div
-      class="flex flex-col flex-grow h-1/2 p-4 overflow-hidden relative z-10"
+      class="flex flex-col flex-grow h-1/2 p-2 sm:p-4 overflow-hidden relative z-10"
     >
-      <div class="flex items-center justify-between mb-4 px-2">
-        <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
+      <div class="flex items-center justify-between mb-2 sm:mb-4 px-2">
+        <h2
+          class="text-lg sm:text-xl font-bold text-slate-100 flex items-center gap-1 sm:gap-2"
+        >
           <svg
-            class="w-6 h-6 text-blue-400"
+            class="w-5 h-5 sm:w-6 sm:h-6 text-blue-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -993,12 +1021,12 @@ const handleError = (error, message) => {
         </h2>
         <button
           @click="openFilterModal"
-          class="group px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-sm font-medium hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-blue-500/25"
+          class="group px-2 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-md sm:rounded-lg text-xs sm:text-sm font-medium hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-blue-500/25"
           title="フィルター・検索"
         >
-          <span class="flex items-center gap-2">
+          <span class="flex items-center gap-1 sm:gap-2">
             <svg
-              class="w-4 h-4"
+              class="w-3 h-3 sm:w-4 sm:h-4"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -1010,32 +1038,33 @@ const handleError = (error, message) => {
                 d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.414A1 1 0 013 6.586V4z"
               ></path>
             </svg>
-            検索/絞り込み
+            <span class="hidden sm:inline">検索/絞り込み</span>
+            <span class="sm:hidden">検索</span>
           </span>
         </button>
       </div>
 
       <div
-        class="flex-grow overflow-y-auto grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 p-4 bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-700/50 shadow-xl"
+        class="flex-grow overflow-y-auto grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 p-2 sm:p-4 bg-slate-800/40 backdrop-blur-sm rounded-lg sm:rounded-xl border border-slate-700/50 shadow-xl"
       >
-        <div v-if="isLoading" class="col-span-full text-center mt-8">
-          <div class="flex flex-col items-center gap-4 p-8">
+        <div v-if="isLoading" class="col-span-full text-center mt-4 sm:mt-8">
+          <div class="flex flex-col items-center gap-2 sm:gap-4 p-4 sm:p-8">
             <div
-              class="animate-spin rounded-full h-16 w-16 border-4 border-slate-600 border-t-blue-500"
+              class="animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-4 border-slate-600 border-t-blue-500"
             ></div>
             <div class="text-slate-400 text-center">
-              <p class="text-lg font-medium mb-1">読み込み中...</p>
-              <p class="text-sm">カードデータを取得しています</p>
+              <p class="text-base sm:text-lg font-medium mb-1">読み込み中...</p>
+              <p class="text-xs sm:text-sm">カードデータを取得しています</p>
             </div>
           </div>
         </div>
-        <div v-else-if="error" class="col-span-full text-center mt-8">
-          <div class="flex flex-col items-center gap-4 p-8">
+        <div v-else-if="error" class="col-span-full text-center mt-4 sm:mt-8">
+          <div class="flex flex-col items-center gap-2 sm:gap-4 p-4 sm:p-8">
             <div
-              class="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center"
+              class="w-12 h-12 sm:w-16 sm:h-16 bg-red-500/20 rounded-full flex items-center justify-center"
             >
               <svg
-                class="w-8 h-8 text-red-400"
+                class="w-6 h-6 sm:w-8 sm:h-8 text-red-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -1049,21 +1078,23 @@ const handleError = (error, message) => {
               </svg>
             </div>
             <div class="text-red-400 text-center">
-              <p class="text-lg font-medium mb-1">エラーが発生しました</p>
-              <p class="text-sm">{{ error }}</p>
+              <p class="text-base sm:text-lg font-medium mb-1">
+                エラーが発生しました
+              </p>
+              <p class="text-xs sm:text-sm">{{ error }}</p>
             </div>
           </div>
         </div>
         <div
           v-else-if="sortedAndFilteredAvailableCards.length === 0"
-          class="col-span-full text-center mt-8"
+          class="col-span-full text-center mt-4 sm:mt-8"
         >
-          <div class="flex flex-col items-center gap-4 p-8">
+          <div class="flex flex-col items-center gap-2 sm:gap-4 p-4 sm:p-8">
             <div
-              class="w-16 h-16 bg-slate-700/50 rounded-full flex items-center justify-center"
+              class="w-12 h-12 sm:w-16 sm:h-16 bg-slate-700/50 rounded-full flex items-center justify-center"
             >
               <svg
-                class="w-8 h-8 text-slate-400"
+                class="w-6 h-6 sm:w-8 sm:h-8 text-slate-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -1077,8 +1108,10 @@ const handleError = (error, message) => {
               </svg>
             </div>
             <div class="text-slate-400 text-center">
-              <p class="text-lg font-medium mb-1">カードが見つかりません</p>
-              <p class="text-sm">検索条件を変更してみてください</p>
+              <p class="text-base sm:text-lg font-medium mb-1">
+                カードが見つかりません
+              </p>
+              <p class="text-xs sm:text-sm">検索条件を変更してみてください</p>
             </div>
           </div>
         </div>
