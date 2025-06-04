@@ -127,18 +127,6 @@ const priorityTags: string[] = [
 // ユーティリティ関数 - Utility Functions
 // ===================================
 
-// デバウンス関数
-const debounce = <T extends (...args: any[]) => any>(
-  fn: T,
-  delay: number
-): ((...args: Parameters<T>) => void) => {
-  let timeoutId: ReturnType<typeof setTimeout>;
-  return (...args: Parameters<T>) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => fn(...args), delay);
-  };
-};
-
 // 自然順ソート関数 (ID用: AA-1, AA-2, ..., AA-10)
 const naturalSort = (a: string, b: string): number => {
   const regex = /(\d+)|(\D+)/g;
