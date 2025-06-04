@@ -21,9 +21,6 @@ const isGeneratingCode = ref(false); // コード生成中状態
 const showDeckCodeModal = ref(false); // デッキコードモーダル表示状態
 const isFilterModalOpen = ref(false); // フィルターモーダル表示状態
 
-// トーストメッセージ
-const toast = ref({ show: false, message: "", type: "info" });
-
 // フィルター・検索関連
 const filterCriteria = ref({
   text: "",
@@ -375,18 +372,9 @@ const loadDeckFromLocalStorage = () => {
 // UI操作 - UI Interactions
 // ===================================
 
-// トーストメッセージ表示
-const showToast = (message, type = "info", duration = 3000) => {
-  toast.value = { show: true, message, type };
-  setTimeout(() => {
-    toast.value.show = false;
-  }, duration);
-};
-
 // エラーハンドリング
 const handleError = (error, message) => {
   console.error(message, error);
-  showToast(`${message}: ${error.message}`, "error", 5000);
 };
 
 // フィルターモーダル操作
@@ -405,7 +393,6 @@ const closeFilterModal = () => {
 // カードをデッキに追加
 const addCardToDeck = (card) => {
   if (totalDeckCards.value >= 60) {
-    showToast("デッキは60枚までです！", "warning");
     return;
   }
 
@@ -416,32 +403,20 @@ const addCardToDeck = (card) => {
   if (existingCardIndex > -1) {
     if (deckCards.value[existingCardIndex].count < 4) {
       deckCards.value[existingCardIndex].count++;
-      showToast(
-        `${card.name} を追加しました (${deckCards.value[existingCardIndex].count}/4)`,
-        "success",
-        2000
-      );
-    } else {
-      showToast("同じカードは4枚まで追加できます", "warning");
     }
   } else {
     deckCards.value.push({ card: card, count: 1 });
-    showToast(`${card.name} をデッキに追加しました`, "success", 2000);
   }
 };
 
 // カード枚数を増やす
 const incrementCardCount = (cardId) => {
   if (totalDeckCards.value >= 60) {
-    showToast("デッキは60枚までです！", "warning");
     return;
   }
   const item = deckCards.value.find((item) => item.card.id === cardId);
   if (item && item.count < 4) {
     item.count++;
-    showToast(`${item.card.name} を追加 (${item.count}/4)`, "success", 1500);
-  } else if (item && item.count >= 4) {
-    showToast("同じカードは4枚まで追加できます", "warning");
   }
 };
 
@@ -450,10 +425,8 @@ const decrementCardCount = (cardId) => {
   const item = deckCards.value.find((item) => item.card.id === cardId);
   if (item && item.count > 1) {
     item.count--;
-    showToast(`${item.card.name} を削除 (${item.count}/4)`, "info", 1500);
   } else if (item && item.count === 1) {
     removeCardFromDeck(cardId);
-    showToast(`${item.card.name} をデッキから削除しました`, "info", 1500);
   }
 };
 
@@ -469,7 +442,6 @@ const resetDeck = () => {
     deckName.value = "新しいデッキ";
     localStorage.removeItem("deckCards_k");
     localStorage.removeItem("deckName_k");
-    showToast("デッキをリセットしました", "info");
   }
 };
 
@@ -509,10 +481,8 @@ const generateAndShowDeckCode = () => {
   try {
     deckCode.value = encodeDeckCode(deckCards.value);
     showDeckCodeModal.value = true;
-    showToast("デッキコードを生成しました", "success");
   } catch (e) {
     console.error("デッキコードの生成に失敗しました:", e);
-    showToast("デッキコードの生成に失敗しました", "error");
   } finally {
     isGeneratingCode.value = false;
   }
@@ -523,10 +493,10 @@ const copyDeckCode = () => {
   navigator.clipboard
     .writeText(deckCode.value)
     .then(() => {
-      showToast("デッキコードをコピーしました", "success");
+      console.log("デッキコードをコピーしました");
     })
     .catch(() => {
-      showToast("デッキコードのコピーに失敗しました", "error");
+      console.error("デッキコードのコピーに失敗しました");
     });
 };
 
@@ -538,16 +508,11 @@ const importDeckFromCode = () => {
       deckCards.value = importedCards;
       importDeckCode.value = "";
       showDeckCodeModal.value = false;
-      showToast("デッキコードをインポートしました", "success");
     } else {
-      showToast("有効なカードが見つかりませんでした", "warning");
+      console.warn("有効なカードが見つかりませんでした");
     }
   } catch (e) {
     console.error("デッキコードの復元に失敗しました:", e);
-    showToast(
-      "デッキコードの復元に失敗しました。正しいコードを入力してください。",
-      "error"
-    );
   }
 };
 
@@ -657,7 +622,7 @@ const saveDeckAsPng = async () => {
     link.download = filename;
     link.href = canvas.toDataURL("image/png");
     link.click();
-    showToast(`デッキ画像を保存しました: ${filename}`, "success");
+    console.log(`デッキ画像を保存しました: ${filename}`);
   } catch (e) {
     handleError(e, "デッキ画像の保存に失敗しました");
   } finally {
@@ -1325,107 +1290,6 @@ watch(deckName, (newName) => {
             </button>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- トーストメッセージ -->
-    <div
-      v-if="toast.show"
-      class="fixed top-4 right-4 z-[100] transform transition-all duration-300 ease-in-out"
-      :class="
-        toast.show ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
-      "
-    >
-      <div
-        class="flex items-center gap-3 px-4 py-3 rounded-lg shadow-xl backdrop-blur-sm border max-w-sm"
-        :class="{
-          'bg-emerald-500/90 border-emerald-400/50 text-white':
-            toast.type === 'success',
-          'bg-red-500/90 border-red-400/50 text-white': toast.type === 'error',
-          'bg-yellow-500/90 border-yellow-400/50 text-white':
-            toast.type === 'warning',
-          'bg-blue-500/90 border-blue-400/50 text-white': toast.type === 'info',
-        }"
-      >
-        <div class="flex-shrink-0">
-          <svg
-            v-if="toast.type === 'success'"
-            class="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M5 13l4 4L19 7"
-            ></path>
-          </svg>
-          <svg
-            v-else-if="toast.type === 'error'"
-            class="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M6 18L18 6M6 6l12 12"
-            ></path>
-          </svg>
-          <svg
-            v-else-if="toast.type === 'warning'"
-            class="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.728-.833-2.598 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-            ></path>
-          </svg>
-          <svg
-            v-else
-            class="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            ></path>
-          </svg>
-        </div>
-        <div class="flex-1">
-          <p class="text-sm font-medium">{{ toast.message }}</p>
-        </div>
-        <button
-          @click="toast.show = false"
-          class="flex-shrink-0 ml-2 text-white/80 hover:text-white transition-colors duration-200"
-        >
-          <svg
-            class="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M6 18L18 6M6 6l12 12"
-            ></path>
-          </svg>
-        </button>
       </div>
     </div>
   </div>
