@@ -425,8 +425,10 @@ const createDeckCodeManager = () => {
 // 画像エクスポート機能 - Image Export
 // ===================================
 
-const createImageExporter = () => {
-  const { getCardImageUrl } = createImageManager();
+const createImageExporter = (
+  imageManager: ReturnType<typeof createImageManager>
+) => {
+  const { getCardImageUrl } = imageManager;
 
   const calculateCardWidth = (cardCount: number): string => {
     if (cardCount <= 30) return "calc((100% - 36px) / 10)";
@@ -587,7 +589,7 @@ const createImageExporter = () => {
         useCORS: true,
         logging: false,
         allowTaint: true,
-        backgroundColor: "#1F2937",
+        backgroundColor: EXPORT_CONFIG.canvas.backgroundColor,
       });
 
       // クリーンアップ
@@ -647,7 +649,7 @@ const handleError = createErrorHandler();
 const imageManager = createImageManager();
 const localStorageManager = createLocalStorageManager();
 const deckCodeManager = createDeckCodeManager();
-const imageExporter = createImageExporter();
+const imageExporter = createImageExporter(imageManager);
 
 // ===================================
 // Computed Properties
