@@ -1,5 +1,3 @@
-import type { DeckCard } from "../types";
-
 /**
  * カード枚数に基づいてカード幅を計算
  */

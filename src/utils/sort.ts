@@ -1,4 +1,4 @@
-import type { Card, CardKind, CardType } from "../types";
+import type { Card, CardType } from "../types";
 import { CARD_KINDS, CARD_TYPES } from "../constants";
 
 /**
