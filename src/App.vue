@@ -4,6 +4,7 @@ import {
   computed,
   onMounted,
   watch,
+  nextTick,
   type Ref,
   type ComputedRef,
 } from "vue";
@@ -190,6 +191,9 @@ const isSaving: Ref<boolean> = ref(false);
 const isGeneratingCode: Ref<boolean> = ref(false);
 const showDeckCodeModal: Ref<boolean> = ref(false);
 const isFilterModalOpen: Ref<boolean> = ref(false);
+
+// エクスポート用のref
+const exportContainer = ref<HTMLElement | null>(null);
 
 // フィルター・検索関連の状態
 const filterCriteria: Ref<FilterCriteria> = ref({
@@ -505,119 +509,6 @@ const calculateCardWidth = (cardCount: number): string => {
 };
 
 /**
- * 要素にスタイルを適用
- */
-const applyStyles = (
-  element: HTMLElement,
-  styles: Record<string, string>
-): void => {
-  Object.assign(element.style, styles);
-};
-
-/**
- * エクスポート用コンテナを作成
- */
-const createExportContainer = (): HTMLElement => {
-  const container = document.createElement("div");
-  applyStyles(container, {
-    width: `${EXPORT_CONFIG.canvas.width}px`,
-    height: `${EXPORT_CONFIG.canvas.height}px`,
-    backgroundColor: EXPORT_CONFIG.canvas.backgroundColor,
-    padding: EXPORT_CONFIG.canvas.padding,
-    position: "absolute",
-    left: "-9999px",
-  });
-  document.body.appendChild(container);
-  return container;
-};
-
-/**
- * デッキ名要素を作成
- */
-const createDeckNameElement = (name: string): HTMLElement => {
-  const element = document.createElement("div");
-  applyStyles(element, {
-    position: "absolute",
-    fontSize: EXPORT_CONFIG.deckName.fontSize,
-    fontWeight: EXPORT_CONFIG.deckName.fontWeight,
-    color: EXPORT_CONFIG.deckName.color,
-    fontFamily: EXPORT_CONFIG.deckName.fontFamily,
-    textAlign: "center",
-    width: "100%",
-  });
-  element.textContent = name;
-  return element;
-};
-
-/**
- * グリッド要素を作成
- */
-const createGridElement = (): HTMLElement => {
-  const grid = document.createElement("div");
-  applyStyles(grid, {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: EXPORT_CONFIG.grid.gap,
-    width: "100%",
-    height: "100%",
-    justifyContent: "flex-start",
-    alignItems: "center",
-    alignContent: "center",
-  });
-  return grid;
-};
-
-/**
- * カード要素を作成
- */
-const createCardElement = async (
-  item: DeckCard,
-  cardWidth: string
-): Promise<HTMLElement> => {
-  const cardContainer = document.createElement("div");
-  applyStyles(cardContainer, {
-    position: "relative",
-    width: cardWidth,
-  });
-
-  // 画像要素
-  const img = document.createElement("img");
-  img.src = getCardImageUrl(item.card.id);
-  applyStyles(img, {
-    width: "100%",
-    height: "100%",
-    objectFit: "cover",
-    borderRadius: EXPORT_CONFIG.card.borderRadius,
-  });
-
-  // 画像読み込み待機
-  await new Promise<void>((resolve) => {
-    img.onload = () => resolve();
-    img.onerror = () => resolve();
-  });
-
-  cardContainer.appendChild(img);
-
-  // カウントバッジ
-  const countBadge = document.createElement("div");
-  applyStyles(countBadge, {
-    position: "absolute",
-    bottom: "5px",
-    right: "5px",
-    backgroundColor: EXPORT_CONFIG.badge.backgroundColor,
-    color: EXPORT_CONFIG.badge.color,
-    padding: EXPORT_CONFIG.badge.padding,
-    borderRadius: EXPORT_CONFIG.badge.borderRadius,
-    fontSize: EXPORT_CONFIG.badge.fontSize,
-    fontWeight: "bold",
-  });
-  countBadge.textContent = `×${item.count}`;
-  cardContainer.appendChild(countBadge);
-
-  return cardContainer;
-};
-
-/**
  * ファイル名を生成
  */
 const generateFileName = (deckName: string): string => {
@@ -635,65 +526,6 @@ const downloadCanvas = (canvas: HTMLCanvasElement, filename: string): void => {
   link.download = filename;
   link.href = canvas.toDataURL("image/png");
   link.click();
-};
-
-/**
- * デッキを画像としてエクスポート
- */
-const exportDeckAsImage = async (
-  deckCards: DeckCard[],
-  deckName: string,
-  onStart: () => void,
-  onComplete: () => void,
-  onError: (error: any) => void
-): Promise<void> => {
-  onStart();
-
-  try {
-    // コンテナ作成
-    const container = createExportContainer();
-
-    // デッキ名要素追加
-    const deckNameElement = createDeckNameElement(deckName);
-    container.appendChild(deckNameElement);
-
-    // グリッド作成
-    const grid = createGridElement();
-    container.appendChild(grid);
-
-    // カード要素作成・追加
-    const cardWidth = calculateCardWidth(deckCards.length);
-    const cardPromises = deckCards.map(async (item: DeckCard) => {
-      const cardElement = await createCardElement(item, cardWidth);
-      grid.appendChild(cardElement);
-    });
-
-    await Promise.all(cardPromises);
-
-    // Canvas生成
-    const canvas = await html2canvas(container, {
-      scale: 1,
-      width: EXPORT_CONFIG.canvas.width,
-      height: EXPORT_CONFIG.canvas.height,
-      useCORS: true,
-      logging: false,
-      allowTaint: true,
-      backgroundColor: EXPORT_CONFIG.canvas.backgroundColor,
-    });
-
-    // クリーンアップ
-    document.body.removeChild(container);
-
-    // ダウンロード
-    const filename = generateFileName(deckName);
-    downloadCanvas(canvas, filename);
-
-    console.log(`デッキ画像を保存しました: ${filename}`);
-  } catch (e) {
-    onError(e);
-  } finally {
-    onComplete();
-  }
 };
 
 // ===================================
@@ -972,13 +804,38 @@ const importDeckFromCode = (): void => {
  * デッキをPNG画像として保存
  */
 const saveDeckAsPng = async (): Promise<void> => {
-  await exportDeckAsImage(
-    sortedDeckCards.value,
-    deckName.value,
-    () => (isSaving.value = true),
-    () => (isSaving.value = false),
-    (error) => handleError(error, "デッキ画像の保存に失敗しました")
-  );
+  if (!exportContainer.value) return;
+
+  isSaving.value = true;
+
+  try {
+    // DOMの更新を待つ
+    await nextTick();
+
+    // 少し待ってから画像生成（画像の読み込み完了を待つため）
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    // Canvas生成
+    const canvas = await html2canvas(exportContainer.value, {
+      scale: 1,
+      width: EXPORT_CONFIG.canvas.width,
+      height: EXPORT_CONFIG.canvas.height,
+      useCORS: true,
+      logging: false,
+      allowTaint: true,
+      backgroundColor: EXPORT_CONFIG.canvas.backgroundColor,
+    });
+
+    // ダウンロード
+    const filename = generateFileName(deckName.value);
+    downloadCanvas(canvas, filename);
+
+    console.log(`デッキ画像を保存しました: ${filename}`);
+  } catch (e) {
+    handleError(e, "デッキ画像の保存に失敗しました");
+  } finally {
+    isSaving.value = false;
+  }
 };
 
 // ===================================
@@ -1610,6 +1467,88 @@ const allTypes = [...CARD_TYPES];
             >
               インポート
             </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- エクスポート用の隠されたコンテナ -->
+    <div
+      ref="exportContainer"
+      v-show="isSaving"
+      class="fixed pointer-events-none"
+      style="left: -9999px; top: 0; z-index: -1"
+      :style="{
+        width: `${EXPORT_CONFIG.canvas.width}px`,
+        height: `${EXPORT_CONFIG.canvas.height}px`,
+        backgroundColor: EXPORT_CONFIG.canvas.backgroundColor,
+        padding: EXPORT_CONFIG.canvas.padding,
+      }"
+    >
+      <!-- デッキ名 -->
+      <div
+        :style="{
+          position: 'absolute',
+          fontSize: EXPORT_CONFIG.deckName.fontSize,
+          fontWeight: EXPORT_CONFIG.deckName.fontWeight,
+          color: EXPORT_CONFIG.deckName.color,
+          fontFamily: EXPORT_CONFIG.deckName.fontFamily,
+          textAlign: 'center',
+          width: '100%',
+        }"
+      >
+        {{ deckName }}
+      </div>
+
+      <!-- カードグリッド -->
+      <div
+        :style="{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: EXPORT_CONFIG.grid.gap,
+          width: '100%',
+          height: '100%',
+          justifyContent: 'flex-start',
+          alignItems: 'center',
+          alignContent: 'center',
+        }"
+      >
+        <div
+          v-for="item in sortedDeckCards"
+          :key="`export-${item.card.id}`"
+          :style="{
+            position: 'relative',
+            width: calculateCardWidth(deckCards.length),
+          }"
+        >
+          <!-- カード画像 -->
+          <img
+            :src="getCardImageUrl(item.card.id)"
+            :alt="item.card.name"
+            :style="{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              borderRadius: EXPORT_CONFIG.card.borderRadius,
+            }"
+            crossorigin="anonymous"
+          />
+
+          <!-- カウントバッジ -->
+          <div
+            :style="{
+              position: 'absolute',
+              bottom: '5px',
+              right: '5px',
+              backgroundColor: EXPORT_CONFIG.badge.backgroundColor,
+              color: EXPORT_CONFIG.badge.color,
+              padding: EXPORT_CONFIG.badge.padding,
+              borderRadius: EXPORT_CONFIG.badge.borderRadius,
+              fontSize: EXPORT_CONFIG.badge.fontSize,
+              fontWeight: 'bold',
+            }"
+          >
+            ×{{ item.count }}
           </div>
         </div>
       </div>
