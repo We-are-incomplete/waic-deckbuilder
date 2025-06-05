@@ -749,7 +749,7 @@ watch(deckName, (newName: string) => {
       <div class="flex flex-wrap gap-1 mb-1 px-1">
         <button
           @click="generateAndShowDeckCode"
-          :disabled="deckCards.length === 0 || isGeneratingCode"
+          :disabled="isGeneratingCode"
           class="group relative flex-1 min-w-0 px-1 sm:px-2 py-0.5 sm:py-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded text-xs font-medium hover:from-blue-700 hover:to-blue-800 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-blue-500/25"
           title="デッキコードを生成"
         >
