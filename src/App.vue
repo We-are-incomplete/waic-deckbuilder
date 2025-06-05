@@ -966,7 +966,7 @@ const { getCardImageUrl, handleImageError } = imageManager;
             id="deckName"
             type="text"
             v-model="deckName"
-            class="flex-grow px-1 sm:px-2 py-0.5 sm:py-1 text-xs rounded bg-slate-800/80 border border-slate-600/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 backdrop-blur-sm placeholder-slate-400"
+            class="flex-grow px-1 sm:px-2 py-0.5 sm:py-1 text-xs sm:text-base rounded bg-slate-800/80 border border-slate-600/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 backdrop-blur-sm placeholder-slate-400"
             placeholder="デッキ名を入力"
           />
         </div>
@@ -1126,7 +1126,7 @@ const { getCardImageUrl, handleImageError } = imageManager;
 
       <div
         id="chosen-deck-grid"
-        class="flex-grow overflow-y-auto grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1 sm:gap-2 p-1 sm:p-2 bg-slate-800/40 backdrop-blur-sm rounded border border-slate-700/50 shadow-xl"
+        class="flex-grow overflow-y-auto grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3 lg:gap-4 p-1 sm:p-2 bg-slate-800/40 backdrop-blur-sm rounded border border-slate-700/50 shadow-xl"
       >
         <div
           v-for="item in sortedDeckCards"
@@ -1287,7 +1287,7 @@ const { getCardImageUrl, handleImageError } = imageManager;
       </div>
 
       <div
-        class="flex-grow overflow-y-auto grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1 sm:gap-2 p-1 sm:p-2 bg-slate-800/40 backdrop-blur-sm rounded border border-slate-700/50 shadow-xl"
+        class="flex-grow overflow-y-auto grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3 lg:gap-4 p-1 sm:p-2 bg-slate-800/40 backdrop-blur-sm rounded border border-slate-700/50 shadow-xl"
       >
         <div v-if="isLoading" class="col-span-full text-center mt-2 sm:mt-4">
           <div class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-4">
@@ -1407,7 +1407,7 @@ const { getCardImageUrl, handleImageError } = imageManager;
             id="searchText"
             type="text"
             v-model="filterCriteria.text"
-            class="w-full px-3 py-2 text-sm rounded bg-gray-700 border border-gray-600 focus:outline-none focus:ring focus:border-blue-500"
+            class="w-full px-3 py-2 text-sm sm:text-base rounded bg-gray-700 border border-gray-600 focus:outline-none focus:ring focus:border-blue-500"
             placeholder="カード名、ID、タグを入力"
           />
         </div>
@@ -1424,7 +1424,7 @@ const { getCardImageUrl, handleImageError } = imageManager;
                 type="checkbox"
                 :value="kind"
                 v-model="filterCriteria.kind"
-                class="form-checkbox h-4 w-4 text-blue-600 bg-gray-700 border-gray-600 rounded"
+                class="form-checkbox h-4 w-4 min-h-5 min-w-5 text-blue-600 bg-gray-700 border-gray-600 rounded"
               />
               <span class="ml-2">{{ kind }}</span>
             </label>
@@ -1445,7 +1445,7 @@ const { getCardImageUrl, handleImageError } = imageManager;
                 type="checkbox"
                 :value="type"
                 v-model="filterCriteria.type"
-                class="form-checkbox h-4 w-4 text-blue-600 bg-gray-700 border-gray-600 rounded"
+                class="form-checkbox h-4 w-4 min-h-5 min-w-5 text-blue-600 bg-gray-700 border-gray-600 rounded"
               />
               <span class="ml-2">{{ type }}</span>
             </label>
@@ -1462,7 +1462,7 @@ const { getCardImageUrl, handleImageError } = imageManager;
                 type="checkbox"
                 :value="tag"
                 v-model="filterCriteria.tags"
-                class="form-checkbox h-4 w-4 text-blue-600 bg-gray-700 border-gray-600 rounded"
+                class="form-checkbox h-4 w-4 min-h-5 min-w-5 text-blue-600 bg-gray-700 border-gray-600 rounded"
               />
               <span class="ml-2">{{ tag }}</span>
             </label>
@@ -1515,7 +1515,7 @@ const { getCardImageUrl, handleImageError } = imageManager;
             <input
               type="text"
               v-model="importDeckCode"
-              class="flex-grow px-3 py-2 text-sm rounded bg-gray-700 border border-gray-600 focus:outline-none focus:ring focus:border-blue-500"
+              class="flex-grow px-3 py-2 text-sm sm:text-base rounded bg-gray-700 border border-gray-600 focus:outline-none focus:ring focus:border-blue-500"
               placeholder="デッキコードを入力"
             />
             <button
@@ -1532,6 +1532,8 @@ const { getCardImageUrl, handleImageError } = imageManager;
 </template>
 
 <style scoped>
+/* Tailwindで対応できない特殊なスタイルのみ残す */
+
 /* デフォルトのスクロールバーを隠す */
 ::-webkit-scrollbar {
   display: none;
@@ -1541,44 +1543,10 @@ const { getCardImageUrl, handleImageError } = imageManager;
   scrollbar-width: none;
 }
 
-/* タッチデバイス向けの最適化 */
+/* タッチデバイス向けのタップハイライト除去 */
 @media (hover: none) {
   button {
     -webkit-tap-highlight-color: transparent;
-  }
-
-  input[type="checkbox"] {
-    min-width: 20px;
-    min-height: 20px;
-  }
-}
-
-/* モバイル向けの最適化 */
-@media (max-width: 640px) {
-  .grid {
-    gap: 0.5rem;
-  }
-
-  button {
-    padding: 0.5rem;
-  }
-
-  input[type="text"] {
-    font-size: 16px; /* iOSでズームを防ぐ */
-  }
-}
-
-/* タブレット向けの最適化 */
-@media (min-width: 641px) and (max-width: 1024px) {
-  .grid {
-    gap: 0.75rem;
-  }
-}
-
-/* デスクトップ向けの最適化 */
-@media (min-width: 1025px) {
-  .grid {
-    gap: 1rem;
   }
 }
 </style>
