@@ -1133,15 +1133,6 @@ const allTypes = readonly([...CARD_TYPES]);
             <div
               class="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-slate-900/80 via-slate-900/40 to-transparent rounded-b-lg"
             ></div>
-            <div
-              class="absolute top-2 left-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-            >
-              <div
-                class="text-xs font-medium text-white bg-slate-900/80 rounded px-2 py-1 backdrop-blur-sm truncate"
-              >
-                {{ item.card.name }}
-              </div>
-            </div>
           </div>
 
           <div
