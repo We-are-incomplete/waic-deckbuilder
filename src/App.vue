@@ -572,108 +572,204 @@ const importDeckFromCode = (): void => {
 // 画像保存機能 - Image Export
 // ===================================
 
+// 定数定義
+const EXPORT_CONFIG = {
+  canvas: {
+    width: 1920,
+    height: 1080,
+    backgroundColor: "#030712",
+    padding: "0 10px 10px 10px",
+  },
+  deckName: {
+    fontSize: "80px",
+    fontWeight: "bold",
+    color: "#f9fafb",
+    fontFamily: "serif",
+  },
+  grid: {
+    gap: "4px",
+  },
+  card: {
+    borderRadius: "8px",
+  },
+  badge: {
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    color: "white",
+    padding: "2px 12px",
+    borderRadius: "12px",
+    fontSize: "32px",
+  },
+} as const;
+
+// カード幅計算の関数化
+const calculateCardWidth = (cardCount: number): string => {
+  if (cardCount <= 30) return "calc((100% - 36px) / 10)";
+  if (cardCount <= 48) return "calc((100% - 44px) / 12)";
+  return "calc((100% - 56px) / 15)";
+};
+
+// スタイル適用のヘルパー関数
+const applyStyles = (
+  element: HTMLElement,
+  styles: Record<string, string>
+): void => {
+  Object.assign(element.style, styles);
+};
+
+// コンテナ作成関数
+const createExportContainer = (): HTMLElement => {
+  const container = document.createElement("div");
+  applyStyles(container, {
+    width: `${EXPORT_CONFIG.canvas.width}px`,
+    height: `${EXPORT_CONFIG.canvas.height}px`,
+    backgroundColor: EXPORT_CONFIG.canvas.backgroundColor,
+    padding: EXPORT_CONFIG.canvas.padding,
+    position: "absolute",
+    left: "-9999px",
+  });
+  document.body.appendChild(container);
+  return container;
+};
+
+// デッキ名要素作成
+const createDeckNameElement = (name: string): HTMLElement => {
+  const element = document.createElement("div");
+  applyStyles(element, {
+    position: "absolute",
+    fontSize: EXPORT_CONFIG.deckName.fontSize,
+    fontWeight: EXPORT_CONFIG.deckName.fontWeight,
+    color: EXPORT_CONFIG.deckName.color,
+    fontFamily: EXPORT_CONFIG.deckName.fontFamily,
+    textAlign: "center",
+    width: "100%",
+  });
+  element.textContent = name;
+  return element;
+};
+
+// グリッド要素作成
+const createGridElement = (): HTMLElement => {
+  const grid = document.createElement("div");
+  applyStyles(grid, {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: EXPORT_CONFIG.grid.gap,
+    width: "100%",
+    height: "100%",
+    justifyContent: "flex-start",
+    alignItems: "center",
+    alignContent: "center",
+  });
+  return grid;
+};
+
+// カード要素作成
+const createCardElement = async (
+  item: DeckCard,
+  cardWidth: string
+): Promise<HTMLElement> => {
+  const cardContainer = document.createElement("div");
+  applyStyles(cardContainer, {
+    position: "relative",
+    width: cardWidth,
+  });
+
+  // 画像要素
+  const img = document.createElement("img");
+  img.src = getCardImageUrl(item.card.id);
+  applyStyles(img, {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    borderRadius: EXPORT_CONFIG.card.borderRadius,
+  });
+
+  // 画像読み込み待機
+  await new Promise<void>((resolve) => {
+    img.onload = () => resolve();
+    img.onerror = () => resolve();
+  });
+
+  cardContainer.appendChild(img);
+
+  // カウントバッジ
+  const countBadge = document.createElement("div");
+  applyStyles(countBadge, {
+    position: "absolute",
+    bottom: "5px",
+    right: "5px",
+    backgroundColor: EXPORT_CONFIG.badge.backgroundColor,
+    color: EXPORT_CONFIG.badge.color,
+    padding: EXPORT_CONFIG.badge.padding,
+    borderRadius: EXPORT_CONFIG.badge.borderRadius,
+    fontSize: EXPORT_CONFIG.badge.fontSize,
+    fontWeight: "bold",
+  });
+  countBadge.textContent = `×${item.count}`;
+  cardContainer.appendChild(countBadge);
+
+  return cardContainer;
+};
+
+// ファイル名生成
+const generateFileName = (deckName: string): string => {
+  const timestamp = new Date()
+    .toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" })
+    .replace(/\//g, "-");
+  return `${deckName || "デッキ"}_${timestamp}.png`;
+};
+
+// 画像ダウンロード処理
+const downloadCanvas = (canvas: HTMLCanvasElement, filename: string): void => {
+  const link = document.createElement("a");
+  link.download = filename;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+};
+
+// メイン関数
 const saveDeckAsPng = async (): Promise<void> => {
   isSaving.value = true;
 
   try {
-    const container = document.createElement("div");
-    container.style.width = "1920px";
-    container.style.height = "1080px";
-    container.style.backgroundColor = "#030712";
-    container.style.padding = "0 10px 10px 10px";
-    container.style.position = "absolute";
-    container.style.left = "-9999px";
-    document.body.appendChild(container);
+    // コンテナ作成
+    const container = createExportContainer();
 
-    // デッキ名表示
-    const deckNameElement = document.createElement("div");
-    deckNameElement.style.position = "absolute";
-    deckNameElement.style.fontSize = "80px";
-    deckNameElement.style.fontWeight = "bold";
-    deckNameElement.style.color = "#f9fafb";
-    deckNameElement.style.fontFamily = "serif";
-    deckNameElement.style.textAlign = "center";
-    deckNameElement.style.width = "100%";
-    deckNameElement.textContent = deckName.value;
+    // デッキ名要素追加
+    const deckNameElement = createDeckNameElement(deckName.value);
     container.appendChild(deckNameElement);
 
-    // カードグリッド作成
-    const grid = document.createElement("div");
-    grid.style.display = "flex";
-    grid.style.flexWrap = "wrap";
-    grid.style.gap = "4px";
-    grid.style.width = "100%";
-    grid.style.height = "100%";
-    grid.style.justifyContent = "flex-start";
-    grid.style.alignItems = "center";
-    grid.style.alignContent = "center";
+    // グリッド作成
+    const grid = createGridElement();
     container.appendChild(grid);
 
-    // カード追加
+    // カード要素作成・追加
+    const cardWidth = calculateCardWidth(sortedDeckCards.value.length);
     const cardPromises = sortedDeckCards.value.map(async (item: DeckCard) => {
-      const cardContainer = document.createElement("div");
-      cardContainer.style.position = "relative";
-
-      const cardWidth =
-        sortedDeckCards.value.length <= 30
-          ? "calc((100% - 36px) / 10)"
-          : sortedDeckCards.value.length <= 48
-          ? "calc((100% - 44px) / 12)"
-          : "calc((100% - 56px) / 15)";
-      cardContainer.style.width = cardWidth;
-
-      const img = document.createElement("img");
-      img.src = getCardImageUrl(item.card.id);
-      img.style.width = "100%";
-      img.style.height = "100%";
-      img.style.objectFit = "cover";
-      img.style.borderRadius = "8px";
-
-      await new Promise<void>((resolve) => {
-        img.onload = () => resolve();
-        img.onerror = () => resolve();
-      });
-
-      cardContainer.appendChild(img);
-
-      const countBadge = document.createElement("div");
-      countBadge.style.position = "absolute";
-      countBadge.style.bottom = "5px";
-      countBadge.style.right = "5px";
-      countBadge.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
-      countBadge.style.color = "white";
-      countBadge.style.padding = "2px 12px";
-      countBadge.style.borderRadius = "12px";
-      countBadge.style.fontSize = "32px";
-      countBadge.style.fontWeight = "bold";
-      countBadge.textContent = `×${item.count}`;
-      cardContainer.appendChild(countBadge);
-
-      grid.appendChild(cardContainer);
+      const cardElement = await createCardElement(item, cardWidth);
+      grid.appendChild(cardElement);
     });
 
     await Promise.all(cardPromises);
 
+    // Canvas生成
     const canvas = await html2canvas(container, {
       scale: 1,
-      width: 1920,
-      height: 1080,
+      width: EXPORT_CONFIG.canvas.width,
+      height: EXPORT_CONFIG.canvas.height,
       useCORS: true,
       logging: false,
       allowTaint: true,
       backgroundColor: "#1F2937",
     });
 
+    // クリーンアップ
     document.body.removeChild(container);
 
-    const link = document.createElement("a");
-    const timestamp = new Date()
-      .toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" })
-      .replace(/\//g, "-");
-    const filename = `${deckName.value || "デッキ"}_${timestamp}.png`;
-    link.download = filename;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
+    // ダウンロード
+    const filename = generateFileName(deckName.value);
+    downloadCanvas(canvas, filename);
+
     console.log(`デッキ画像を保存しました: ${filename}`);
   } catch (e) {
     handleError(e, "デッキ画像の保存に失敗しました");
