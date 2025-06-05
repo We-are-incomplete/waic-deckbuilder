@@ -1040,7 +1040,7 @@ const allTypes = [...CARD_TYPES];
           @click="generateAndShowDeckCode"
           :disabled="isGeneratingCode"
           class="group relative flex-1 min-w-0 px-1 sm:px-2 py-0.5 sm:py-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded text-xs font-medium hover:from-blue-700 hover:to-blue-800 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-blue-500/25"
-          title="デッキコードを生成"
+          title="デッキコードの入出力"
         >
           <span
             v-if="!isGeneratingCode"
@@ -1059,7 +1059,7 @@ const allTypes = [...CARD_TYPES];
                 d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
               ></path>
             </svg>
-            <span class="hidden sm:inline">コード生成</span>
+            <span class="hidden sm:inline">デッキコード</span>
             <span class="sm:hidden">コード</span>
           </span>
           <span v-else class="flex items-center justify-center gap-1">
@@ -1101,8 +1101,8 @@ const allTypes = [...CARD_TYPES];
                 d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
               ></path>
             </svg>
-            <span class="hidden sm:inline">保存</span>
-            <span class="sm:hidden">保存</span>
+            <span class="hidden sm:inline">デッキ画像保存</span>
+            <span class="sm:hidden">画像保存</span>
           </span>
           <span v-else class="flex items-center justify-center gap-1">
             <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
