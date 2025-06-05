@@ -33,52 +33,49 @@ interface FilterCriteria {
   tags: string[];
 }
 
-// ===================================
-// 状態管理 - State Management
-// ===================================
-
-// カードデータ関連
-const availableCards: Ref<Card[]> = ref([]); // 全てのカードデータ
-const deckCards: Ref<DeckCard[]> = ref([]); // デッキに入っているカード { card: {}, count: N } の形式
-const deckName: Ref<string> = ref("新しいデッキ"); // デッキ名
-const deckCode: Ref<string> = ref(""); // デッキコード
-const importDeckCode: Ref<string> = ref(""); // インポート用デッキコード
-
-// UI状態管理
-const isLoading: Ref<boolean> = ref(true); // データ読み込み中フラグ
-const error: Ref<string | null> = ref(null); // エラーメッセージ
-const isSaving: Ref<boolean> = ref(false); // 保存中状態
-const isGeneratingCode: Ref<boolean> = ref(false); // コード生成中状態
-const showDeckCodeModal: Ref<boolean> = ref(false); // デッキコードモーダル表示状態
-const isFilterModalOpen: Ref<boolean> = ref(false); // フィルターモーダル表示状態
-
-// フィルター・検索関連
-const filterCriteria: Ref<FilterCriteria> = ref({
-  text: "",
-  kind: [],
-  type: [],
-  tags: [],
-});
+interface ExportConfig {
+  canvas: {
+    width: number;
+    height: number;
+    backgroundColor: string;
+    padding: string;
+  };
+  deckName: {
+    fontSize: string;
+    fontWeight: string;
+    color: string;
+    fontFamily: string;
+  };
+  grid: {
+    gap: string;
+  };
+  card: {
+    borderRadius: string;
+  };
+  badge: {
+    backgroundColor: string;
+    color: string;
+    padding: string;
+    borderRadius: string;
+    fontSize: string;
+  };
+}
 
 // ===================================
 // 定数定義 - Constants
 // ===================================
 
-const allKinds: string[] = ["Artist", "Song", "Magic", "Direction"];
-const allTypes: string[] = [
-  "赤",
-  "青",
-  "黄",
-  "白",
-  "黒",
-  "全",
-  "即時",
-  "装備",
-  "設置",
-];
+const GAME_CONSTANTS = {
+  MAX_DECK_SIZE: 60,
+  MAX_CARD_COPIES: 4,
+  BATCH_SIZE_FOR_PRELOAD: 10,
+} as const;
 
-// 優先タグのリスト（重要なタグを先頭に表示）
-const priorityTags: string[] = [
+const CARD_KINDS = ["Artist", "Song", "Magic", "Direction"];
+
+const CARD_TYPES = ["赤", "青", "黄", "白", "黒", "全", "即時", "装備", "設置"];
+
+const PRIORITY_TAGS = [
   "V.W.P",
   "花譜",
   "理芽",
@@ -123,163 +120,536 @@ const priorityTags: string[] = [
   "阿栖&亜留",
 ];
 
+const EXPORT_CONFIG: ExportConfig = {
+  canvas: {
+    width: 1920,
+    height: 1080,
+    backgroundColor: "#030712",
+    padding: "0 10px 10px 10px",
+  },
+  deckName: {
+    fontSize: "80px",
+    fontWeight: "bold",
+    color: "#f9fafb",
+    fontFamily: "serif",
+  },
+  grid: {
+    gap: "4px",
+  },
+  card: {
+    borderRadius: "8px",
+  },
+  badge: {
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    color: "white",
+    padding: "2px 12px",
+    borderRadius: "12px",
+    fontSize: "32px",
+  },
+} as const;
+
 // ===================================
 // ユーティリティ関数 - Utility Functions
 // ===================================
 
-// 自然順ソート関数 (ID用: AA-1, AA-2, ..., AA-10)
-const naturalSort = (a: string, b: string): number => {
-  const regex = /(\d+)|(\D+)/g;
-  const tokensA = a.match(regex);
-  const tokensB = b.match(regex);
+// 自然順ソート関数
+const createNaturalSort = () => {
+  return (a: string, b: string): number => {
+    const regex = /(\d+)|(\D+)/g;
+    const tokensA = a.match(regex);
+    const tokensB = b.match(regex);
 
-  if (!tokensA || !tokensB) return a.localeCompare(b);
+    if (!tokensA || !tokensB) return a.localeCompare(b);
 
-  for (let i = 0; i < Math.min(tokensA.length, tokensB.length); i++) {
-    const tokenA = tokensA[i];
-    const tokenB = tokensB[i];
-    const numA = parseInt(tokenA, 10);
-    const numB = parseInt(tokenB, 10);
+    for (let i = 0; i < Math.min(tokensA.length, tokensB.length); i++) {
+      const tokenA = tokensA[i];
+      const tokenB = tokensB[i];
+      const numA = parseInt(tokenA, 10);
+      const numB = parseInt(tokenB, 10);
 
-    if (!isNaN(numA) && !isNaN(numB)) {
-      if (numA !== numB) return numA - numB;
-    } else {
-      const charCodeA = tokenA.charCodeAt(0);
-      const charCodeB = tokenB.charCodeAt(0);
-      const isUpperA = charCodeA >= 65 && charCodeA <= 90;
-      const isUpperB = charCodeB >= 65 && charCodeB <= 90;
+      if (!isNaN(numA) && !isNaN(numB)) {
+        if (numA !== numB) return numA - numB;
+      } else {
+        const charCodeA = tokenA.charCodeAt(0);
+        const charCodeB = tokenB.charCodeAt(0);
+        const isUpperA = charCodeA >= 65 && charCodeA <= 90;
+        const isUpperB = charCodeB >= 65 && charCodeB <= 90;
 
-      if (isUpperA !== isUpperB) {
-        return isUpperA ? -1 : 1;
+        if (isUpperA !== isUpperB) {
+          return isUpperA ? -1 : 1;
+        }
+        if (tokenA !== tokenB) return tokenA.localeCompare(tokenB);
       }
-      if (tokenA !== tokenB) return tokenA.localeCompare(tokenB);
     }
-  }
 
-  return tokensA.length - tokensB.length;
+    return tokensA.length - tokensB.length;
+  };
 };
 
-// 種類ソート関数
-const kindSort = (a: { kind: string }, b: { kind: string }): number => {
-  const indexA = allKinds.indexOf(a.kind);
-  const indexB = allKinds.indexOf(b.kind);
-  return indexA - indexB;
-};
+// ソート関数群
+const createSortFunctions = () => {
+  const naturalSort = createNaturalSort();
 
-// タイプソート関数
-const typeSort = (
-  a: { type: string | string[] },
-  b: { type: string | string[] }
-): number => {
-  const getEarliestTypeIndex = (cardTypes: string | string[]): number => {
-    if (!cardTypes) return allTypes.length;
-    const types = Array.isArray(cardTypes) ? cardTypes : [cardTypes];
-    let minIndex = allTypes.length;
-    types.forEach((type: string) => {
-      const index = allTypes.indexOf(type);
-      if (index !== -1 && index < minIndex) {
-        minIndex = index;
-      }
-    });
-    return minIndex;
+  const kindSort = (a: { kind: string }, b: { kind: string }): number => {
+    const indexA = CARD_KINDS.findIndex((kind) => kind === a.kind);
+    const indexB = CARD_KINDS.findIndex((kind) => kind === b.kind);
+    return indexA - indexB;
   };
 
-  const indexA = getEarliestTypeIndex(a.type);
-  const indexB = getEarliestTypeIndex(b.type);
-  return indexA - indexB;
+  const typeSort = (
+    a: { type: string | string[] },
+    b: { type: string | string[] }
+  ): number => {
+    const getEarliestTypeIndex = (cardTypes: string | string[]): number => {
+      if (!cardTypes) return CARD_TYPES.length;
+      const types = Array.isArray(cardTypes) ? cardTypes : [cardTypes];
+      let minIndex = CARD_TYPES.length;
+      types.forEach((type: string) => {
+        const index = CARD_TYPES.findIndex((t) => t === type);
+        if (index !== -1 && index < minIndex) {
+          minIndex = index;
+        }
+      });
+      return minIndex;
+    };
+
+    const indexA = getEarliestTypeIndex(a.type);
+    const indexB = getEarliestTypeIndex(b.type);
+    return indexA - indexB;
+  };
+
+  return { naturalSort, kindSort, typeSort };
 };
 
-// フィルター処理関数
-const filterCards = (cards: Card[], criteria: FilterCriteria): Card[] => {
-  const textLower = criteria.text.toLowerCase();
-  const kindSet = new Set(criteria.kind);
-  const typeSet = new Set(criteria.type);
-  const tagSet = new Set(criteria.tags);
+// フィルター関数
+const createCardFilter = () => {
+  return (cards: Card[], criteria: FilterCriteria): Card[] => {
+    const textLower = criteria.text.toLowerCase();
+    const kindSet = new Set(criteria.kind);
+    const typeSet = new Set(criteria.type);
+    const tagSet = new Set(criteria.tags);
 
-  return cards.filter((card: Card) => {
-    // テキスト検索
-    if (
-      textLower &&
-      !(
-        card.name.toLowerCase().includes(textLower) ||
-        card.id.toLowerCase().includes(textLower) ||
-        (Array.isArray(card.tags) &&
-          card.tags.some((tag: string) =>
-            tag.toLowerCase().includes(textLower)
-          ))
-      )
-    ) {
-      return false;
-    }
-
-    // 種類フィルター
-    if (kindSet.size > 0 && !kindSet.has(card.kind)) {
-      return false;
-    }
-
-    // タイプフィルター
-    if (typeSet.size > 0) {
-      const cardTypes = Array.isArray(card.type) ? card.type : [card.type];
-      if (!cardTypes.some((type: string) => typeSet.has(type))) {
+    return cards.filter((card: Card) => {
+      // テキスト検索
+      if (
+        textLower &&
+        !(
+          card.name.toLowerCase().includes(textLower) ||
+          card.id.toLowerCase().includes(textLower) ||
+          (Array.isArray(card.tags) &&
+            card.tags.some((tag: string) =>
+              tag.toLowerCase().includes(textLower)
+            ))
+        )
+      ) {
         return false;
       }
-    }
 
-    // タグフィルター
-    if (
-      tagSet.size > 0 &&
-      !(
-        Array.isArray(card.tags) &&
-        card.tags.some((tag: string) => tagSet.has(tag))
-      )
-    ) {
-      return false;
-    }
-
-    return true;
-  });
-};
-
-// ===================================
-// 画像関連 - Image Management
-// ===================================
-
-const cardCache = new Map<string, HTMLImageElement>();
-
-// 画像パス取得
-const getCardImageUrl = (cardId: string): string => {
-  return `/waic-deckbuilder/cards/${cardId}.avif`;
-};
-
-// 画像読み込みエラー処理
-const handleImageError = (event: Event): void => {
-  const target = event.target as HTMLImageElement;
-  target.src = "/waic-deckbuilder/placeholder.avif";
-  target.onerror = null;
-};
-
-// 画像のプリロード最適化
-const preloadImages = (cards: Card[]): void => {
-  const batchSize = 10;
-  const loadBatch = (startIndex: number): void => {
-    const endIndex = Math.min(startIndex + batchSize, cards.length);
-    const batch = cards.slice(startIndex, endIndex);
-
-    batch.forEach((card: Card) => {
-      if (!cardCache.has(card.id)) {
-        const img = new Image();
-        img.src = getCardImageUrl(card.id);
-        cardCache.set(card.id, img);
+      // 種類フィルター
+      if (kindSet.size > 0 && !kindSet.has(card.kind)) {
+        return false;
       }
-    });
 
-    if (endIndex < cards.length) {
-      setTimeout(() => loadBatch(endIndex), 100);
+      // タイプフィルター
+      if (typeSet.size > 0) {
+        const cardTypes = Array.isArray(card.type) ? card.type : [card.type];
+        if (!cardTypes.some((type: string) => typeSet.has(type))) {
+          return false;
+        }
+      }
+
+      // タグフィルター
+      if (
+        tagSet.size > 0 &&
+        !(
+          Array.isArray(card.tags) &&
+          card.tags.some((tag: string) => tagSet.has(tag))
+        )
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+  };
+};
+
+// エラーハンドリング
+const createErrorHandler = () => {
+  return (error: any, message: string): void => {
+    console.error(message, error);
+  };
+};
+
+// ===================================
+// 画像関連機能 - Image Management
+// ===================================
+
+const createImageManager = () => {
+  const cardCache = new Map<string, HTMLImageElement>();
+
+  const getCardImageUrl = (cardId: string): string => {
+    return `/waic-deckbuilder/cards/${cardId}.avif`;
+  };
+
+  const handleImageError = (event: Event): void => {
+    const target = event.target as HTMLImageElement;
+    target.src = "/waic-deckbuilder/placeholder.avif";
+    target.onerror = null;
+  };
+
+  const preloadImages = (cards: Card[]): void => {
+    const loadBatch = (startIndex: number): void => {
+      const endIndex = Math.min(
+        startIndex + GAME_CONSTANTS.BATCH_SIZE_FOR_PRELOAD,
+        cards.length
+      );
+      const batch = cards.slice(startIndex, endIndex);
+
+      batch.forEach((card: Card) => {
+        if (!cardCache.has(card.id)) {
+          const img = new Image();
+          img.src = getCardImageUrl(card.id);
+          cardCache.set(card.id, img);
+        }
+      });
+
+      if (endIndex < cards.length) {
+        setTimeout(() => loadBatch(endIndex), 100);
+      }
+    };
+
+    loadBatch(0);
+  };
+
+  return {
+    getCardImageUrl,
+    handleImageError,
+    preloadImages,
+  };
+};
+
+// ===================================
+// ローカルストレージ管理 - Local Storage Management
+// ===================================
+
+const createLocalStorageManager = () => {
+  const handleError = createErrorHandler();
+
+  const saveDeckToLocalStorage = (deck: DeckCard[]): void => {
+    try {
+      const simpleDeck = deck.map((item: DeckCard) => ({
+        id: item.card.id,
+        count: item.count,
+      }));
+      localStorage.setItem("deckCards_k", JSON.stringify(simpleDeck));
+    } catch (e) {
+      handleError(e, "デッキの保存に失敗しました");
     }
   };
 
-  loadBatch(0);
+  const loadDeckFromLocalStorage = (availableCards: Card[]): DeckCard[] => {
+    try {
+      const savedDeck = localStorage.getItem("deckCards_k");
+      if (!savedDeck) return [];
+
+      const simpleDeck: { id: string; count: number }[] = JSON.parse(savedDeck);
+      return simpleDeck
+        .map((item: { id: string; count: number }) => {
+          const card = availableCards.find((c: Card) => c.id === item.id);
+          return card ? { card: card, count: item.count } : null;
+        })
+        .filter((item: DeckCard | null): item is DeckCard => item !== null);
+    } catch (e) {
+      handleError(e, "保存されたデッキの読み込みに失敗しました");
+      localStorage.removeItem("deckCards_k");
+      localStorage.removeItem("deckName_k");
+      return [];
+    }
+  };
+
+  const saveDeckName = (name: string): void => {
+    localStorage.setItem("deckName_k", name);
+  };
+
+  const loadDeckName = (): string => {
+    return localStorage.getItem("deckName_k") || "新しいデッキ";
+  };
+
+  return {
+    saveDeckToLocalStorage,
+    loadDeckFromLocalStorage,
+    saveDeckName,
+    loadDeckName,
+  };
 };
+
+// ===================================
+// デッキコード管理 - Deck Code Management
+// ===================================
+
+const createDeckCodeManager = () => {
+  const encodeDeckCode = (deck: DeckCard[]): string => {
+    const cardIds = deck.flatMap((item: DeckCard) =>
+      Array(item.count).fill(item.card.id)
+    );
+    return cardIds.join("/");
+  };
+
+  const decodeDeckCode = (code: string, availableCards: Card[]): DeckCard[] => {
+    const cardIds = code.split("/");
+    const cardCounts = new Map<string, number>();
+
+    cardIds.forEach((id: string) => {
+      cardCounts.set(id, (cardCounts.get(id) || 0) + 1);
+    });
+
+    const cards: DeckCard[] = [];
+    for (const [id, count] of cardCounts) {
+      const card = availableCards.find((c: Card) => c.id === id);
+      if (card) {
+        cards.push({ card, count });
+      }
+    }
+
+    return cards;
+  };
+
+  return {
+    encodeDeckCode,
+    decodeDeckCode,
+  };
+};
+
+// ===================================
+// 画像エクスポート機能 - Image Export
+// ===================================
+
+const createImageExporter = (
+  imageManager: ReturnType<typeof createImageManager>
+) => {
+  const { getCardImageUrl } = imageManager;
+
+  const calculateCardWidth = (cardCount: number): string => {
+    if (cardCount <= 30) return "calc((100% - 36px) / 10)";
+    if (cardCount <= 48) return "calc((100% - 44px) / 12)";
+    return "calc((100% - 56px) / 15)";
+  };
+
+  const applyStyles = (
+    element: HTMLElement,
+    styles: Record<string, string>
+  ): void => {
+    Object.assign(element.style, styles);
+  };
+
+  const createExportContainer = (): HTMLElement => {
+    const container = document.createElement("div");
+    applyStyles(container, {
+      width: `${EXPORT_CONFIG.canvas.width}px`,
+      height: `${EXPORT_CONFIG.canvas.height}px`,
+      backgroundColor: EXPORT_CONFIG.canvas.backgroundColor,
+      padding: EXPORT_CONFIG.canvas.padding,
+      position: "absolute",
+      left: "-9999px",
+    });
+    document.body.appendChild(container);
+    return container;
+  };
+
+  const createDeckNameElement = (name: string): HTMLElement => {
+    const element = document.createElement("div");
+    applyStyles(element, {
+      position: "absolute",
+      fontSize: EXPORT_CONFIG.deckName.fontSize,
+      fontWeight: EXPORT_CONFIG.deckName.fontWeight,
+      color: EXPORT_CONFIG.deckName.color,
+      fontFamily: EXPORT_CONFIG.deckName.fontFamily,
+      textAlign: "center",
+      width: "100%",
+    });
+    element.textContent = name;
+    return element;
+  };
+
+  const createGridElement = (): HTMLElement => {
+    const grid = document.createElement("div");
+    applyStyles(grid, {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: EXPORT_CONFIG.grid.gap,
+      width: "100%",
+      height: "100%",
+      justifyContent: "flex-start",
+      alignItems: "center",
+      alignContent: "center",
+    });
+    return grid;
+  };
+
+  const createCardElement = async (
+    item: DeckCard,
+    cardWidth: string
+  ): Promise<HTMLElement> => {
+    const cardContainer = document.createElement("div");
+    applyStyles(cardContainer, {
+      position: "relative",
+      width: cardWidth,
+    });
+
+    // 画像要素
+    const img = document.createElement("img");
+    img.src = getCardImageUrl(item.card.id);
+    applyStyles(img, {
+      width: "100%",
+      height: "100%",
+      objectFit: "cover",
+      borderRadius: EXPORT_CONFIG.card.borderRadius,
+    });
+
+    // 画像読み込み待機
+    await new Promise<void>((resolve) => {
+      img.onload = () => resolve();
+      img.onerror = () => resolve();
+    });
+
+    cardContainer.appendChild(img);
+
+    // カウントバッジ
+    const countBadge = document.createElement("div");
+    applyStyles(countBadge, {
+      position: "absolute",
+      bottom: "5px",
+      right: "5px",
+      backgroundColor: EXPORT_CONFIG.badge.backgroundColor,
+      color: EXPORT_CONFIG.badge.color,
+      padding: EXPORT_CONFIG.badge.padding,
+      borderRadius: EXPORT_CONFIG.badge.borderRadius,
+      fontSize: EXPORT_CONFIG.badge.fontSize,
+      fontWeight: "bold",
+    });
+    countBadge.textContent = `×${item.count}`;
+    cardContainer.appendChild(countBadge);
+
+    return cardContainer;
+  };
+
+  const generateFileName = (deckName: string): string => {
+    const timestamp = new Date()
+      .toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" })
+      .replace(/\//g, "-");
+    return `${deckName || "デッキ"}_${timestamp}.png`;
+  };
+
+  const downloadCanvas = (
+    canvas: HTMLCanvasElement,
+    filename: string
+  ): void => {
+    const link = document.createElement("a");
+    link.download = filename;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  };
+
+  const exportDeckAsImage = async (
+    deckCards: DeckCard[],
+    deckName: string,
+    onStart: () => void,
+    onComplete: () => void,
+    onError: (error: any) => void
+  ): Promise<void> => {
+    onStart();
+
+    try {
+      // コンテナ作成
+      const container = createExportContainer();
+
+      // デッキ名要素追加
+      const deckNameElement = createDeckNameElement(deckName);
+      container.appendChild(deckNameElement);
+
+      // グリッド作成
+      const grid = createGridElement();
+      container.appendChild(grid);
+
+      // カード要素作成・追加
+      const cardWidth = calculateCardWidth(deckCards.length);
+      const cardPromises = deckCards.map(async (item: DeckCard) => {
+        const cardElement = await createCardElement(item, cardWidth);
+        grid.appendChild(cardElement);
+      });
+
+      await Promise.all(cardPromises);
+
+      // Canvas生成
+      const canvas = await html2canvas(container, {
+        scale: 1,
+        width: EXPORT_CONFIG.canvas.width,
+        height: EXPORT_CONFIG.canvas.height,
+        useCORS: true,
+        logging: false,
+        allowTaint: true,
+        backgroundColor: EXPORT_CONFIG.canvas.backgroundColor,
+      });
+
+      // クリーンアップ
+      document.body.removeChild(container);
+
+      // ダウンロード
+      const filename = generateFileName(deckName);
+      downloadCanvas(canvas, filename);
+
+      console.log(`デッキ画像を保存しました: ${filename}`);
+    } catch (e) {
+      onError(e);
+    } finally {
+      onComplete();
+    }
+  };
+
+  return {
+    exportDeckAsImage,
+  };
+};
+
+// ===================================
+// 状態管理 - State Management
+// ===================================
+
+// カードデータ関連
+const availableCards: Ref<Card[]> = ref([]);
+const deckCards: Ref<DeckCard[]> = ref([]);
+const deckName: Ref<string> = ref("新しいデッキ");
+const deckCode: Ref<string> = ref("");
+const importDeckCode: Ref<string> = ref("");
+
+// UI状態管理
+const isLoading: Ref<boolean> = ref(true);
+const error: Ref<string | null> = ref(null);
+const isSaving: Ref<boolean> = ref(false);
+const isGeneratingCode: Ref<boolean> = ref(false);
+const showDeckCodeModal: Ref<boolean> = ref(false);
+const isFilterModalOpen: Ref<boolean> = ref(false);
+
+// フィルター・検索関連
+const filterCriteria: Ref<FilterCriteria> = ref({
+  text: "",
+  kind: [],
+  type: [],
+  tags: [],
+});
+
+// ===================================
+// マネージャーインスタンス作成
+// ===================================
+
+const sortFunctions = createSortFunctions();
+const cardFilter = createCardFilter();
+const handleError = createErrorHandler();
+const imageManager = createImageManager();
+const localStorageManager = createLocalStorageManager();
+const deckCodeManager = createDeckCodeManager();
+const imageExporter = createImageExporter(imageManager);
 
 // ===================================
 // Computed Properties
@@ -294,27 +664,30 @@ const allTags: ComputedRef<string[]> = computed(() => {
     }
   });
 
-  const priorityTagSet = new Set(priorityTags);
+  const priorityTagSet = new Set(PRIORITY_TAGS);
   const otherTags = Array.from(tags)
     .filter((tag: string) => !priorityTagSet.has(tag))
     .sort();
 
-  return [...priorityTags.filter((tag: string) => tags.has(tag)), ...otherTags];
+  return [
+    ...PRIORITY_TAGS.filter((tag: string) => tags.has(tag)),
+    ...otherTags,
+  ];
 });
 
 // ソート・フィルター済みカード一覧
 const sortedAndFilteredAvailableCards: ComputedRef<Card[]> = computed(() => {
-  const filtered = filterCards(availableCards.value, filterCriteria.value);
+  const filtered = cardFilter(availableCards.value, filterCriteria.value);
   const sorted = [...filtered];
 
   sorted.sort((a: Card, b: Card) => {
-    const kindComparison = kindSort(a, b);
+    const kindComparison = sortFunctions.kindSort(a, b);
     if (kindComparison !== 0) return kindComparison;
 
-    const typeComparison = typeSort(a, b);
+    const typeComparison = sortFunctions.typeSort(a, b);
     if (typeComparison !== 0) return typeComparison;
 
-    return naturalSort(a.id, b.id);
+    return sortFunctions.naturalSort(a.id, b.id);
   });
 
   return sorted;
@@ -328,13 +701,19 @@ const sortedDeckCards: ComputedRef<DeckCard[]> = computed(() => {
     const cardA = a.card;
     const cardB = b.card;
 
-    const kindComparison = kindSort({ kind: cardA.kind }, { kind: cardB.kind });
+    const kindComparison = sortFunctions.kindSort(
+      { kind: cardA.kind },
+      { kind: cardB.kind }
+    );
     if (kindComparison !== 0) return kindComparison;
 
-    const typeComparison = typeSort({ type: cardA.type }, { type: cardB.type });
+    const typeComparison = sortFunctions.typeSort(
+      { type: cardA.type },
+      { type: cardB.type }
+    );
     if (typeComparison !== 0) return typeComparison;
 
-    return naturalSort(cardA.id, cardB.id);
+    return sortFunctions.naturalSort(cardA.id, cardB.id);
   });
 
   return sorted;
@@ -364,7 +743,11 @@ const loadCards = async (): Promise<void> => {
     }
     const data: Card[] = await response.json();
     availableCards.value = data;
-    preloadImages(data);
+    imageManager.preloadImages(data);
+
+    // ローカルストレージからデッキを読み込み
+    deckCards.value = localStorageManager.loadDeckFromLocalStorage(data);
+    deckName.value = localStorageManager.loadDeckName();
   } catch (e) {
     console.error("カードデータの読み込みに失敗しました:", e);
     error.value =
@@ -374,52 +757,9 @@ const loadCards = async (): Promise<void> => {
   }
 };
 
-// ローカルストレージ操作
-const saveDeckToLocalStorage = (deck: DeckCard[]): void => {
-  try {
-    const simpleDeck = deck.map((item: DeckCard) => ({
-      id: item.card.id,
-      count: item.count,
-    }));
-    localStorage.setItem("deckCards_k", JSON.stringify(simpleDeck));
-  } catch (e) {
-    handleError(e, "デッキの保存に失敗しました");
-  }
-};
-
-const loadDeckFromLocalStorage = (): void => {
-  try {
-    const savedDeck = localStorage.getItem("deckCards_k");
-    const savedName = localStorage.getItem("deckName_k");
-
-    if (savedName) {
-      deckName.value = savedName;
-    }
-
-    if (savedDeck) {
-      const simpleDeck: { id: string; count: number }[] = JSON.parse(savedDeck);
-      deckCards.value = simpleDeck
-        .map((item: { id: string; count: number }) => {
-          const card = availableCards.value.find((c: Card) => c.id === item.id);
-          return card ? { card: card, count: item.count } : null;
-        })
-        .filter((item: DeckCard | null): item is DeckCard => item !== null);
-    }
-  } catch (e) {
-    handleError(e, "保存されたデッキの読み込みに失敗しました");
-    localStorage.removeItem("deckCards_k");
-    localStorage.removeItem("deckName_k");
-  }
-};
-
 // ===================================
 // UI操作 - UI Interactions
 // ===================================
-
-// エラーハンドリング
-const handleError = (error: any, message: string): void => {
-  console.error(message, error);
-};
 
 // フィルターモーダル操作
 const openFilterModal = (): void => {
@@ -436,7 +776,7 @@ const closeFilterModal = (): void => {
 
 // カードをデッキに追加
 const addCardToDeck = (card: Card): void => {
-  if (totalDeckCards.value >= 60) {
+  if (totalDeckCards.value >= GAME_CONSTANTS.MAX_DECK_SIZE) {
     return;
   }
 
@@ -445,7 +785,9 @@ const addCardToDeck = (card: Card): void => {
   );
 
   if (existingCardIndex > -1) {
-    if (deckCards.value[existingCardIndex].count < 4) {
+    if (
+      deckCards.value[existingCardIndex].count < GAME_CONSTANTS.MAX_CARD_COPIES
+    ) {
       deckCards.value[existingCardIndex].count++;
     }
   } else {
@@ -455,13 +797,13 @@ const addCardToDeck = (card: Card): void => {
 
 // カード枚数を増やす
 const incrementCardCount = (cardId: string): void => {
-  if (totalDeckCards.value >= 60) {
+  if (totalDeckCards.value >= GAME_CONSTANTS.MAX_DECK_SIZE) {
     return;
   }
   const item = deckCards.value.find(
     (item: DeckCard) => item.card.id === cardId
   );
-  if (item && item.count < 4) {
+  if (item && item.count < GAME_CONSTANTS.MAX_CARD_COPIES) {
     item.count++;
   }
 };
@@ -496,42 +838,14 @@ const resetDeck = (): void => {
 };
 
 // ===================================
-// デッキコード機能 - Deck Code Management
+// デッキコード機能
 // ===================================
-
-// デッキコードのエンコード
-const encodeDeckCode = (deck: DeckCard[]): string => {
-  const cardIds = deck.flatMap((item: DeckCard) =>
-    Array(item.count).fill(item.card.id)
-  );
-  return cardIds.join("/");
-};
-
-// デッキコードのデコード
-const decodeDeckCode = (code: string): DeckCard[] => {
-  const cardIds = code.split("/");
-  const cardCounts = new Map<string, number>();
-
-  cardIds.forEach((id: string) => {
-    cardCounts.set(id, (cardCounts.get(id) || 0) + 1);
-  });
-
-  const cards: DeckCard[] = [];
-  for (const [id, count] of cardCounts) {
-    const card = availableCards.value.find((c: Card) => c.id === id);
-    if (card) {
-      cards.push({ card, count });
-    }
-  }
-
-  return cards;
-};
 
 // デッキコード生成・表示
 const generateAndShowDeckCode = (): void => {
   isGeneratingCode.value = true;
   try {
-    deckCode.value = encodeDeckCode(deckCards.value);
+    deckCode.value = deckCodeManager.encodeDeckCode(deckCards.value);
     showDeckCodeModal.value = true;
   } catch (e) {
     console.error("デッキコードの生成に失敗しました:", e);
@@ -555,7 +869,10 @@ const copyDeckCode = (): void => {
 // デッキコードからインポート
 const importDeckFromCode = (): void => {
   try {
-    const importedCards = decodeDeckCode(importDeckCode.value);
+    const importedCards = deckCodeManager.decodeDeckCode(
+      importDeckCode.value,
+      availableCards.value
+    );
     if (importedCards.length > 0) {
       deckCards.value = importedCards;
       importDeckCode.value = "";
@@ -569,141 +886,51 @@ const importDeckFromCode = (): void => {
 };
 
 // ===================================
-// 画像保存機能 - Image Export
+// 画像保存機能
 // ===================================
 
 const saveDeckAsPng = async (): Promise<void> => {
-  isSaving.value = true;
-
-  try {
-    const container = document.createElement("div");
-    container.style.width = "1920px";
-    container.style.height = "1080px";
-    container.style.backgroundColor = "#030712";
-    container.style.padding = "0 10px 10px 10px";
-    container.style.position = "absolute";
-    container.style.left = "-9999px";
-    document.body.appendChild(container);
-
-    // デッキ名表示
-    const deckNameElement = document.createElement("div");
-    deckNameElement.style.position = "absolute";
-    deckNameElement.style.fontSize = "80px";
-    deckNameElement.style.fontWeight = "bold";
-    deckNameElement.style.color = "#f9fafb";
-    deckNameElement.style.fontFamily = "serif";
-    deckNameElement.style.textAlign = "center";
-    deckNameElement.style.width = "100%";
-    deckNameElement.textContent = deckName.value;
-    container.appendChild(deckNameElement);
-
-    // カードグリッド作成
-    const grid = document.createElement("div");
-    grid.style.display = "flex";
-    grid.style.flexWrap = "wrap";
-    grid.style.gap = "4px";
-    grid.style.width = "100%";
-    grid.style.height = "100%";
-    grid.style.justifyContent = "flex-start";
-    grid.style.alignItems = "center";
-    grid.style.alignContent = "center";
-    container.appendChild(grid);
-
-    // カード追加
-    const cardPromises = sortedDeckCards.value.map(async (item: DeckCard) => {
-      const cardContainer = document.createElement("div");
-      cardContainer.style.position = "relative";
-
-      const cardWidth =
-        sortedDeckCards.value.length <= 30
-          ? "calc((100% - 36px) / 10)"
-          : sortedDeckCards.value.length <= 48
-          ? "calc((100% - 44px) / 12)"
-          : "calc((100% - 56px) / 15)";
-      cardContainer.style.width = cardWidth;
-
-      const img = document.createElement("img");
-      img.src = getCardImageUrl(item.card.id);
-      img.style.width = "100%";
-      img.style.height = "100%";
-      img.style.objectFit = "cover";
-      img.style.borderRadius = "8px";
-
-      await new Promise<void>((resolve) => {
-        img.onload = () => resolve();
-        img.onerror = () => resolve();
-      });
-
-      cardContainer.appendChild(img);
-
-      const countBadge = document.createElement("div");
-      countBadge.style.position = "absolute";
-      countBadge.style.bottom = "5px";
-      countBadge.style.right = "5px";
-      countBadge.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
-      countBadge.style.color = "white";
-      countBadge.style.padding = "2px 12px";
-      countBadge.style.borderRadius = "12px";
-      countBadge.style.fontSize = "32px";
-      countBadge.style.fontWeight = "bold";
-      countBadge.textContent = `×${item.count}`;
-      cardContainer.appendChild(countBadge);
-
-      grid.appendChild(cardContainer);
-    });
-
-    await Promise.all(cardPromises);
-
-    const canvas = await html2canvas(container, {
-      scale: 1,
-      width: 1920,
-      height: 1080,
-      useCORS: true,
-      logging: false,
-      allowTaint: true,
-      backgroundColor: "#1F2937",
-    });
-
-    document.body.removeChild(container);
-
-    const link = document.createElement("a");
-    const timestamp = new Date()
-      .toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" })
-      .replace(/\//g, "-");
-    const filename = `${deckName.value || "デッキ"}_${timestamp}.png`;
-    link.download = filename;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-    console.log(`デッキ画像を保存しました: ${filename}`);
-  } catch (e) {
-    handleError(e, "デッキ画像の保存に失敗しました");
-  } finally {
-    isSaving.value = false;
-  }
+  await imageExporter.exportDeckAsImage(
+    sortedDeckCards.value,
+    deckName.value,
+    () => (isSaving.value = true),
+    () => (isSaving.value = false),
+    (error) => handleError(error, "デッキ画像の保存に失敗しました")
+  );
 };
 
 // ===================================
-// ライフサイクル・ウォッチャー - Lifecycle & Watchers
+// ライフサイクル・ウォッチャー
 // ===================================
 
 // コンポーネントマウント時の処理
 onMounted(() => {
   loadCards();
-  loadDeckFromLocalStorage();
 });
 
 // デッキ変更時のローカルストレージ保存
 watch(
   deckCards,
   (newDeck: DeckCard[]) => {
-    saveDeckToLocalStorage(newDeck);
+    localStorageManager.saveDeckToLocalStorage(newDeck);
   },
   { deep: true }
 );
 
 watch(deckName, (newName: string) => {
-  localStorage.setItem("deckName_k", newName);
+  localStorageManager.saveDeckName(newName);
 });
+
+// ===================================
+// テンプレートで使用する関数とデータ
+// ===================================
+
+// 定数をテンプレートで使用するためにエクスポート
+const allKinds = [...CARD_KINDS];
+const allTypes = [...CARD_TYPES];
+
+// 画像関連の関数をテンプレートで使用するためにエクスポート
+const { getCardImageUrl, handleImageError } = imageManager;
 </script>
 
 <template>
@@ -749,7 +976,7 @@ watch(deckName, (newName: string) => {
       <div class="flex flex-wrap gap-1 mb-1 px-1">
         <button
           @click="generateAndShowDeckCode"
-          :disabled="deckCards.length === 0 || isGeneratingCode"
+          :disabled="isGeneratingCode"
           class="group relative flex-1 min-w-0 px-1 sm:px-2 py-0.5 sm:py-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded text-xs font-medium hover:from-blue-700 hover:to-blue-800 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-blue-500/25"
           title="デッキコードを生成"
         >
