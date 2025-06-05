@@ -5,7 +5,8 @@ import {
   onMounted,
   watch,
   nextTick,
-  type Ref,
+  readonly,
+  shallowRef,
   type ComputedRef,
 } from "vue";
 import html2canvas from "html2canvas-pro";
@@ -15,52 +16,64 @@ import html2canvas from "html2canvas-pro";
 // ===================================
 
 interface Card {
-  id: string;
-  name: string;
-  kind: string;
-  type: string | string[];
-  tags?: string[];
+  readonly id: string;
+  readonly name: string;
+  readonly kind: CardKind;
+  readonly type: CardType | readonly CardType[];
+  readonly tags?: readonly string[];
 }
 
 interface DeckCard {
-  card: Card;
+  readonly card: Card;
   count: number;
 }
 
 interface FilterCriteria {
   text: string;
-  kind: string[];
-  type: string[];
+  kind: CardKind[];
+  type: CardType[];
   tags: string[];
 }
 
 interface ExportConfig {
-  canvas: {
-    width: number;
-    height: number;
-    backgroundColor: string;
-    padding: string;
+  readonly canvas: {
+    readonly width: number;
+    readonly height: number;
+    readonly backgroundColor: string;
+    readonly padding: string;
   };
-  deckName: {
-    fontSize: string;
-    fontWeight: string;
-    color: string;
-    fontFamily: string;
+  readonly deckName: {
+    readonly fontSize: string;
+    readonly fontWeight: string;
+    readonly color: string;
+    readonly fontFamily: string;
   };
-  grid: {
-    gap: string;
+  readonly grid: {
+    readonly gap: string;
   };
-  card: {
-    borderRadius: string;
+  readonly card: {
+    readonly borderRadius: string;
   };
-  badge: {
-    backgroundColor: string;
-    color: string;
-    padding: string;
-    borderRadius: string;
-    fontSize: string;
+  readonly badge: {
+    readonly backgroundColor: string;
+    readonly color: string;
+    readonly padding: string;
+    readonly borderRadius: string;
+    readonly fontSize: string;
   };
 }
+
+type CardKind = "Artist" | "Song" | "Magic" | "Direction";
+type CardType =
+  | "赤"
+  | "青"
+  | "黄"
+  | "白"
+  | "黒"
+  | "全"
+  | "即時"
+  | "装備"
+  | "設置";
 
 // ===================================
 // 定数定義 - Constants
@@ -72,11 +85,26 @@ const GAME_CONSTANTS = {
   BATCH_SIZE_FOR_PRELOAD: 10,
 } as const;
 
-const CARD_KINDS = ["Artist", "Song", "Magic", "Direction"];
+const CARD_KINDS: readonly CardKind[] = [
+  "Artist",
+  "Song",
+  "Magic",
+  "Direction",
+] as const;
 
-const CARD_TYPES = ["赤", "青", "黄", "白", "黒", "全", "即時", "装備", "設置"];
+const CARD_TYPES: readonly CardType[] = [
+  "赤",
+  "青",
+  "黄",
+  "白",
+  "黒",
+  "全",
+  "即時",
+  "装備",
+  "設置",
+] as const;
 
-const PRIORITY_TAGS = [
+const PRIORITY_TAGS: readonly string[] = [
   "V.W.P",
   "花譜",
   "理芽",
@@ -143,7 +171,7 @@ const PRIORITY_TAGS = [
   "Songサーチ",
   "Magicサーチ",
   "Directionサーチ",
-];
+] as const;
 
 const EXPORT_CONFIG: ExportConfig = {
   canvas: {
@@ -178,25 +206,25 @@ const EXPORT_CONFIG: ExportConfig = {
 // ===================================
 
 // カードデータ関連の状態
-const availableCards: Ref<Card[]> = ref([]);
-const deckCards: Ref<DeckCard[]> = ref([]);
-const deckName: Ref<string> = ref("新しいデッキ");
-const deckCode: Ref<string> = ref("");
-const importDeckCode: Ref<string> = ref("");
+const availableCards = shallowRef<readonly Card[]>([]);
+const deckCards = ref<DeckCard[]>([]);
+const deckName = ref<string>("新しいデッキ");
+const deckCode = ref<string>("");
+const importDeckCode = ref<string>("");
 
 // UI状態管理
-const isLoading: Ref<boolean> = ref(true);
-const error: Ref<string | null> = ref(null);
-const isSaving: Ref<boolean> = ref(false);
-const isGeneratingCode: Ref<boolean> = ref(false);
-const showDeckCodeModal: Ref<boolean> = ref(false);
-const isFilterModalOpen: Ref<boolean> = ref(false);
+const isLoading = ref<boolean>(true);
+const error = ref<string | null>(null);
+const isSaving = ref<boolean>(false);
+const isGeneratingCode = ref<boolean>(false);
+const showDeckCodeModal = ref<boolean>(false);
+const isFilterModalOpen = ref<boolean>(false);
 
 // エクスポート用のref
-const exportContainer = ref<HTMLElement | null>(null);
+const exportContainer = shallowRef<HTMLElement | null>(null);
 
 // フィルター・検索関連の状態
-const filterCriteria: Ref<FilterCriteria> = ref({
+const filterCriteria = ref<FilterCriteria>({
   text: "",
   kind: [],
   type: [],
@@ -209,9 +237,8 @@ const filterCriteria: Ref<FilterCriteria> = ref({
 
 /**
  * 自然順ソート関数を作成
- * 数字と文字を適切にソートし、大文字小文字を考慮
  */
-const createNaturalSort = () => {
+const createNaturalSort = (): ((a: string, b: string) => number) => {
   return (a: string, b: string): number => {
     const regex = /(\d+)|(\D+)/g;
     const tokensA = a.match(regex);
@@ -247,8 +274,11 @@ const createNaturalSort = () => {
 /**
  * カード種類別ソート関数
  */
-const createKindSort = () => {
-  return (a: { kind: string }, b: { kind: string }): number => {
+const createKindSort = (): ((
+  a: Pick<Card, "kind">,
+  b: Pick<Card, "kind">
+) => number) => {
+  return (a: Pick<Card, "kind">, b: Pick<Card, "kind">): number => {
     const indexA = CARD_KINDS.findIndex((kind) => kind === a.kind);
     const indexB = CARD_KINDS.findIndex((kind) => kind === b.kind);
     return indexA - indexB;
@@ -258,21 +288,23 @@ const createKindSort = () => {
 /**
  * カードタイプ別ソート関数
  */
-const createTypeSort = () => {
-  return (
-    a: { type: string | string[] },
-    b: { type: string | string[] }
-  ): number => {
-    const getEarliestTypeIndex = (cardTypes: string | string[]): number => {
+const createTypeSort = (): ((
+  a: Pick<Card, "type">,
+  b: Pick<Card, "type">
+) => number) => {
+  return (a: Pick<Card, "type">, b: Pick<Card, "type">): number => {
+    const getEarliestTypeIndex = (
+      cardTypes: CardType | readonly CardType[]
+    ): number => {
       if (!cardTypes) return CARD_TYPES.length;
       const types = Array.isArray(cardTypes) ? cardTypes : [cardTypes];
       let minIndex = CARD_TYPES.length;
-      types.forEach((type: string) => {
+      for (const type of types) {
         const index = CARD_TYPES.findIndex((t) => t === type);
         if (index !== -1 && index < minIndex) {
           minIndex = index;
         }
-      });
+      }
       return minIndex;
     };
 
@@ -285,8 +317,11 @@ const createTypeSort = () => {
 /**
  * カードフィルター関数
  */
-const createCardFilter = () => {
-  return (cards: Card[], criteria: FilterCriteria): Card[] => {
+const createCardFilter = (): ((
+  cards: readonly Card[],
+  criteria: FilterCriteria
+) => Card[]) => {
+  return (cards: readonly Card[], criteria: FilterCriteria): Card[] => {
     const textLower = criteria.text.toLowerCase();
     const kindSet = new Set(criteria.kind);
     const typeSet = new Set(criteria.type);
@@ -325,32 +360,30 @@ const isCardMatchingText = (card: Card, textLower: string): boolean => {
   return (
     card.name.toLowerCase().includes(textLower) ||
     card.id.toLowerCase().includes(textLower) ||
-    (Array.isArray(card.tags) &&
-      card.tags.some((tag: string) => tag.toLowerCase().includes(textLower)))
+    (card.tags?.some((tag: string) => tag.toLowerCase().includes(textLower)) ??
+      false)
   );
 };
 
 /**
  * カードがタイプフィルターにマッチするかチェック
  */
-const isCardMatchingType = (card: Card, typeSet: Set<string>): boolean => {
+const isCardMatchingType = (card: Card, typeSet: Set<CardType>): boolean => {
   const cardTypes = Array.isArray(card.type) ? card.type : [card.type];
-  return cardTypes.some((type: string) => typeSet.has(type));
+  return cardTypes.some((type: CardType) => typeSet.has(type));
 };
 
 /**
  * カードがタグフィルターにマッチするかチェック
  */
 const isCardMatchingTag = (card: Card, tagSet: Set<string>): boolean => {
-  return (
-    Array.isArray(card.tags) && card.tags.some((tag: string) => tagSet.has(tag))
-  );
+  return card.tags?.some((tag: string) => tagSet.has(tag)) ?? false;
 };
 
 /**
  * エラーハンドリング関数
  */
-const handleError = (error: any, message: string): void => {
+const handleError = (error: unknown, message: string): void => {
   console.error(message, error);
 };
 
@@ -364,7 +397,7 @@ const cardCache = new Map<string, HTMLImageElement>();
  * カード画像URLを取得
  */
 const getCardImageUrl = (cardId: string): string => {
-  return `/waic-deckbuilder/cards/${cardId}.avif`;
+  return `${import.meta.env.BASE_URL}cards/${cardId}.avif`;
 };
 
 /**
@@ -372,14 +405,14 @@ const getCardImageUrl = (cardId: string): string => {
  */
 const handleImageError = (event: Event): void => {
   const target = event.target as HTMLImageElement;
-  target.src = "/waic-deckbuilder/placeholder.avif";
+  target.src = `${import.meta.env.BASE_URL}placeholder.avif`;
   target.onerror = null;
 };
 
 /**
  * 画像のプリロード処理
  */
-const preloadImages = (cards: Card[]): void => {
+const preloadImages = (cards: readonly Card[]): void => {
   const loadBatch = (startIndex: number): void => {
     const endIndex = Math.min(
       startIndex + GAME_CONSTANTS.BATCH_SIZE_FOR_PRELOAD,
@@ -387,13 +420,13 @@ const preloadImages = (cards: Card[]): void => {
     );
     const batch = cards.slice(startIndex, endIndex);
 
-    batch.forEach((card: Card) => {
+    for (const card of batch) {
       if (!cardCache.has(card.id)) {
         const img = new Image();
         img.src = getCardImageUrl(card.id);
         cardCache.set(card.id, img);
       }
-    });
+    }
 
     if (endIndex < cards.length) {
       setTimeout(() => loadBatch(endIndex), 100);
@@ -407,16 +440,21 @@ const preloadImages = (cards: Card[]): void => {
 // ローカルストレージ管理 - Local Storage Management
 // ===================================
 
+const STORAGE_KEYS = {
+  DECK_CARDS: "deckCards_k",
+  DECK_NAME: "deckName_k",
+} as const;
+
 /**
  * デッキをローカルストレージに保存
  */
-const saveDeckToLocalStorage = (deck: DeckCard[]): void => {
+const saveDeckToLocalStorage = (deck: readonly DeckCard[]): void => {
   try {
     const simpleDeck = deck.map((item: DeckCard) => ({
       id: item.card.id,
       count: item.count,
     }));
-    localStorage.setItem("deckCards_k", JSON.stringify(simpleDeck));
+    localStorage.setItem(STORAGE_KEYS.DECK_CARDS, JSON.stringify(simpleDeck));
   } catch (e) {
     handleError(e, "デッキの保存に失敗しました");
   }
@@ -425,9 +463,11 @@ const saveDeckToLocalStorage = (deck: DeckCard[]): void => {
 /**
  * ローカルストレージからデッキを読み込み
  */
-const loadDeckFromLocalStorage = (availableCards: Card[]): DeckCard[] => {
+const loadDeckFromLocalStorage = (
+  availableCards: readonly Card[]
+): DeckCard[] => {
   try {
-    const savedDeck = localStorage.getItem("deckCards_k");
+    const savedDeck = localStorage.getItem(STORAGE_KEYS.DECK_CARDS);
     if (!savedDeck) return [];
 
     const simpleDeck: { id: string; count: number }[] = JSON.parse(savedDeck);
@@ -439,8 +479,8 @@ const loadDeckFromLocalStorage = (availableCards: Card[]): DeckCard[] => {
       .filter((item: DeckCard | null): item is DeckCard => item !== null);
   } catch (e) {
     handleError(e, "保存されたデッキの読み込みに失敗しました");
-    localStorage.removeItem("deckCards_k");
-    localStorage.removeItem("deckName_k");
+    localStorage.removeItem(STORAGE_KEYS.DECK_CARDS);
+    localStorage.removeItem(STORAGE_KEYS.DECK_NAME);
     return [];
   }
 };
@@ -449,14 +489,14 @@ const loadDeckFromLocalStorage = (availableCards: Card[]): DeckCard[] => {
  * デッキ名をローカルストレージに保存
  */
 const saveDeckName = (name: string): void => {
-  localStorage.setItem("deckName_k", name);
+  localStorage.setItem(STORAGE_KEYS.DECK_NAME, name);
 };
 
 /**
  * ローカルストレージからデッキ名を読み込み
  */
 const loadDeckName = (): string => {
-  return localStorage.getItem("deckName_k") || "新しいデッキ";
+  return localStorage.getItem(STORAGE_KEYS.DECK_NAME) || "新しいデッキ";
 };
 
 // ===================================
@@ -466,7 +506,7 @@ const loadDeckName = (): string => {
 /**
  * デッキコードをエンコード
  */
-const encodeDeckCode = (deck: DeckCard[]): string => {
+const encodeDeckCode = (deck: readonly DeckCard[]): string => {
   const cardIds = deck.flatMap((item: DeckCard) =>
     Array(item.count).fill(item.card.id)
   );
@@ -476,13 +516,16 @@ const encodeDeckCode = (deck: DeckCard[]): string => {
 /**
  * デッキコードをデコード
  */
-const decodeDeckCode = (code: string, availableCards: Card[]): DeckCard[] => {
+const decodeDeckCode = (
+  code: string,
+  availableCards: readonly Card[]
+): DeckCard[] => {
   const cardIds = code.split("/");
   const cardCounts = new Map<string, number>();
 
-  cardIds.forEach((id: string) => {
+  for (const id of cardIds) {
     cardCounts.set(id, (cardCounts.get(id) || 0) + 1);
-  });
+  }
 
   const cards: DeckCard[] = [];
   for (const [id, count] of cardCounts) {
@@ -544,49 +587,53 @@ const cardFilter = createCardFilter();
 /**
  * 全タグリスト（優先タグを先頭に配置）
  */
-const allTags: ComputedRef<string[]> = computed(() => {
+const allTags: ComputedRef<readonly string[]> = computed(() => {
   const tags = new Set<string>();
-  availableCards.value.forEach((card: Card) => {
-    if (Array.isArray(card.tags)) {
-      card.tags.forEach((tag: string) => tags.add(tag));
+  for (const card of availableCards.value) {
+    if (card.tags) {
+      for (const tag of card.tags) {
+        tags.add(tag);
+      }
     }
-  });
+  }
 
   const priorityTagSet = new Set(PRIORITY_TAGS);
   const otherTags = Array.from(tags)
     .filter((tag: string) => !priorityTagSet.has(tag))
     .sort();
 
-  return [
+  return readonly([
     ...PRIORITY_TAGS.filter((tag: string) => tags.has(tag)),
     ...otherTags,
-  ];
+  ]);
 });
 
 /**
  * ソート・フィルター済みカード一覧
  */
-const sortedAndFilteredAvailableCards: ComputedRef<Card[]> = computed(() => {
-  const filtered = cardFilter(availableCards.value, filterCriteria.value);
-  const sorted = [...filtered];
+const sortedAndFilteredAvailableCards: ComputedRef<readonly Card[]> = computed(
+  () => {
+    const filtered = cardFilter(availableCards.value, filterCriteria.value);
+    const sorted = [...filtered];
 
-  sorted.sort((a: Card, b: Card) => {
-    const kindComparison = kindSort(a, b);
-    if (kindComparison !== 0) return kindComparison;
+    sorted.sort((a: Card, b: Card) => {
+      const kindComparison = kindSort(a, b);
+      if (kindComparison !== 0) return kindComparison;
 
-    const typeComparison = typeSort(a, b);
-    if (typeComparison !== 0) return typeComparison;
+      const typeComparison = typeSort(a, b);
+      if (typeComparison !== 0) return typeComparison;
 
-    return naturalSort(a.id, b.id);
-  });
+      return naturalSort(a.id, b.id);
+    });
 
-  return sorted;
-});
+    return readonly(sorted);
+  }
+);
 
 /**
  * ソート済みデッキカード
  */
-const sortedDeckCards: ComputedRef<DeckCard[]> = computed(() => {
+const sortedDeckCards: ComputedRef<readonly DeckCard[]> = computed(() => {
   const sorted = [...deckCards.value];
 
   sorted.sort((a: DeckCard, b: DeckCard) => {
@@ -602,7 +649,7 @@ const sortedDeckCards: ComputedRef<DeckCard[]> = computed(() => {
     return naturalSort(cardA.id, cardB.id);
   });
 
-  return sorted;
+  return readonly(sorted);
 });
 
 /**
@@ -627,12 +674,12 @@ const loadCards = async (): Promise<void> => {
   error.value = null;
 
   try {
-    const response = await fetch("/waic-deckbuilder/cards.json");
+    const response = await fetch(`${import.meta.env.BASE_URL}cards.json`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const data: Card[] = await response.json();
-    availableCards.value = data;
+    availableCards.value = readonly(data);
     preloadImages(data);
 
     // ローカルストレージからデッキを読み込み
@@ -737,8 +784,8 @@ const resetDeck = (): void => {
   if (confirm("デッキ内容を全てリセットしてもよろしいですか？")) {
     deckCards.value = [];
     deckName.value = "新しいデッキ";
-    localStorage.removeItem("deckCards_k");
-    localStorage.removeItem("deckName_k");
+    localStorage.removeItem(STORAGE_KEYS.DECK_CARDS);
+    localStorage.removeItem(STORAGE_KEYS.DECK_NAME);
   }
 };
 
@@ -764,15 +811,13 @@ const generateAndShowDeckCode = (): void => {
 /**
  * デッキコードをクリップボードにコピー
  */
-const copyDeckCode = (): void => {
-  navigator.clipboard
-    .writeText(deckCode.value)
-    .then(() => {
-      console.log("デッキコードをコピーしました");
-    })
-    .catch(() => {
-      console.error("デッキコードのコピーに失敗しました");
-    });
+const copyDeckCode = async (): Promise<void> => {
+  try {
+    await navigator.clipboard.writeText(deckCode.value);
+    console.log("デッキコードをコピーしました");
+  } catch {
+    console.error("デッキコードのコピーに失敗しました");
+  }
 };
 
 /**
@@ -872,8 +917,8 @@ watch(deckName, (newName: string) => {
 // ===================================
 
 // 定数をテンプレートで使用するためにエクスポート
-const allKinds = [...CARD_KINDS];
-const allTypes = [...CARD_TYPES];
+const allKinds = readonly([...CARD_KINDS]);
+const allTypes = readonly([...CARD_TYPES]);
 </script>
 
 <template>
