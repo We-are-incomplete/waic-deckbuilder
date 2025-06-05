@@ -1923,6 +1923,20 @@
     "tags": ["【登場】VOL獲得", "サルベージ", "花譜"]
   },
   {
+    "id": "exA-6",
+    "name": "【すべては協奏の果てに】V.I.P",
+    "kind": "Artist",
+    "type": "白",
+    "tags": ["【登場】VOL獲得", "サルベージ", "V.I.P"]
+  },
+  {
+    "id": "exA-7",
+    "name": "【すべては協奏の果てに】V.I.P[SR]",
+    "kind": "Artist",
+    "type": "白",
+    "tags": ["【登場】VOL獲得", "サルベージ", "V.I.P", "SR"]
+  },
+  {
     "id": "prmA-1",
     "name": "【向き合えたら】可不",
     "kind": "Artist",
