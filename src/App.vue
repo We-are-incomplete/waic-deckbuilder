@@ -725,40 +725,40 @@ watch(deckName, (newName: string) => {
 
     <!-- デッキセクション -->
     <div
-      class="flex flex-col flex-grow-0 h-1/2 p-2 sm:p-4 border-b border-slate-700/50 overflow-hidden relative z-10 backdrop-blur-sm"
+      class="flex flex-col flex-grow-0 h-1/2 p-1 sm:p-2 border-b border-slate-700/50 overflow-hidden relative z-10 backdrop-blur-sm"
     >
       <!-- デッキ名入力 (モバイル優先) -->
-      <div class="mb-3 px-2">
+      <div class="mb-1 px-1">
         <div class="flex items-center w-full">
           <label
             for="deckName"
-            class="mr-2 sm:mr-3 text-xs sm:text-sm font-medium text-slate-300 whitespace-nowrap"
+            class="mr-1 sm:mr-2 text-xs font-medium text-slate-300 whitespace-nowrap"
             >デッキ名:</label
           >
           <input
             id="deckName"
             type="text"
             v-model="deckName"
-            class="flex-grow px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-lg bg-slate-800/80 border border-slate-600/50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 backdrop-blur-sm placeholder-slate-400"
+            class="flex-grow px-1 sm:px-2 py-0.5 sm:py-1 text-xs rounded bg-slate-800/80 border border-slate-600/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 backdrop-blur-sm placeholder-slate-400"
             placeholder="デッキ名を入力"
           />
         </div>
       </div>
 
       <!-- ボタン群 (モバイル最適化) -->
-      <div class="flex flex-wrap gap-1.5 sm:gap-3 mb-3 px-2">
+      <div class="flex flex-wrap gap-1 mb-1 px-1">
         <button
           @click="generateAndShowDeckCode"
           :disabled="deckCards.length === 0 || isGeneratingCode"
-          class="group relative flex-1 min-w-0 px-2 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-md sm:rounded-lg text-xs sm:text-sm font-medium hover:from-blue-700 hover:to-blue-800 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-blue-500/25"
+          class="group relative flex-1 min-w-0 px-1 sm:px-2 py-0.5 sm:py-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded text-xs font-medium hover:from-blue-700 hover:to-blue-800 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-blue-500/25"
           title="デッキコードを生成"
         >
           <span
             v-if="!isGeneratingCode"
-            class="flex items-center justify-center gap-1 sm:gap-2"
+            class="flex items-center justify-center gap-1"
           >
             <svg
-              class="w-3 h-3 sm:w-4 sm:h-4"
+              class="w-3 h-3"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -773,12 +773,8 @@ watch(deckName, (newName: string) => {
             <span class="hidden sm:inline">コード生成</span>
             <span class="sm:hidden">コード</span>
           </span>
-          <span v-else class="flex items-center justify-center gap-1 sm:gap-2">
-            <svg
-              class="w-3 h-3 sm:w-4 sm:h-4 animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
+          <span v-else class="flex items-center justify-center gap-1">
+            <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle
                 class="opacity-25"
                 cx="12"
@@ -799,15 +795,12 @@ watch(deckName, (newName: string) => {
         <button
           @click="saveDeckAsPng"
           :disabled="deckCards.length === 0 || isSaving"
-          class="group relative flex-1 min-w-0 px-2 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-md sm:rounded-lg text-xs sm:text-sm font-medium hover:from-emerald-700 hover:to-emerald-800 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-emerald-500/25"
+          class="group relative flex-1 min-w-0 px-1 sm:px-2 py-0.5 sm:py-1 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded text-xs font-medium hover:from-emerald-700 hover:to-emerald-800 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-emerald-500/25"
           title="デッキ画像を保存"
         >
-          <span
-            v-if="!isSaving"
-            class="flex items-center justify-center gap-1 sm:gap-2"
-          >
+          <span v-if="!isSaving" class="flex items-center justify-center gap-1">
             <svg
-              class="w-3 h-3 sm:w-4 sm:h-4"
+              class="w-3 h-3"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -822,12 +815,8 @@ watch(deckName, (newName: string) => {
             <span class="hidden sm:inline">保存</span>
             <span class="sm:hidden">保存</span>
           </span>
-          <span v-else class="flex items-center justify-center gap-1 sm:gap-2">
-            <svg
-              class="w-3 h-3 sm:w-4 sm:h-4 animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
+          <span v-else class="flex items-center justify-center gap-1">
+            <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle
                 class="opacity-25"
                 cx="12"
@@ -848,12 +837,12 @@ watch(deckName, (newName: string) => {
         <button
           @click="resetDeck"
           :disabled="deckCards.length === 0"
-          class="group relative flex-1 min-w-0 px-2 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-md sm:rounded-lg text-xs sm:text-sm font-medium hover:from-red-700 hover:to-red-800 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-red-500/25"
+          class="group relative flex-1 min-w-0 px-1 sm:px-2 py-0.5 sm:py-1 bg-gradient-to-r from-red-600 to-red-700 text-white rounded text-xs font-medium hover:from-red-700 hover:to-red-800 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-red-500/25"
           title="デッキをリセット"
         >
-          <span class="flex items-center justify-center gap-1 sm:gap-2">
+          <span class="flex items-center justify-center gap-1">
             <svg
-              class="w-3 h-3 sm:w-4 sm:h-4"
+              class="w-3 h-3"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -872,15 +861,13 @@ watch(deckName, (newName: string) => {
       </div>
 
       <!-- 合計枚数表示 (モバイル最適化) -->
-      <div class="text-center mb-2 sm:mb-4">
+      <div class="text-center mb-1">
         <div
-          class="inline-flex items-center gap-2 sm:gap-3 px-2 sm:px-4 py-1.5 sm:py-2 bg-slate-800/60 backdrop-blur-sm rounded-md sm:rounded-lg border border-slate-600/50"
+          class="inline-flex items-center gap-1 sm:gap-2 px-1 sm:px-2 py-0.5 sm:py-1 bg-slate-800/60 backdrop-blur-sm rounded border border-slate-600/50"
         >
-          <span class="text-xs sm:text-sm font-medium text-slate-300"
-            >合計枚数:</span
-          >
+          <span class="text-xs font-medium text-slate-300">合計枚数:</span>
           <span
-            class="text-sm sm:text-lg font-bold"
+            class="text-sm font-bold"
             :class="[
               totalDeckCards === 60
                 ? 'text-green-400'
@@ -891,9 +878,9 @@ watch(deckName, (newName: string) => {
           >
             {{ totalDeckCards }}
           </span>
-          <span class="text-xs sm:text-sm text-slate-400">/ 60</span>
+          <span class="text-xs text-slate-400">/ 60</span>
           <div
-            class="w-16 sm:w-24 h-1.5 sm:h-2 bg-slate-700 rounded-full overflow-hidden"
+            class="w-12 sm:w-16 h-1 bg-slate-700 rounded-full overflow-hidden"
           >
             <div
               class="h-full transition-all duration-300 rounded-full"
@@ -912,7 +899,7 @@ watch(deckName, (newName: string) => {
 
       <div
         id="chosen-deck-grid"
-        class="flex-grow overflow-y-auto grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 p-2 sm:p-4 bg-slate-800/40 backdrop-blur-sm rounded-lg sm:rounded-xl border border-slate-700/50 shadow-xl"
+        class="flex-grow overflow-y-auto grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1 sm:gap-2 p-1 sm:p-2 bg-slate-800/40 backdrop-blur-sm rounded border border-slate-700/50 shadow-xl"
       >
         <div
           v-for="item in sortedDeckCards"
@@ -991,14 +978,14 @@ watch(deckName, (newName: string) => {
         </div>
         <div
           v-if="deckCards.length === 0"
-          class="col-span-full text-center mt-4 sm:mt-8"
+          class="col-span-full text-center mt-2 sm:mt-4"
         >
-          <div class="flex flex-col items-center gap-2 sm:gap-4 p-4 sm:p-8">
+          <div class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-4">
             <div
-              class="w-12 h-12 sm:w-16 sm:h-16 bg-slate-700/50 rounded-full flex items-center justify-center"
+              class="w-8 h-8 sm:w-10 sm:h-10 bg-slate-700/50 rounded-full flex items-center justify-center"
             >
               <svg
-                class="w-6 h-6 sm:w-8 sm:h-8 text-slate-400"
+                class="w-4 h-4 sm:w-5 sm:h-5 text-slate-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -1012,10 +999,10 @@ watch(deckName, (newName: string) => {
               </svg>
             </div>
             <div class="text-slate-400 text-center">
-              <p class="text-base sm:text-lg font-medium mb-1">
+              <p class="text-sm sm:text-base font-medium mb-1">
                 デッキが空です
               </p>
-              <p class="text-xs sm:text-sm">
+              <p class="text-xs">
                 下の一覧からカードをタップして追加してください
               </p>
             </div>
@@ -1026,14 +1013,14 @@ watch(deckName, (newName: string) => {
 
     <!-- カード一覧セクション -->
     <div
-      class="flex flex-col flex-grow h-1/2 p-2 sm:p-4 overflow-hidden relative z-10"
+      class="flex flex-col flex-grow h-1/2 p-1 sm:p-2 overflow-hidden relative z-10"
     >
-      <div class="flex items-center justify-between mb-2 sm:mb-4 px-2">
+      <div class="flex items-center justify-between mb-1 px-1">
         <h2
-          class="text-lg sm:text-xl font-bold text-slate-100 flex items-center gap-1 sm:gap-2"
+          class="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-1"
         >
           <svg
-            class="w-5 h-5 sm:w-6 sm:h-6 text-blue-400"
+            class="w-4 h-4 text-blue-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -1049,12 +1036,12 @@ watch(deckName, (newName: string) => {
         </h2>
         <button
           @click="openFilterModal"
-          class="group px-2 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-md sm:rounded-lg text-xs sm:text-sm font-medium hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-blue-500/25"
+          class="group px-1 sm:px-2 py-0.5 sm:py-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded text-xs font-medium hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-blue-500/25"
           title="フィルター・検索"
         >
-          <span class="flex items-center gap-1 sm:gap-2">
+          <span class="flex items-center gap-1">
             <svg
-              class="w-3 h-3 sm:w-4 sm:h-4"
+              class="w-3 h-3"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -1073,26 +1060,26 @@ watch(deckName, (newName: string) => {
       </div>
 
       <div
-        class="flex-grow overflow-y-auto grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 p-2 sm:p-4 bg-slate-800/40 backdrop-blur-sm rounded-lg sm:rounded-xl border border-slate-700/50 shadow-xl"
+        class="flex-grow overflow-y-auto grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1 sm:gap-2 p-1 sm:p-2 bg-slate-800/40 backdrop-blur-sm rounded border border-slate-700/50 shadow-xl"
       >
-        <div v-if="isLoading" class="col-span-full text-center mt-4 sm:mt-8">
-          <div class="flex flex-col items-center gap-2 sm:gap-4 p-4 sm:p-8">
+        <div v-if="isLoading" class="col-span-full text-center mt-2 sm:mt-4">
+          <div class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-4">
             <div
-              class="animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-4 border-slate-600 border-t-blue-500"
+              class="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-4 border-slate-600 border-t-blue-500"
             ></div>
             <div class="text-slate-400 text-center">
-              <p class="text-base sm:text-lg font-medium mb-1">読み込み中...</p>
-              <p class="text-xs sm:text-sm">カードデータを取得しています</p>
+              <p class="text-sm sm:text-base font-medium mb-1">読み込み中...</p>
+              <p class="text-xs">カードデータを取得しています</p>
             </div>
           </div>
         </div>
-        <div v-else-if="error" class="col-span-full text-center mt-4 sm:mt-8">
-          <div class="flex flex-col items-center gap-2 sm:gap-4 p-4 sm:p-8">
+        <div v-else-if="error" class="col-span-full text-center mt-2 sm:mt-4">
+          <div class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-4">
             <div
-              class="w-12 h-12 sm:w-16 sm:h-16 bg-red-500/20 rounded-full flex items-center justify-center"
+              class="w-8 h-8 sm:w-10 sm:h-10 bg-red-500/20 rounded-full flex items-center justify-center"
             >
               <svg
-                class="w-6 h-6 sm:w-8 sm:h-8 text-red-400"
+                class="w-4 h-4 sm:w-5 sm:h-5 text-red-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -1106,23 +1093,23 @@ watch(deckName, (newName: string) => {
               </svg>
             </div>
             <div class="text-red-400 text-center">
-              <p class="text-base sm:text-lg font-medium mb-1">
+              <p class="text-sm sm:text-base font-medium mb-1">
                 エラーが発生しました
               </p>
-              <p class="text-xs sm:text-sm">{{ error }}</p>
+              <p class="text-xs">{{ error }}</p>
             </div>
           </div>
         </div>
         <div
           v-else-if="sortedAndFilteredAvailableCards.length === 0"
-          class="col-span-full text-center mt-4 sm:mt-8"
+          class="col-span-full text-center mt-2 sm:mt-4"
         >
-          <div class="flex flex-col items-center gap-2 sm:gap-4 p-4 sm:p-8">
+          <div class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-4">
             <div
-              class="w-12 h-12 sm:w-16 sm:h-16 bg-slate-700/50 rounded-full flex items-center justify-center"
+              class="w-8 h-8 sm:w-10 sm:h-10 bg-slate-700/50 rounded-full flex items-center justify-center"
             >
               <svg
-                class="w-6 h-6 sm:w-8 sm:h-8 text-slate-400"
+                class="w-4 h-4 sm:w-5 sm:h-5 text-slate-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -1136,10 +1123,10 @@ watch(deckName, (newName: string) => {
               </svg>
             </div>
             <div class="text-slate-400 text-center">
-              <p class="text-base sm:text-lg font-medium mb-1">
+              <p class="text-sm sm:text-base font-medium mb-1">
                 カードが見つかりません
               </p>
-              <p class="text-xs sm:text-sm">検索条件を変更してみてください</p>
+              <p class="text-xs">検索条件を変更してみてください</p>
             </div>
           </div>
         </div>
@@ -1171,12 +1158,10 @@ watch(deckName, (newName: string) => {
     <!-- フィルターモーダル -->
     <div
       v-if="isFilterModalOpen"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
       @click.self="closeFilterModal"
     >
-      <div
-        class="bg-gray-800 rounded-t-lg p-4 w-full max-h-[90vh] overflow-y-auto"
-      >
+      <div class="bg-gray-800 p-4 w-full h-full overflow-y-auto">
         <div class="flex justify-between items-center mb-4">
           <h3 class="text-lg font-bold">検索・絞り込み</h3>
           <button
