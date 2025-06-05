@@ -709,6 +709,8 @@ watch(deckName, (newName: string) => {
 <template>
   <div
     class="flex flex-col h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100 font-sans relative overflow-hidden"
+    @contextmenu.prevent
+    @selectstart.prevent
   >
     <!-- 背景アニメーション -->
     <div class="absolute inset-0 overflow-hidden pointer-events-none">
@@ -915,7 +917,7 @@ watch(deckName, (newName: string) => {
         <div
           v-for="item in sortedDeckCards"
           :key="item.card.id"
-          class="group flex flex-col items-center relative h-fit transition-all duration-200 hover:scale-105"
+          class="group flex flex-col items-center relative h-fit transition-all duration-200"
         >
           <div
             class="w-full relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
@@ -924,7 +926,7 @@ watch(deckName, (newName: string) => {
               :src="getCardImageUrl(item.card.id)"
               @error="handleImageError"
               :alt="item.card.name"
-              class="block w-full h-full object-cover transition-transform duration-200 group-hover:scale-110"
+              class="block w-full h-full object-cover transition-transform duration-200"
             />
             <div
               class="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-slate-900/80 via-slate-900/40 to-transparent rounded-b-lg"
@@ -945,7 +947,7 @@ watch(deckName, (newName: string) => {
           >
             <button
               @click="decrementCardCount(item.card.id)"
-              class="w-7 h-7 sm:w-9 sm:h-9 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-full flex items-center justify-center leading-none transition-all duration-200 shadow-lg hover:shadow-red-500/25 hover:scale-110"
+              class="w-7 h-7 sm:w-9 sm:h-9 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-full flex items-center justify-center leading-none transition-all duration-200 shadow-lg hover:shadow-red-500/25"
             >
               <svg
                 class="w-3 h-3 sm:w-4 sm:h-4"
@@ -968,7 +970,7 @@ watch(deckName, (newName: string) => {
             </div>
             <button
               @click="incrementCardCount(item.card.id)"
-              class="w-7 h-7 sm:w-9 sm:h-9 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-full flex items-center justify-center leading-none transition-all duration-200 shadow-lg hover:shadow-emerald-500/25 hover:scale-110 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed disabled:hover:scale-100"
+              class="w-7 h-7 sm:w-9 sm:h-9 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-full flex items-center justify-center leading-none transition-all duration-200 shadow-lg hover:shadow-emerald-500/25 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed"
               :disabled="item.count >= 4 || totalDeckCards >= 60"
             >
               <svg
@@ -1145,7 +1147,7 @@ watch(deckName, (newName: string) => {
           v-else
           v-for="card in sortedAndFilteredAvailableCards"
           :key="card.id"
-          class="group flex flex-col items-center cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95"
+          class="group flex flex-col items-center cursor-pointer transition-all duration-200 active:scale-95"
           @click="addCardToDeck(card)"
           title="デッキに追加"
         >
@@ -1156,41 +1158,11 @@ watch(deckName, (newName: string) => {
               :src="getCardImageUrl(card.id)"
               @error="handleImageError"
               :alt="card.name"
-              class="block w-full h-full object-cover transition-transform duration-200 group-hover:scale-110"
+              class="block w-full h-full object-cover transition-transform duration-200"
             />
             <div
               class="absolute inset-0 bg-gradient-to-t from-slate-900/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200"
             ></div>
-            <div
-              class="absolute top-2 left-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-            >
-              <div
-                class="text-xs font-medium text-white bg-slate-900/80 rounded px-2 py-1 backdrop-blur-sm truncate"
-              >
-                {{ card.name }}
-              </div>
-            </div>
-            <div
-              class="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-            >
-              <div
-                class="w-8 h-8 bg-emerald-500/90 backdrop-blur-sm rounded-full flex items-center justify-center"
-              >
-                <svg
-                  class="w-4 h-4 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                  ></path>
-                </svg>
-              </div>
-            </div>
           </div>
         </div>
       </div>
