@@ -1,0 +1,128 @@
+import type { CardKind, CardType, ExportConfig } from "../types";
+
+export const GAME_CONSTANTS = {
+  MAX_DECK_SIZE: 60,
+  MAX_CARD_COPIES: 4,
+  BATCH_SIZE_FOR_PRELOAD: 10,
+} as const;
+
+export const CARD_KINDS: readonly CardKind[] = [
+  "Artist",
+  "Song",
+  "Magic",
+  "Direction",
+] as const;
+
+export const CARD_TYPES: readonly CardType[] = [
+  "赤",
+  "青",
+  "黄",
+  "白",
+  "黒",
+  "全",
+  "即時",
+  "装備",
+  "設置",
+] as const;
+
+export const PRIORITY_TAGS: readonly string[] = [
+  "V.W.P",
+  "花譜",
+  "理芽",
+  "春猿火",
+  "ヰ世界情緒",
+  "幸祜",
+  "CIEL",
+  "V.I.P",
+  "可不",
+  "裏命",
+  "羽累",
+  "星界",
+  "狐子",
+  "VALIS",
+  "CHINO",
+  "MYU",
+  "NEFFY",
+  "RARA",
+  "VITTE",
+  "Albemuth",
+  "明透",
+  "心世紀",
+  "佳鏡院",
+  "御莉姫",
+  "硝子宮",
+  "罪十罰",
+  "美古途",
+  "夕凪機",
+  "氷夏至",
+  "カフ",
+  "リメ",
+  "ハル",
+  "セカイ",
+  "ココ",
+  "化歩",
+  "狸眼",
+  "派流",
+  "世界",
+  "此処",
+  "詩得",
+  "瓦利斯",
+  "阿栖&亜留",
+  "【登場】魔力α生成",
+  "【能力】魔力α生成",
+  "【登場】魔力β生成",
+  "【能力】魔力β生成",
+  "【登場】魔力Ω生成",
+  "【能力】魔力Ω生成",
+  "【登場】VOL獲得",
+  "【能力】VOL獲得",
+  "魔力α参照",
+  "魔力α消費",
+  "魔力α消失",
+  "魔力β参照",
+  "魔力β消費",
+  "魔力β消失",
+  "魔力Ω参照",
+  "魔力Ω消費",
+  "魔力Ω消失",
+  "VOL獲得",
+  "VOL消失",
+  "VOLノイズ",
+  "Artistサーチ",
+  "Songサーチ",
+  "Magicサーチ",
+  "Directionサーチ",
+] as const;
+
+export const EXPORT_CONFIG: ExportConfig = {
+  canvas: {
+    width: 1920,
+    height: 1080,
+    backgroundColor: "#030712",
+    padding: "0 10px 10px 10px",
+  },
+  deckName: {
+    fontSize: "80px",
+    fontWeight: "bold",
+    color: "#f9fafb",
+    fontFamily: "serif",
+  },
+  grid: {
+    gap: "4px",
+  },
+  card: {
+    borderRadius: "8px",
+  },
+  badge: {
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    color: "white",
+    padding: "2px 12px",
+    borderRadius: "12px",
+    fontSize: "32px",
+  },
+} as const;
+
+export const STORAGE_KEYS = {
+  DECK_CARDS: "deckCards_k",
+  DECK_NAME: "deckName_k",
+} as const;
