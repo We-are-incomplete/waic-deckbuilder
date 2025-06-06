@@ -3,7 +3,7 @@ export interface Card {
   readonly name: string;
   readonly kind: CardKind;
   readonly type: CardType | readonly CardType[];
-  readonly tags?: readonly string[];
+  readonly tags?: readonly string[] | string;
 }
 
 export type CardKind = "Artist" | "Song" | "Magic" | "Direction";

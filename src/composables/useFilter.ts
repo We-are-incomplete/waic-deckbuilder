@@ -33,8 +33,14 @@ export function useFilter() {
     const tags = new Set<string>();
     for (const card of availableCards) {
       if (card.tags) {
-        for (const tag of card.tags) {
-          tags.add(tag);
+        if (Array.isArray(card.tags)) {
+          // タグが配列の場合
+          for (const tag of card.tags) {
+            tags.add(tag);
+          }
+        } else if (typeof card.tags === "string") {
+          // タグが文字列の場合
+          tags.add(card.tags);
         }
       }
     }
