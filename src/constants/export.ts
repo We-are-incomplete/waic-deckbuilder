@@ -1,4 +1,4 @@
-import type { ExportConfig } from "../../types";
+import type { ExportConfig } from "../types/export";
 
 export const EXPORT_CONFIG: ExportConfig = {
   canvas: {

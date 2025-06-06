@@ -1,6 +1,7 @@
 import { ref, readonly } from "vue";
-import type { Card, FilterCriteria } from "../types";
-import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants";
+import type { Card } from "../types/card";
+import type { FilterCriteria } from "../types/filter";
+import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants/game";
 import { createCardFilter } from "../utils/filter";
 import {
   createNaturalSort,

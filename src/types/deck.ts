@@ -1,4 +1,4 @@
-import type { Card } from "../card";
+import type { Card } from "./card";
 
 export interface DeckCard {
   readonly card: Card;

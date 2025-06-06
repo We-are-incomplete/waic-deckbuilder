@@ -1,5 +1,5 @@
-import type { Card } from "../types";
-import { GAME_CONSTANTS } from "../constants";
+import type { Card } from "../types/card";
+import { GAME_CONSTANTS } from "../constants/game";
 
 // LRUキャッシュの設定
 const MAX_CACHE_SIZE = 200; // 最大キャッシュサイズ

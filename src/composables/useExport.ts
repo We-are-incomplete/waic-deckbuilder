@@ -1,6 +1,6 @@
 import { ref, nextTick } from "vue";
 import html2canvas from "html2canvas-pro";
-import { EXPORT_CONFIG } from "../constants";
+import { EXPORT_CONFIG } from "../constants/export";
 import {
   calculateCardWidth,
   generateFileName,

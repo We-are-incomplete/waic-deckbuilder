@@ -1,5 +1,5 @@
-import type { Card, CardType } from "../types";
-import { CARD_KINDS, CARD_TYPES } from "../constants";
+import type { Card, CardType } from "../types/card";
+import { CARD_KINDS, CARD_TYPES } from "../constants/game";
 
 /**
  * 自然順ソート関数を作成

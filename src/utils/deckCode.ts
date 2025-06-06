@@ -1,4 +1,5 @@
-import type { Card, DeckCard } from "../types";
+import type { Card } from "../types/card";
+import type { DeckCard } from "../types/deck";
 
 /**
  * デッキコードをエンコード

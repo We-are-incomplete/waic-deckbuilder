@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import type { DeckCard } from "../../types";
-import { EXPORT_CONFIG } from "../../constants";
+import { EXPORT_CONFIG } from "../../constants/export";
 import { getCardImageUrl, handleImageError } from "../../utils/image";
 import { calculateCardWidth } from "../../utils/export";
 
