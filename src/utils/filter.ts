@@ -5,12 +5,28 @@ import type { FilterCriteria } from "../types/filter";
  * カードがテキスト検索にマッチするかチェック
  */
 export const isCardMatchingText = (card: Card, textLower: string): boolean => {
-  return (
+  // 名前とIDでの検索
+  if (
     card.name.toLowerCase().includes(textLower) ||
-    card.id.toLowerCase().includes(textLower) ||
-    (card.tags?.some((tag: string) => tag.toLowerCase().includes(textLower)) ??
-      false)
-  );
+    card.id.toLowerCase().includes(textLower)
+  ) {
+    return true;
+  }
+
+  // タグでの検索（文字列と配列の両方に対応）
+  if (card.tags) {
+    if (Array.isArray(card.tags)) {
+      // タグが配列の場合
+      return card.tags.some((tag: string) =>
+        tag.toLowerCase().includes(textLower)
+      );
+    } else if (typeof card.tags === "string") {
+      // タグが文字列の場合
+      return card.tags.toLowerCase().includes(textLower);
+    }
+  }
+
+  return false;
 };
 
 /**
@@ -28,7 +44,19 @@ export const isCardMatchingType = (
  * カードがタグフィルターにマッチするかチェック
  */
 export const isCardMatchingTag = (card: Card, tagSet: Set<string>): boolean => {
-  return card.tags?.some((tag: string) => tagSet.has(tag)) ?? false;
+  if (!card.tags) {
+    return false;
+  }
+
+  if (Array.isArray(card.tags)) {
+    // タグが配列の場合
+    return card.tags.some((tag: string) => tagSet.has(tag));
+  } else if (typeof card.tags === "string") {
+    // タグが文字列の場合
+    return tagSet.has(card.tags);
+  }
+
+  return false;
 };
 
 /**
