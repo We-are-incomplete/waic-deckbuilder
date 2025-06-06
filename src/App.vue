@@ -84,7 +84,7 @@ const saveDeckAsPng = async (): Promise<void> => {
   const container = exportContainer.value;
   if (container) {
     try {
-      await exportSaveDeckAsPng(deckName.value, deckCards.value, container);
+      await exportSaveDeckAsPng(deckName.value, container);
     } catch (error) {
       console.error("デッキ画像の保存中にエラーが発生しました:", error);
       // TODO: ユーザー向けのエラー通知を実装

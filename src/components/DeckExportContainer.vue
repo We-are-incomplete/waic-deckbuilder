@@ -12,7 +12,7 @@ interface Props {
   isSaving: boolean;
 }
 
-const props = defineProps<Props>();
+defineProps<Props>();
 
 const exportContainer = ref<HTMLElement | null>(null);
 
