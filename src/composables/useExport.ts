@@ -1,7 +1,6 @@
 import { ref, nextTick } from "vue";
 import html2canvas from "html2canvas-pro";
 import { EXPORT_CONFIG } from "../constants";
-import type { DeckCard } from "../types";
 import {
   calculateCardWidth,
   generateFileName,
@@ -27,11 +26,19 @@ export function useExport() {
       let loadedCount = 0;
       let hasError = false;
 
+      const cleanupListeners = () => {
+        images.forEach((img) => {
+          img.removeEventListener("load", checkComplete);
+          img.removeEventListener("error", handleImageError);
+        });
+      };
+
       const checkComplete = () => {
         if (hasError) return;
 
         loadedCount++;
         if (loadedCount === images.length) {
+          cleanupListeners();
           resolve();
         }
       };
@@ -39,6 +46,7 @@ export function useExport() {
       const handleImageError = (error: Event) => {
         if (hasError) return;
         hasError = true;
+        cleanupListeners();
         reject(
           new Error(
             `画像の読み込みに失敗しました: ${
@@ -66,7 +74,6 @@ export function useExport() {
    */
   const saveDeckAsPng = async (
     deckName: string,
-    deckCards: DeckCard[],
     exportContainer: HTMLElement
   ): Promise<void> => {
     if (!exportContainer) return;

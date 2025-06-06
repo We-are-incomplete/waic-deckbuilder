@@ -32,17 +32,14 @@ export function useToast() {
       duration,
     };
 
-    toasts.value.push(toast);
+    const toastIndex = toasts.value.push(toast) - 1;
 
     if (duration > 0) {
       const timeoutId = setTimeout(() => {
         removeToast(id);
       }, duration);
 
-      const toastIndex = toasts.value.findIndex((t) => t.id === id);
-      if (toastIndex > -1) {
-        toasts.value[toastIndex].timeoutId = timeoutId;
-      }
+      toasts.value[toastIndex].timeoutId = timeoutId;
     }
   };
 
