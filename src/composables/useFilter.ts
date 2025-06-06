@@ -85,6 +85,13 @@ export function useFilter() {
     isFilterModalOpen.value = false;
   };
 
+  /**
+   * フィルター条件を更新
+   */
+  const updateFilterCriteria = (criteria: FilterCriteria): void => {
+    filterCriteria.value = criteria;
+  };
+
   return {
     isFilterModalOpen,
     filterCriteria,
@@ -92,6 +99,7 @@ export function useFilter() {
     getSortedAndFilteredCards,
     openFilterModal,
     closeFilterModal,
+    updateFilterCriteria,
     allKinds: readonly([...CARD_KINDS]),
     allTypes: readonly([...CARD_TYPES]),
   };
