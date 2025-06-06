@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { onMounted, computed } from "vue";
+import { onMounted, computed, ref } from "vue";
 import { useCards } from "./composables/useCards";
 import { useDeck } from "./composables/useDeck";
 import { useFilter } from "./composables/useFilter";
 import { useExport } from "./composables/useExport";
 import { getCardImageUrl, handleImageError } from "./utils/image";
+import ConfirmModal from "./components/ConfirmModal.vue";
+import DeckExportContainer from "./components/DeckExportContainer.vue";
 
 // ===================================
 // コンポーザブルの使用 - Using Composables
@@ -19,12 +21,15 @@ const {
   importDeckCode,
   isGeneratingCode,
   showDeckCodeModal,
+  showResetConfirmModal,
   sortedDeckCards,
   totalDeckCards,
   addCardToDeck,
   incrementCardCount,
   decrementCardCount,
   resetDeck,
+  confirmResetDeck,
+  cancelResetDeck,
   generateAndShowDeckCode,
   copyDeckCode,
   importDeckFromCode,
@@ -42,13 +47,15 @@ const {
   allTypes,
 } = useFilter();
 
-const {
-  isSaving,
-  exportContainer,
-  saveDeckAsPng: exportSaveDeckAsPng,
-  calculateCardWidth,
-  EXPORT_CONFIG,
-} = useExport();
+const { isSaving, saveDeckAsPng: exportSaveDeckAsPng } = useExport();
+
+// エクスポートコンテナコンポーネントの参照
+const deckExportContainerRef = ref<InstanceType<
+  typeof DeckExportContainer
+> | null>(null);
+const exportContainer = computed(
+  () => deckExportContainerRef.value?.exportContainer || null
+);
 
 // ===================================
 // Computed Properties - 算出プロパティ
@@ -74,7 +81,16 @@ const sortedAndFilteredAvailableCards = computed(() =>
  * デッキをPNG画像として保存
  */
 const saveDeckAsPng = async (): Promise<void> => {
-  await exportSaveDeckAsPng(deckName.value, deckCards.value);
+  const container = exportContainer.value;
+  if (container) {
+    try {
+      await exportSaveDeckAsPng(deckName.value, deckCards.value, container);
+    } catch (error) {
+      console.error("デッキ画像の保存中にエラーが発生しました:", error);
+      // TODO: ユーザー向けのエラー通知を実装
+      // 例: toast通知やエラーメッセージの表示
+    }
+  }
 };
 
 /**
@@ -92,9 +108,14 @@ const handleImportDeckFromCode = (): void => {
  * コンポーネントマウント時の処理
  */
 onMounted(async () => {
-  await loadCards();
-  // カードが読み込まれた後にデッキを初期化
-  initializeDeck(availableCards.value);
+  try {
+    await loadCards();
+    // カードが読み込まれた後にデッキを初期化
+    initializeDeck(availableCards.value);
+  } catch (error) {
+    console.error("カードの読み込み中にエラーが発生しました:", error);
+    // TODO: ユーザー向けの通知やエラー処理を実装
+  }
 });
 </script>
 
@@ -685,87 +706,24 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- エクスポート用の隠されたコンテナ -->
-    <div
-      ref="exportContainer"
-      v-show="isSaving"
-      class="fixed pointer-events-none"
-      style="left: -9999px; top: 0; z-index: -1"
-      :style="{
-        width: `${EXPORT_CONFIG.canvas.width}px`,
-        height: `${EXPORT_CONFIG.canvas.height}px`,
-        backgroundColor: EXPORT_CONFIG.canvas.backgroundColor,
-        padding: EXPORT_CONFIG.canvas.padding,
-      }"
-    >
-      <!-- デッキ名 -->
-      <div
-        :style="{
-          position: 'absolute',
-          fontSize: EXPORT_CONFIG.deckName.fontSize,
-          fontWeight: EXPORT_CONFIG.deckName.fontWeight,
-          color: EXPORT_CONFIG.deckName.color,
-          fontFamily: EXPORT_CONFIG.deckName.fontFamily,
-          textAlign: 'center',
-          width: '100%',
-        }"
-      >
-        {{ deckName }}
-      </div>
+    <!-- エクスポート用コンテナ -->
+    <DeckExportContainer
+      ref="deckExportContainerRef"
+      :deck-name="deckName"
+      :deck-cards="deckCards"
+      :sorted-deck-cards="sortedDeckCards"
+      :is-saving="isSaving"
+    />
 
-      <!-- カードグリッド -->
-      <div
-        :style="{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: EXPORT_CONFIG.grid.gap,
-          width: '100%',
-          height: '100%',
-          justifyContent: 'flex-start',
-          alignItems: 'center',
-          alignContent: 'center',
-        }"
-      >
-        <div
-          v-for="item in sortedDeckCards"
-          :key="`export-${item.card.id}`"
-          :style="{
-            position: 'relative',
-            width: calculateCardWidth(deckCards.length),
-          }"
-        >
-          <!-- カード画像 -->
-          <img
-            :src="getCardImageUrl(item.card.id)"
-            :alt="item.card.name"
-            :style="{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              borderRadius: EXPORT_CONFIG.card.borderRadius,
-            }"
-            crossorigin="anonymous"
-          />
-
-          <!-- カウントバッジ -->
-          <div
-            :style="{
-              position: 'absolute',
-              bottom: '5px',
-              right: '5px',
-              backgroundColor: EXPORT_CONFIG.badge.backgroundColor,
-              color: EXPORT_CONFIG.badge.color,
-              padding: EXPORT_CONFIG.badge.padding,
-              borderRadius: EXPORT_CONFIG.badge.borderRadius,
-              fontSize: EXPORT_CONFIG.badge.fontSize,
-              fontWeight: 'bold',
-            }"
-          >
-            ×{{ item.count }}
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- デッキリセット確認モーダル -->
+    <ConfirmModal
+      :is-visible="showResetConfirmModal"
+      title="デッキリセット"
+      message="デッキ内容を全てリセットしてもよろしいですか？"
+      confirm-text="リセットする"
+      @confirm="confirmResetDeck"
+      @cancel="cancelResetDeck"
+    />
   </div>
 </template>
 

@@ -1,6 +1,7 @@
-import { ref, shallowRef, nextTick } from "vue";
+import { ref, nextTick } from "vue";
 import html2canvas from "html2canvas-pro";
 import { EXPORT_CONFIG } from "../constants";
+import type { DeckCard } from "../types";
 import {
   calculateCardWidth,
   generateFileName,
@@ -10,13 +11,16 @@ import {
 
 export function useExport() {
   const isSaving = ref<boolean>(false);
-  const exportContainer = shallowRef<HTMLElement | null>(null);
 
   /**
    * デッキをPNG画像として保存
    */
-  const saveDeckAsPng = async (deckName: string): Promise<void> => {
-    if (!exportContainer.value) return;
+  const saveDeckAsPng = async (
+    deckName: string,
+    deckCards: DeckCard[],
+    exportContainer: HTMLElement
+  ): Promise<void> => {
+    if (!exportContainer) return;
 
     isSaving.value = true;
 
@@ -28,7 +32,7 @@ export function useExport() {
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Canvas生成
-      const canvas = await html2canvas(exportContainer.value, {
+      const canvas = await html2canvas(exportContainer, {
         scale: 1,
         width: EXPORT_CONFIG.canvas.width,
         height: EXPORT_CONFIG.canvas.height,
@@ -52,7 +56,6 @@ export function useExport() {
 
   return {
     isSaving,
-    exportContainer,
     saveDeckAsPng,
     calculateCardWidth,
     EXPORT_CONFIG,
