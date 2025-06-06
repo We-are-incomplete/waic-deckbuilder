@@ -148,7 +148,7 @@ onMounted(async () => {
       @save-deck-as-png="saveDeckAsPng"
       @reset-deck="resetDeck"
       @increment-card-count="incrementCardCount"
-      @decrementCardCount="decrementCardCount"
+      @decrement-card-count="decrementCardCount"
     />
 
     <!-- カード一覧セクション -->
