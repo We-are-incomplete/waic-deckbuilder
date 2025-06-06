@@ -243,7 +243,7 @@ defineExpose({
           class="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex items-center justify-center space-x-2"
         >
           <button
-            @click="emit('decrement-card', item.card.id)"
+            @click="emit('decrementCardCount', item.card.id)"
             class="w-7 h-7 sm:w-9 sm:h-9 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-full flex items-center justify-center leading-none transition-all duration-200 shadow-lg hover:shadow-red-500/25"
           >
             <svg
@@ -266,7 +266,7 @@ defineExpose({
             {{ item.count }}
           </div>
           <button
-            @click="emit('increment-card', item.card.id)"
+            @click="emit('incrementCardCount', item.card.id)"
             class="w-7 h-7 sm:w-9 sm:h-9 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-full flex items-center justify-center leading-none transition-all duration-200 shadow-lg hover:shadow-emerald-500/25 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed"
             :disabled="item.count >= 4 || totalDeckCards >= 60"
           >
