@@ -13,6 +13,7 @@ import {
   createKindSort,
   createTypeSort,
 } from "../utils/sort";
+import { logger } from "../utils/logger";
 import { useToast } from "./useToast";
 
 export function useDeck() {
@@ -165,16 +166,16 @@ export function useDeck() {
     error.value = null;
     try {
       deckCode.value = encodeDeckCode(deckCards.value);
-      console.log("生成されたデッキコード:", deckCode.value);
-      console.log("デッキカード数:", deckCards.value.length);
-      console.log(
+      logger.debug("生成されたデッキコード:", deckCode.value);
+      logger.debug("デッキカード数:", deckCards.value.length);
+      logger.debug(
         "デッキ内容:",
         deckCards.value.map((item) => `${item.card.id} x${item.count}`)
       );
       showDeckCodeModal.value = true;
     } catch (e) {
       const errorMessage = "デッキコードの生成に失敗しました";
-      console.error(errorMessage + ":", e);
+      logger.error(errorMessage + ":", e);
       error.value = errorMessage;
       showError(errorMessage);
     } finally {
@@ -192,7 +193,7 @@ export function useDeck() {
       showSuccess("デッキコードをコピーしました");
     } catch (e) {
       const errorMessage = "デッキコードのコピーに失敗しました";
-      console.error(errorMessage + ":", e);
+      logger.error(errorMessage + ":", e);
       error.value = errorMessage;
       showError(errorMessage);
     }
@@ -207,7 +208,7 @@ export function useDeck() {
     // 入力検証：空文字列チェック
     if (!importDeckCode.value || importDeckCode.value.trim() === "") {
       const warningMessage = "デッキコードが空です";
-      console.warn(warningMessage);
+      logger.warn(warningMessage);
       error.value = warningMessage;
       showError(warningMessage);
       return;
@@ -223,22 +224,22 @@ export function useDeck() {
       trimmedCode.endsWith("/")
     ) {
       const warningMessage = "無効なデッキコード形式です";
-      console.warn(warningMessage);
+      logger.warn(warningMessage);
       error.value = warningMessage;
       showError(warningMessage);
       return;
     }
 
     try {
-      console.log("デッキコードをデコード中:", trimmedCode);
-      console.log("利用可能カード数:", availableCards.length);
-      console.log(
+      logger.debug("デッキコードをデコード中:", trimmedCode);
+      logger.debug("利用可能カード数:", availableCards.length);
+      logger.debug(
         "利用可能カード(最初の5件):",
         availableCards.slice(0, 5).map((c) => c.id)
       );
 
       const importedCards = decodeDeckCode(trimmedCode, availableCards);
-      console.log("デコード結果:", importedCards);
+      logger.debug("デコード結果:", importedCards);
 
       if (importedCards.length > 0) {
         deckCards.value = importedCards;
@@ -250,15 +251,15 @@ export function useDeck() {
       } else {
         const warningMessage =
           "有効なカードが見つかりませんでした。カードIDが正しいか確認してください。";
-        console.warn(warningMessage);
-        console.log("入力されたデッキコード:", trimmedCode);
+        logger.warn(warningMessage);
+        logger.debug("入力されたデッキコード:", trimmedCode);
         error.value = warningMessage;
         showError(warningMessage);
       }
     } catch (e) {
       const errorMessage = "デッキコードの復元に失敗しました";
-      console.error(errorMessage + ":", e);
-      console.error("入力されたデッキコード:", trimmedCode);
+      logger.error(errorMessage + ":", e);
+      logger.debug("入力されたデッキコード:", trimmedCode);
       error.value = errorMessage;
       showError(errorMessage);
     }
