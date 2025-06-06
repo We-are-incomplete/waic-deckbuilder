@@ -5,6 +5,15 @@ export interface ToastMessage {
   message: string;
   type: "success" | "error" | "warning" | "info";
   duration?: number;
+  timeoutId?: number;
+}
+
+function generateUUID(): string {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }
 
 export function useToast() {
@@ -15,7 +24,7 @@ export function useToast() {
     type: ToastMessage["type"] = "info",
     duration = 5000
   ): void => {
-    const id = `toast-${Date.now()}-${Math.random()}`;
+    const id = generateUUID();
     const toast: ToastMessage = {
       id,
       message,
@@ -26,20 +35,36 @@ export function useToast() {
     toasts.value.push(toast);
 
     if (duration > 0) {
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         removeToast(id);
       }, duration);
+
+      const toastIndex = toasts.value.findIndex((t) => t.id === id);
+      if (toastIndex > -1) {
+        toasts.value[toastIndex].timeoutId = timeoutId;
+      }
     }
   };
 
   const removeToast = (id: string): void => {
     const index = toasts.value.findIndex((toast) => toast.id === id);
     if (index > -1) {
+      const toast = toasts.value[index];
+
+      if (toast.timeoutId) {
+        clearTimeout(toast.timeoutId);
+      }
+
       toasts.value.splice(index, 1);
     }
   };
 
   const clearAllToasts = (): void => {
+    toasts.value.forEach((toast) => {
+      if (toast.timeoutId) {
+        clearTimeout(toast.timeoutId);
+      }
+    });
     toasts.value = [];
   };
 

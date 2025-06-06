@@ -13,6 +13,55 @@ export function useExport() {
   const isSaving = ref<boolean>(false);
 
   /**
+   * すべての画像の読み込み完了を待つ
+   */
+  const waitForImagesLoaded = (container: HTMLElement): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const images = container.querySelectorAll("img");
+
+      if (images.length === 0) {
+        resolve();
+        return;
+      }
+
+      let loadedCount = 0;
+      let hasError = false;
+
+      const checkComplete = () => {
+        if (hasError) return;
+
+        loadedCount++;
+        if (loadedCount === images.length) {
+          resolve();
+        }
+      };
+
+      const handleImageError = (error: Event) => {
+        if (hasError) return;
+        hasError = true;
+        reject(
+          new Error(
+            `画像の読み込みに失敗しました: ${
+              (error.target as HTMLImageElement)?.src
+            }`
+          )
+        );
+      };
+
+      images.forEach((img) => {
+        if (img.complete && img.naturalHeight !== 0) {
+          // 既に読み込み済みの画像
+          checkComplete();
+        } else {
+          // まだ読み込み中の画像
+          img.addEventListener("load", checkComplete, { once: true });
+          img.addEventListener("error", handleImageError, { once: true });
+        }
+      });
+    });
+  };
+
+  /**
    * デッキをPNG画像として保存
    */
   const saveDeckAsPng = async (
@@ -28,8 +77,8 @@ export function useExport() {
       // DOMの更新を待つ
       await nextTick();
 
-      // 少し待ってから画像生成（画像の読み込み完了を待つため）
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // すべての画像の読み込み完了を待つ
+      await waitForImagesLoaded(exportContainer);
 
       // Canvas生成
       const canvas = await html2canvas(exportContainer, {
