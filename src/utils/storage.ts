@@ -1,5 +1,6 @@
-import type { Card, DeckCard } from "../types";
-import { STORAGE_KEYS } from "../constants";
+import type { Card } from "../types/card";
+import type { DeckCard } from "../types/deck";
+import { STORAGE_KEYS } from "../constants/storage";
 
 /**
  * エラーハンドリング関数

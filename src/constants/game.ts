@@ -1,4 +1,4 @@
-import type { CardKind, CardType } from "../../types";
+import type { CardKind, CardType } from "../types/card";
 
 export const GAME_CONSTANTS = {
   MAX_DECK_SIZE: 60,

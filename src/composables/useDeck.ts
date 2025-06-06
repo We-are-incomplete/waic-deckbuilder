@@ -1,6 +1,8 @@
 import { ref, computed, watch, readonly } from "vue";
-import type { Card, DeckCard } from "../types";
-import { GAME_CONSTANTS, STORAGE_KEYS } from "../constants";
+import type { Card } from "../types/card";
+import type { DeckCard } from "../types/deck";
+import { GAME_CONSTANTS } from "../constants/game";
+import { STORAGE_KEYS } from "../constants/storage";
 import {
   saveDeckToLocalStorage,
   loadDeckFromLocalStorage,

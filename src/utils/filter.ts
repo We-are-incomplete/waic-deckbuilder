@@ -1,4 +1,5 @@
-import type { Card, FilterCriteria, CardType } from "../types";
+import type { Card, CardType } from "../types/card";
+import type { FilterCriteria } from "../types/filter";
 
 /**
  * カードがテキスト検索にマッチするかチェック

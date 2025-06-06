@@ -1,4 +1,4 @@
-import type { CardKind, CardType } from "../card";
+import type { CardKind, CardType } from "./card";
 
 export interface FilterCriteria {
   text: string;

@@ -1,5 +1,5 @@
 import { ref, shallowRef, readonly } from "vue";
-import type { Card } from "../types";
+import type { Card } from "../types/card";
 import { preloadImages } from "../utils/image";
 
 export function useCards() {
