@@ -76,7 +76,9 @@ const updateTags = (tags: string[]) => {
               @change="
                 ($event.target as HTMLInputElement).checked
                   ? updateKind([...filterCriteria.kind, kind])
-                  : updateKind(filterCriteria.kind.filter((k) => k !== kind))
+                  : updateKind(
+                      filterCriteria.kind.filter((k: CardKind) => k !== kind)
+                    )
               "
               class="form-checkbox h-4 w-4 min-h-5 min-w-5 text-blue-600 bg-gray-700 border-gray-600 rounded"
             />
@@ -98,7 +100,9 @@ const updateTags = (tags: string[]) => {
               @change="
                 ($event.target as HTMLInputElement).checked
                   ? updateType([...filterCriteria.type, type])
-                  : updateType(filterCriteria.type.filter((t) => t !== type))
+                  : updateType(
+                      filterCriteria.type.filter((t: CardType) => t !== type)
+                    )
               "
               class="form-checkbox h-4 w-4 min-h-5 min-w-5 text-blue-600 bg-gray-700 border-gray-600 rounded"
             />
@@ -120,7 +124,9 @@ const updateTags = (tags: string[]) => {
               @change="
                 ($event.target as HTMLInputElement).checked
                   ? updateTags([...filterCriteria.tags, tag])
-                  : updateTags(filterCriteria.tags.filter((t) => t !== tag))
+                  : updateTags(
+                      filterCriteria.tags.filter((t: string) => t !== tag)
+                    )
               "
               class="form-checkbox h-4 w-4 min-h-5 min-w-5 text-blue-600 bg-gray-700 border-gray-600 rounded"
             />
