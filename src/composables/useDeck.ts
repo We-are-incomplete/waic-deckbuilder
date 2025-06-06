@@ -165,6 +165,12 @@ export function useDeck() {
     error.value = null;
     try {
       deckCode.value = encodeDeckCode(deckCards.value);
+      console.log("生成されたデッキコード:", deckCode.value);
+      console.log("デッキカード数:", deckCards.value.length);
+      console.log(
+        "デッキ内容:",
+        deckCards.value.map((item) => `${item.card.id} x${item.count}`)
+      );
       showDeckCodeModal.value = true;
     } catch (e) {
       const errorMessage = "デッキコードの生成に失敗しました";
@@ -207,10 +213,15 @@ export function useDeck() {
       return;
     }
 
-    // 入力検証：基本的な形式チェック（Base64エンコーディングの想定）
+    // 入力検証：基本的な形式チェック（カードIDを/で区切った形式）
     const trimmedCode = importDeckCode.value.trim();
-    const base64Pattern = /^[A-Za-z0-9+/]*={0,2}$/;
-    if (!base64Pattern.test(trimmedCode)) {
+
+    // 空文字列や無効な文字が含まれていないかチェック
+    if (
+      trimmedCode.includes("//") ||
+      trimmedCode.startsWith("/") ||
+      trimmedCode.endsWith("/")
+    ) {
       const warningMessage = "無効なデッキコード形式です";
       console.warn(warningMessage);
       error.value = warningMessage;
@@ -219,21 +230,35 @@ export function useDeck() {
     }
 
     try {
+      console.log("デッキコードをデコード中:", trimmedCode);
+      console.log("利用可能カード数:", availableCards.length);
+      console.log(
+        "利用可能カード(最初の5件):",
+        availableCards.slice(0, 5).map((c) => c.id)
+      );
+
       const importedCards = decodeDeckCode(trimmedCode, availableCards);
+      console.log("デコード結果:", importedCards);
+
       if (importedCards.length > 0) {
         deckCards.value = importedCards;
         importDeckCode.value = "";
         showDeckCodeModal.value = false;
-        showSuccess("デッキをインポートしました");
+        showSuccess(
+          `デッキをインポートしました（${importedCards.length}種類のカード）`
+        );
       } else {
-        const warningMessage = "有効なカードが見つかりませんでした";
+        const warningMessage =
+          "有効なカードが見つかりませんでした。カードIDが正しいか確認してください。";
         console.warn(warningMessage);
+        console.log("入力されたデッキコード:", trimmedCode);
         error.value = warningMessage;
         showError(warningMessage);
       }
     } catch (e) {
       const errorMessage = "デッキコードの復元に失敗しました";
       console.error(errorMessage + ":", e);
+      console.error("入力されたデッキコード:", trimmedCode);
       error.value = errorMessage;
       showError(errorMessage);
     }
@@ -261,6 +286,20 @@ export function useDeck() {
     saveDeckName(newName);
   });
 
+  /**
+   * デッキ名を設定
+   */
+  const setDeckName = (name: string): void => {
+    deckName.value = name;
+  };
+
+  /**
+   * インポート用デッキコードを設定
+   */
+  const setImportDeckCode = (code: string): void => {
+    importDeckCode.value = code;
+  };
+
   return {
     deckCards,
     deckName,
@@ -283,5 +322,7 @@ export function useDeck() {
     copyDeckCode,
     importDeckFromCode,
     initializeDeck,
+    setDeckName,
+    setImportDeckCode,
   };
 }

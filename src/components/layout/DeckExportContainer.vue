@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import type { DeckCard } from "../types";
-import { EXPORT_CONFIG } from "../constants";
-import { getCardImageUrl, handleImageError } from "../utils/image";
-import { calculateCardWidth } from "../utils/export";
+import type { DeckCard } from "../../types";
+import { EXPORT_CONFIG } from "../../constants";
+import { getCardImageUrl, handleImageError } from "../../utils/image";
+import { calculateCardWidth } from "../../utils/export";
 
 interface Props {
   deckName: string;
-  deckCards: DeckCard[];
+  deckCards: readonly DeckCard[];
   sortedDeckCards: readonly DeckCard[];
   isSaving: boolean;
 }
