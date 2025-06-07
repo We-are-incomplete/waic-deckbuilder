@@ -119,7 +119,7 @@ onMounted(async () => {
 
 <template>
   <div
-    class="flex flex-col h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100 font-sans relative overflow-hidden"
+    class="flex flex-col lg:flex-row h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100 font-sans relative overflow-hidden"
     @contextmenu.prevent
     @selectstart.prevent
   >
@@ -134,32 +134,37 @@ onMounted(async () => {
       ></div>
     </div>
 
-    <!-- デッキセクション -->
-    <DeckSection
-      ref="deckSectionRef"
-      :deck-cards="deckCards"
-      :deck-name="deckName"
-      :sorted-deck-cards="sortedDeckCards"
-      :total-deck-cards="totalDeckCards"
-      :is-generating-code="isGeneratingCode"
-      :is-saving="isSaving"
-      @update-deck-name="setDeckName"
-      @generate-deck-code="generateAndShowDeckCode"
-      @save-deck-as-png="saveDeckAsPng"
-      @reset-deck="resetDeck"
-      @increment-card-count="incrementCardCount"
-      @decrement-card-count="decrementCardCount"
-    />
+    <!-- メインコンテンツエリア -->
+    <div class="flex flex-col lg:flex-row flex-1 overflow-hidden">
+      <!-- デッキセクション -->
+      <DeckSection
+        ref="deckSectionRef"
+        :deck-cards="deckCards"
+        :deck-name="deckName"
+        :sorted-deck-cards="sortedDeckCards"
+        :total-deck-cards="totalDeckCards"
+        :is-generating-code="isGeneratingCode"
+        :is-saving="isSaving"
+        @update-deck-name="setDeckName"
+        @generate-deck-code="generateAndShowDeckCode"
+        @save-deck-as-png="saveDeckAsPng"
+        @reset-deck="resetDeck"
+        @increment-card-count="incrementCardCount"
+        @decrement-card-count="decrementCardCount"
+        class="lg:w-1/2 lg:h-full overflow-y-auto"
+      />
 
-    <!-- カード一覧セクション -->
-    <CardListSection
-      :available-cards="availableCards"
-      :sorted-and-filtered-cards="sortedAndFilteredAvailableCards"
-      :is-loading="isLoading"
-      :error="error"
-      @open-filter="openFilterModal"
-      @add-card="addCardToDeck"
-    />
+      <!-- カード一覧セクション -->
+      <CardListSection
+        :available-cards="availableCards"
+        :sorted-and-filtered-cards="sortedAndFilteredAvailableCards"
+        :is-loading="isLoading"
+        :error="error"
+        @open-filter="openFilterModal"
+        @add-card="addCardToDeck"
+        class="lg:w-1/2 lg:h-full overflow-y-auto"
+      />
+    </div>
 
     <!-- フィルターモーダル -->
     <FilterModal
