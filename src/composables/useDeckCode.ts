@@ -47,13 +47,39 @@ export function useDeckCode(deckCards: Ref<DeckCard[]>) {
   const copyDeckCode = async (): Promise<void> => {
     error.value = null;
     try {
-      await navigator.clipboard.writeText(deckCode.value);
-      showSuccess("デッキコードをコピーしました");
+      // 最新のClipboard APIを使用
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(deckCode.value);
+        showSuccess("デッキコードをコピーしました");
+      } else {
+        // フォールバック: document.execCommandを使用
+        throw new Error("Clipboard API not supported or failed");
+      }
     } catch (e) {
-      const errorMessage = "デッキコードのコピーに失敗しました";
-      logger.error(errorMessage + ":", e);
-      error.value = errorMessage;
-      showError(errorMessage);
+      logger.warn(
+        "Clipboard APIが利用できないか、失敗しました。フォールバックを試行します。",
+        e
+      );
+      try {
+        const textarea = document.createElement("textarea");
+        textarea.value = deckCode.value;
+        // 画面外に配置してユーザーに見えないようにする
+        textarea.style.position = "fixed";
+        textarea.style.left = "-9999px";
+        textarea.style.top = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+        showSuccess("デッキコードをコピーしました");
+      } catch (fallbackError) {
+        const errorMessage = "デッキコードのコピーに失敗しました";
+        logger.error(errorMessage + ":", fallbackError);
+        error.value = errorMessage;
+        showError(errorMessage);
+      }
     }
   };
 
@@ -78,6 +104,16 @@ export function useDeckCode(deckCards: Ref<DeckCard[]>) {
     // 入力検証：基本的な形式チェック（カードIDを/で区切った形式）
     const trimmedCode = importDeckCode.value.trim();
 
+    // デッキコードの最大長チェック
+    const MAX_DECK_CODE_LENGTH = 2000; // 例として2000文字に設定
+    if (trimmedCode.length > MAX_DECK_CODE_LENGTH) {
+      const warningMessage = `デッキコードが長すぎます（最大${MAX_DECK_CODE_LENGTH}文字）`;
+      logger.warn(warningMessage);
+      error.value = warningMessage;
+      showError(warningMessage);
+      return;
+    }
+
     // 空文字列や無効な文字が含まれていないかチェック
     if (
       trimmedCode.includes("//") ||
@@ -89,6 +125,20 @@ export function useDeckCode(deckCards: Ref<DeckCard[]>) {
       error.value = warningMessage;
       showError(warningMessage);
       return;
+    }
+
+    // 各カードIDのフォーマット検証
+    // 例: "AA-1", "BA-10" のような形式を想定 (アルファベット2文字-数字1桁以上)
+    const cardIdPattern = /^[A-Z]{2}-\d+$/;
+    const cardIds = trimmedCode.split("/");
+    for (const cardId of cardIds) {
+      if (!cardIdPattern.test(cardId)) {
+        const warningMessage = `無効なカードID形式が含まれています: ${cardId}`;
+        logger.warn(warningMessage);
+        error.value = warningMessage;
+        showError(warningMessage);
+        return;
+      }
     }
 
     try {
