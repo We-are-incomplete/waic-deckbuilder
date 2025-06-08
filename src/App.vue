@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, defineAsyncComponent } from "vue";
+import { onMounted, ref, defineAsyncComponent } from "vue";
 
 import { useCards } from "./composables/useCards";
 import { useDeck } from "./composables/useDeck";
@@ -63,14 +63,14 @@ const { toasts, showError, showSuccess, removeToast } = useToast(); // useToast�
 const {
   isFilterModalOpen,
   filterCriteria,
-  getAllTags,
-  getSortedAndFilteredCards,
+  allTags, // computedプロパティとして直接取得
+  sortedAndFilteredCards, // computedプロパティとして直接取得
   openFilterModal,
   closeFilterModal,
   updateFilterCriteria,
   allKinds,
   allTypes,
-} = useFilter();
+} = useFilter(availableCards);
 
 const { isSaving, saveDeckAsPng: exportSaveDeckAsPng } = useExport();
 
@@ -84,17 +84,18 @@ const deckSectionRef = ref<InstanceType<typeof DeckSection> | null>(null);
 // 算出プロパティ
 // ===================================
 
-/**
- * 全タグリスト（優先タグを先頭に配置）
- */
-const allTags = computed(() => getAllTags(availableCards.value));
+// useFilterから直接取得するため削除
+// /**
+//  * 全タグリスト（優先タグを先頭に配置）
+//  */
+// const allTags = computed(() => getAllTags(availableCards.value));
 
-/**
- * ソート・フィルター済みカード一覧
- */
-const sortedAndFilteredAvailableCards = computed(() =>
-  getSortedAndFilteredCards(availableCards.value)
-);
+// /**
+//  * ソート・フィルター済みカード一覧
+//  */
+// const sortedAndFilteredAvailableCards = computed(() =>
+//   getSortedAndFilteredCards(availableCards.value)
+// );
 
 // ===================================
 // メソッド
@@ -175,7 +176,7 @@ onMounted(async () => {
       <!-- カード一覧セクション -->
       <CardListSection
         :available-cards="availableCards"
-        :sorted-and-filtered-cards="sortedAndFilteredAvailableCards"
+        :sorted-and-filtered-cards="sortedAndFilteredCards"
         :is-loading="isLoading"
         :error="error"
         @open-filter="openFilterModal"

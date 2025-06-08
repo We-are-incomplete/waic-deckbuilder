@@ -77,16 +77,6 @@ const emit = defineEmits<Emits>();
             インポート
           </button>
         </div>
-
-        <!-- テスト用ボタン -->
-        <div class="mt-2 text-center">
-          <button
-            @click="emit('updateImportCode', 'AA-1/AA-2/AA-3')"
-            class="px-2 py-1 bg-gray-600 text-white rounded text-xs hover:bg-gray-700 transition duration-200"
-          >
-            テスト用コード
-          </button>
-        </div>
       </div>
 
       <!-- エラー表示 -->

@@ -155,6 +155,7 @@ const emit = defineEmits<Emits>();
             :src="getCardImageUrl(card.id)"
             @error="handleImageError"
             :alt="card.name"
+            loading="lazy"
             class="block w-full h-full object-cover transition-transform duration-200"
           />
           <div
