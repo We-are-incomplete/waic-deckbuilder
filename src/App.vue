@@ -34,7 +34,6 @@ const {
   addCardToDeck,
   incrementCardCount,
   decrementCardCount,
-  removeCardFromDeck,
   initializeDeck,
   setDeckName,
 } = useDeck();
@@ -54,7 +53,7 @@ const {
 const { showResetConfirmModal, resetDeck, confirmResetDeck, cancelResetDeck } =
   useDeckReset(
     () => {
-      deckCards.value = [];
+      deckCards.splice(0, deckCards.length);
     },
     () => {
       deckName.value = "新しいデッキ";
@@ -113,13 +112,6 @@ const saveDeckAsPng = async (): Promise<void> => {
       console.error("デッキ画像の保存中にエラーが発生しました:", error);
     }
   }
-};
-
-/**
- * デッキコードからインポート（availableCardsを渡す）
- */
-const handleImportDeckFromCode = (): void => {
-  importDeckFromCode(availableCards.value);
 };
 
 // ===================================
