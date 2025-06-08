@@ -5,7 +5,7 @@ export const EXPORT_CONFIG: ExportConfig = {
     width: 1920,
     height: 1080,
     backgroundColor: "#030712",
-    padding: "0 10px 10px 10px",
+    padding: "0 40px 10px",
   },
   deckName: {
     fontSize: "80px",

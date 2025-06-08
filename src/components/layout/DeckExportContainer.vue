@@ -38,6 +38,8 @@ defineExpose({ exportContainer });
     <div
       :style="{
         position: 'absolute',
+        left: '50%',
+        transform: 'translateX(-50%)',
         fontSize: EXPORT_CONFIG.deckName.fontSize,
         fontWeight: EXPORT_CONFIG.deckName.fontWeight,
         color: EXPORT_CONFIG.deckName.color,
