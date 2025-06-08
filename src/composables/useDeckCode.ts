@@ -4,6 +4,11 @@ import type { DeckCard } from "../types/deck";
 import { encodeDeckCode, decodeDeckCode } from "../utils/deckCode";
 import { logger } from "../utils/logger";
 import { useToast } from "./useToast";
+import {
+  createNaturalSort,
+  createKindSort,
+  createTypeSort,
+} from "../utils/sort";
 
 export function useDeckCode(deckCards: Ref<DeckCard[]>) {
   const deckCode = ref<string>("");
@@ -14,6 +19,28 @@ export function useDeckCode(deckCards: Ref<DeckCard[]>) {
 
   const { showError, showSuccess } = useToast();
 
+  // ソート関数インスタンス
+  const naturalSort = createNaturalSort();
+  const kindSort = createKindSort();
+  const typeSort = createTypeSort();
+
+  /**
+   * デッキカードの比較関数
+   * カード種別、タイプ、IDの順で比較する
+   */
+  const compareDeckCards = (a: DeckCard, b: DeckCard): number => {
+    const cardA = a.card;
+    const cardB = b.card;
+
+    const kindComparison = kindSort({ kind: cardA.kind }, { kind: cardB.kind });
+    if (kindComparison !== 0) return kindComparison;
+
+    const typeComparison = typeSort({ type: cardA.type }, { type: cardB.type });
+    if (typeComparison !== 0) return typeComparison;
+
+    return naturalSort(cardA.id, cardB.id);
+  };
+
   /**
    * デッキコードを生成・表示
    */
@@ -21,14 +48,14 @@ export function useDeckCode(deckCards: Ref<DeckCard[]>) {
     isGeneratingCode.value = true;
     error.value = null;
     try {
-      deckCode.value = encodeDeckCode(deckCards.value);
+      // デッキカードをソートしてからエンコード
+      const sortedDeck = [...deckCards.value].sort(compareDeckCards);
+      deckCode.value = encodeDeckCode(sortedDeck);
       logger.debug("生成されたデッキコード:", deckCode.value);
-      logger.debug("デッキカード数:", deckCards.value.length);
+      logger.debug("デッキカード数:", sortedDeck.length);
       logger.debug(
         "デッキ内容:",
-        deckCards.value.map(
-          (item: DeckCard) => `${item.card.id} x${item.count}`
-        )
+        sortedDeck.map((item: DeckCard) => `${item.card.id} x${item.count}`)
       );
       showDeckCodeModal.value = true;
     } catch (e) {
