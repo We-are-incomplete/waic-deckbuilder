@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ToastMessage } from "../../composables/useToast";
 
-const props = defineProps<{
+defineProps<{
   toasts: ToastMessage[];
 }>();
 
