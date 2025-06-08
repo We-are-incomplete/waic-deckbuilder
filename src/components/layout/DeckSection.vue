@@ -232,6 +232,7 @@ defineExpose({
             :src="getCardImageUrl(item.card.id)"
             @error="handleImageError"
             :alt="item.card.name"
+            loading="lazy"
             class="block w-full h-full object-cover transition-transform duration-200"
           />
           <div

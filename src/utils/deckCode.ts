@@ -28,6 +28,13 @@ export const decodeDeckCode = (
   const cardIds = code.split("/").filter((id) => id.trim() !== ""); // 空文字列を除外
   logger.debug("分割されたカードID:", cardIds);
 
+  // availableCardsをMapに変換して高速ルックアップを可能にする
+  const availableCardsMap = new Map<string, Card>();
+  for (const card of availableCards) {
+    availableCardsMap.set(card.id, card);
+  }
+  logger.debug("利用可能カードマップのサイズ:", availableCardsMap.size);
+
   const cardCounts = new Map<string, number>();
 
   for (const id of cardIds) {
@@ -44,7 +51,7 @@ export const decodeDeckCode = (
   let notFoundIds: string[] = [];
 
   for (const [id, count] of cardCounts) {
-    const card = availableCards.find((c: Card) => c.id === id);
+    const card = availableCardsMap.get(id); // Mapから直接取得
     if (card) {
       cards.push({ card, count });
       foundCount++;

@@ -1,4 +1,4 @@
-import { ref, readonly } from "vue";
+import { ref, readonly, computed, type Ref } from "vue"; // computedとRefをインポート
 import type { Card } from "../types/card";
 import type { FilterCriteria } from "../types/filter";
 import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants/game";
@@ -9,7 +9,8 @@ import {
   createTypeSort,
 } from "../utils/sort";
 
-export function useFilter() {
+export function useFilter(availableCards: Ref<readonly Card[]>) {
+  // availableCardsを引数として受け取る
   const isFilterModalOpen = ref<boolean>(false);
   const filterCriteria = ref<FilterCriteria>({
     text: "",
@@ -29,9 +30,11 @@ export function useFilter() {
   /**
    * 全タグリスト（優先タグを先頭に配置）
    */
-  const getAllTags = (availableCards: readonly Card[]): readonly string[] => {
+  const allTags = computed(() => {
+    // computedプロパティに変更
     const tags = new Set<string>();
-    for (const card of availableCards) {
+    for (const card of availableCards.value) {
+      // .valueでアクセス
       if (card.tags) {
         if (Array.isArray(card.tags)) {
           // タグが配列の場合
@@ -54,15 +57,14 @@ export function useFilter() {
       ...PRIORITY_TAGS.filter((tag: string) => tags.has(tag)),
       ...otherTags,
     ]);
-  };
+  });
 
   /**
-   * ソート・フィルター済みカード一覧を取得
+   * ソート・フィルター済みカード一覧
    */
-  const getSortedAndFilteredCards = (
-    availableCards: readonly Card[]
-  ): readonly Card[] => {
-    const filtered = cardFilter(availableCards, filterCriteria.value);
+  const sortedAndFilteredCards = computed(() => {
+    // computedプロパティとして定義
+    const filtered = cardFilter(availableCards.value, filterCriteria.value); // .valueでアクセス
     const sorted = [...filtered];
 
     sorted.sort((a: Card, b: Card) => {
@@ -76,7 +78,7 @@ export function useFilter() {
     });
 
     return readonly(sorted);
-  };
+  });
 
   /**
    * フィルターモーダルを開く
@@ -102,8 +104,8 @@ export function useFilter() {
   return {
     isFilterModalOpen,
     filterCriteria,
-    getAllTags,
-    getSortedAndFilteredCards,
+    allTags, // computedプロパティとして公開
+    sortedAndFilteredCards,
     openFilterModal,
     closeFilterModal,
     updateFilterCriteria,

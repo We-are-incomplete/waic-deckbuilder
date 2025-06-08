@@ -6,7 +6,7 @@ import { useToast } from "./useToast"; // useToastをインポート
 
 export function useExport() {
   const isSaving = ref<boolean>(false);
-  const { showError } = useToast(); // useToastを初期化
+  const { showError, showSuccess } = useToast(); // useToastを初期化
 
   /**
    * すべての画像の読み込み完了を待つ
@@ -99,6 +99,7 @@ export function useExport() {
       const filename = generateFileName(deckName);
       downloadCanvas(canvas, filename);
 
+      showSuccess(`デッキ画像を保存しました: ${filename}`); // 保存成功時のトーストを追加
       console.log(`デッキ画像を保存しました: ${filename}`);
     } catch (e) {
       showError("デッキ画像の保存に失敗しました。"); // エラーメッセージをトーストで表示
