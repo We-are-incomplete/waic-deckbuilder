@@ -10,6 +10,11 @@ import {
   createTypeSort,
 } from "../utils/sort";
 
+// ソート関数インスタンス
+const naturalSort = createNaturalSort();
+const kindSort = createKindSort();
+const typeSort = createTypeSort();
+
 export function useDeckCode(deckCards: Ref<DeckCard[]>) {
   const deckCode = ref<string>("");
   const importDeckCode = ref<string>("");
@@ -18,11 +23,6 @@ export function useDeckCode(deckCards: Ref<DeckCard[]>) {
   const error = ref<string | null>(null);
 
   const { showError, showSuccess } = useToast();
-
-  // ソート関数インスタンス
-  const naturalSort = createNaturalSort();
-  const kindSort = createKindSort();
-  const typeSort = createTypeSort();
 
   /**
    * デッキカードの比較関数
