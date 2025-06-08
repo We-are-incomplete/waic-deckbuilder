@@ -1,5 +1,4 @@
 import type { Card } from "../types/card";
-import { GAME_CONSTANTS } from "../constants/game";
 
 // LRUキャッシュの設定
 const MAX_CACHE_SIZE = 200; // 最大キャッシュサイズ
@@ -150,27 +149,38 @@ export const handleImageError = (event: Event): void => {
  * 画像のプリロード処理
  */
 export const preloadImages = (cards: readonly Card[]): void => {
-  const loadBatch = (startIndex: number): void => {
-    const endIndex = Math.min(
-      startIndex + GAME_CONSTANTS.BATCH_SIZE_FOR_PRELOAD,
-      cards.length
-    );
-    const batch = cards.slice(startIndex, endIndex);
+  let currentIndex = 0;
 
-    for (const card of batch) {
+  const processBatch = (deadline?: IdleDeadline): void => {
+    while (
+      currentIndex < cards.length &&
+      (!deadline || deadline.timeRemaining() > 0)
+    ) {
+      const card = cards[currentIndex];
       if (!cardCache.has(card.id)) {
         const img = new Image();
         img.src = getCardImageUrl(card.id);
         cardCache.set(card.id, img);
       }
+      currentIndex++;
     }
 
-    if (endIndex < cards.length) {
-      setTimeout(() => loadBatch(endIndex), 100);
+    if (currentIndex < cards.length) {
+      if (typeof requestIdleCallback === "function") {
+        requestIdleCallback(processBatch);
+      } else {
+        // requestIdleCallbackがサポートされていない場合のフォールバック
+        setTimeout(() => processBatch(), 100);
+      }
     }
   };
 
-  loadBatch(0);
+  if (typeof requestIdleCallback === "function") {
+    requestIdleCallback(processBatch);
+  } else {
+    // requestIdleCallbackがサポートされていない場合の初期呼び出し
+    setTimeout(() => processBatch(), 100);
+  }
 };
 
 // キャッシュ管理用のユーティリティ関数をエクスポート

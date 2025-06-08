@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, defineAsyncComponent } from "vue";
 
 import { useCards } from "./composables/useCards";
 import { useDeck } from "./composables/useDeck";
@@ -10,9 +10,15 @@ import { useDeckReset } from "./composables/useDeckReset";
 
 import CardListSection from "./components/layout/CardListSection.vue";
 import DeckSection from "./components/layout/DeckSection.vue";
-import ConfirmModal from "./components/modals/ConfirmModal.vue";
-import DeckCodeModal from "./components/modals/DeckCodeModal.vue";
-import FilterModal from "./components/modals/FilterModal.vue";
+const ConfirmModal = defineAsyncComponent(
+  () => import("./components/modals/ConfirmModal.vue")
+);
+const DeckCodeModal = defineAsyncComponent(
+  () => import("./components/modals/DeckCodeModal.vue")
+);
+const FilterModal = defineAsyncComponent(
+  () => import("./components/modals/FilterModal.vue")
+);
 
 // ===================================
 // コンポーザブル

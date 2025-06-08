@@ -2,7 +2,6 @@ import { ref, computed, watch, readonly } from "vue";
 import type { Card } from "../types/card";
 import type { DeckCard } from "../types/deck";
 import { GAME_CONSTANTS } from "../constants/game";
-import { STORAGE_KEYS } from "../constants/storage";
 import {
   saveDeckToLocalStorage,
   loadDeckFromLocalStorage,
@@ -167,18 +166,32 @@ export function useDeck() {
     deckName.value = loadDeckName();
   };
 
-  // デッキ変更時のローカルストレージ保存
+  // デッキ変更時のローカルストレージ保存（デバウンス）
+  let deckSaveTimer: number | null = null;
   watch(
     deckCards,
     (newDeck: DeckCard[]) => {
-      saveDeckToLocalStorage(newDeck);
+      if (deckSaveTimer) {
+        clearTimeout(deckSaveTimer);
+      }
+      deckSaveTimer = setTimeout(() => {
+        saveDeckToLocalStorage(newDeck);
+        deckSaveTimer = null;
+      }, 300); // 300msのデバウンス
     },
     { deep: true }
   );
 
-  // デッキ名変更時のローカルストレージ保存
+  // デッキ名変更時のローカルストレージ保存（デバウンス）
+  let deckNameSaveTimer: number | null = null;
   watch(deckName, (newName: string) => {
-    saveDeckName(newName);
+    if (deckNameSaveTimer) {
+      clearTimeout(deckNameSaveTimer);
+    }
+    deckNameSaveTimer = setTimeout(() => {
+      saveDeckName(newName);
+      deckNameSaveTimer = null;
+    }, 300); // 300msのデバウンス
   });
 
   /**
