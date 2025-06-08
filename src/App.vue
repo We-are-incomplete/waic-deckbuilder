@@ -1,17 +1,19 @@
 <script setup lang="ts">
-import { onMounted, computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
+
 import { useCards } from "./composables/useCards";
 import { useDeck } from "./composables/useDeck";
-import { useFilter } from "./composables/useFilter";
 import { useExport } from "./composables/useExport";
-import ConfirmModal from "./components/modals/ConfirmModal.vue";
-import FilterModal from "./components/modals/FilterModal.vue";
-import DeckCodeModal from "./components/modals/DeckCodeModal.vue";
-import DeckSection from "./components/layout/DeckSection.vue";
+import { useFilter } from "./composables/useFilter";
+
 import CardListSection from "./components/layout/CardListSection.vue";
+import DeckSection from "./components/layout/DeckSection.vue";
+import ConfirmModal from "./components/modals/ConfirmModal.vue";
+import DeckCodeModal from "./components/modals/DeckCodeModal.vue";
+import FilterModal from "./components/modals/FilterModal.vue";
 
 // ===================================
-// コンポーザブルの使用 - Using Composables
+// コンポーザブル
 // ===================================
 
 const { availableCards, isLoading, error, loadCards } = useCards();
@@ -55,11 +57,14 @@ const {
 
 const { isSaving, saveDeckAsPng: exportSaveDeckAsPng } = useExport();
 
-// デッキセクションの参照
+// ===================================
+// テンプレート参照
+// ===================================
+
 const deckSectionRef = ref<InstanceType<typeof DeckSection> | null>(null);
 
 // ===================================
-// Computed Properties - 算出プロパティ
+// 算出プロパティ
 // ===================================
 
 /**
@@ -75,7 +80,7 @@ const sortedAndFilteredAvailableCards = computed(() =>
 );
 
 // ===================================
-// メソッド - Methods
+// メソッド
 // ===================================
 
 /**
@@ -100,7 +105,7 @@ const handleImportDeckFromCode = (): void => {
 };
 
 // ===================================
-// ライフサイクル - Lifecycle
+// ライフサイクル
 // ===================================
 
 /**
