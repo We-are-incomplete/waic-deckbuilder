@@ -1,17 +1,27 @@
 <script setup lang="ts">
-import { onMounted, computed, ref } from "vue";
+import { computed, onMounted, ref, defineAsyncComponent } from "vue";
+
 import { useCards } from "./composables/useCards";
 import { useDeck } from "./composables/useDeck";
-import { useFilter } from "./composables/useFilter";
 import { useExport } from "./composables/useExport";
-import ConfirmModal from "./components/modals/ConfirmModal.vue";
-import FilterModal from "./components/modals/FilterModal.vue";
-import DeckCodeModal from "./components/modals/DeckCodeModal.vue";
-import DeckSection from "./components/layout/DeckSection.vue";
+import { useFilter } from "./composables/useFilter";
+import { useDeckCode } from "./composables/useDeckCode";
+import { useDeckReset } from "./composables/useDeckReset";
+
 import CardListSection from "./components/layout/CardListSection.vue";
+import DeckSection from "./components/layout/DeckSection.vue";
+const ConfirmModal = defineAsyncComponent(
+  () => import("./components/modals/ConfirmModal.vue")
+);
+const DeckCodeModal = defineAsyncComponent(
+  () => import("./components/modals/DeckCodeModal.vue")
+);
+const FilterModal = defineAsyncComponent(
+  () => import("./components/modals/FilterModal.vue")
+);
 
 // ===================================
-// コンポーザブルの使用 - Using Composables
+// コンポーザブル
 // ===================================
 
 const { availableCards, isLoading, error, loadCards } = useCards();
@@ -19,27 +29,37 @@ const { availableCards, isLoading, error, loadCards } = useCards();
 const {
   deckCards,
   deckName,
-  deckCode,
-  importDeckCode,
-  isGeneratingCode,
-  showDeckCodeModal,
-  showResetConfirmModal,
-  error: deckError,
   sortedDeckCards,
   totalDeckCards,
   addCardToDeck,
   incrementCardCount,
   decrementCardCount,
-  resetDeck,
-  confirmResetDeck,
-  cancelResetDeck,
+  removeCardFromDeck,
+  initializeDeck,
+  setDeckName,
+} = useDeck();
+
+const {
+  deckCode,
+  importDeckCode,
+  isGeneratingCode,
+  showDeckCodeModal,
+  error: deckCodeError,
   generateAndShowDeckCode,
   copyDeckCode,
   importDeckFromCode,
-  initializeDeck,
-  setDeckName,
   setImportDeckCode,
-} = useDeck();
+} = useDeckCode(deckCards);
+
+const { showResetConfirmModal, resetDeck, confirmResetDeck, cancelResetDeck } =
+  useDeckReset(
+    () => {
+      deckCards.value = [];
+    },
+    () => {
+      deckName.value = "新しいデッキ";
+    }
+  );
 
 const {
   isFilterModalOpen,
@@ -55,11 +75,14 @@ const {
 
 const { isSaving, saveDeckAsPng: exportSaveDeckAsPng } = useExport();
 
-// デッキセクションの参照
+// ===================================
+// テンプレート参照
+// ===================================
+
 const deckSectionRef = ref<InstanceType<typeof DeckSection> | null>(null);
 
 // ===================================
-// Computed Properties - 算出プロパティ
+// 算出プロパティ
 // ===================================
 
 /**
@@ -75,7 +98,7 @@ const sortedAndFilteredAvailableCards = computed(() =>
 );
 
 // ===================================
-// メソッド - Methods
+// メソッド
 // ===================================
 
 /**
@@ -100,7 +123,7 @@ const handleImportDeckFromCode = (): void => {
 };
 
 // ===================================
-// ライフサイクル - Lifecycle
+// ライフサイクル
 // ===================================
 
 /**
@@ -182,11 +205,17 @@ onMounted(async () => {
       :is-visible="showDeckCodeModal"
       :deck-code="deckCode"
       :import-deck-code="importDeckCode"
-      :error="deckError"
+      :error="deckCodeError"
       @close="showDeckCodeModal = false"
       @update-import-code="setImportDeckCode"
       @copy-code="copyDeckCode"
-      @import-code="handleImportDeckFromCode"
+      @import-code="
+        () =>
+          importDeckFromCode(
+            availableCards,
+            (cards) => (deckCards.value = cards)
+          )
+      "
     />
 
     <!-- デッキリセット確認モーダル -->
