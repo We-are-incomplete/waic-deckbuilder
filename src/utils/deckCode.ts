@@ -1,5 +1,6 @@
 import type { Card } from "../types/card";
 import type { DeckCard } from "../types/deck";
+import { logger } from "./logger"; // loggerをインポート
 
 /**
  * デッキコードをエンコード
@@ -20,12 +21,12 @@ export const decodeDeckCode = (
 ): DeckCard[] => {
   // 空文字列の場合は早期リターン
   if (!code || code.trim() === "") {
-    console.log("デッキコードが空です");
+    logger.debug("デッキコードが空です");
     return [];
   }
 
   const cardIds = code.split("/").filter((id) => id.trim() !== ""); // 空文字列を除外
-  console.log("分割されたカードID:", cardIds);
+  logger.debug("分割されたカードID:", cardIds);
 
   const cardCounts = new Map<string, number>();
 
@@ -36,7 +37,7 @@ export const decodeDeckCode = (
     }
   }
 
-  console.log("カードID別枚数:", Object.fromEntries(cardCounts));
+  logger.debug("カードID別枚数:", Object.fromEntries(cardCounts));
 
   const cards: DeckCard[] = [];
   let foundCount = 0;
@@ -52,9 +53,9 @@ export const decodeDeckCode = (
     }
   }
 
-  console.log(`見つかったカード: ${foundCount}/${cardCounts.size}`);
+  logger.debug(`見つかったカード: ${foundCount}/${cardCounts.size}`);
   if (notFoundIds.length > 0) {
-    console.warn("見つからなかったカードID:", notFoundIds);
+    logger.warn("見つからなかったカードID:", notFoundIds);
   }
 
   return cards;

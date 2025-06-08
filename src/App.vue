@@ -7,9 +7,11 @@ import { useExport } from "./composables/useExport";
 import { useFilter } from "./composables/useFilter";
 import { useDeckCode } from "./composables/useDeckCode";
 import { useDeckReset } from "./composables/useDeckReset";
+import { useToast } from "./composables/useToast"; // useToastをインポート
 
 import CardListSection from "./components/layout/CardListSection.vue";
 import DeckSection from "./components/layout/DeckSection.vue";
+import ToastContainer from "./components/layout/ToastContainer.vue"; // ToastContainerをインポート
 const ConfirmModal = defineAsyncComponent(
   () => import("./components/modals/ConfirmModal.vue")
 );
@@ -36,6 +38,9 @@ const {
   decrementCardCount,
   initializeDeck,
   setDeckName,
+  setDeckCards, // 追加
+  resetDeckCards, // 追加
+  resetDeckName, // 追加
 } = useDeck();
 
 const {
@@ -51,14 +56,9 @@ const {
 } = useDeckCode(deckCards);
 
 const { showResetConfirmModal, resetDeck, confirmResetDeck, cancelResetDeck } =
-  useDeckReset(
-    () => {
-      deckCards.splice(0, deckCards.length);
-    },
-    () => {
-      deckName.value = "新しいデッキ";
-    }
-  );
+  useDeckReset(resetDeckCards, resetDeckName); // コールバックを修正
+
+const { toasts, showError, showSuccess, removeToast } = useToast(); // useToastを初期化し、showSuccessとremoveToastを追加
 
 const {
   isFilterModalOpen,
@@ -108,7 +108,9 @@ const saveDeckAsPng = async (): Promise<void> => {
   if (exportContainer) {
     try {
       await exportSaveDeckAsPng(deckName.value, exportContainer);
+      showSuccess("デッキ画像を保存しました！"); // 成功メッセージ
     } catch (error) {
+      showError("デッキ画像の保存中にエラーが発生しました。"); // エラーメッセージ
       console.error("デッキ画像の保存中にエラーが発生しました:", error);
     }
   }
@@ -127,6 +129,7 @@ onMounted(async () => {
     // カードが読み込まれた後にデッキを初期化
     initializeDeck(availableCards.value);
   } catch (error) {
+    showError("カードの読み込み中にエラーが発生しました。"); // エラーメッセージ
     console.error("カードの読み込み中にエラーが発生しました:", error);
   }
 });
@@ -201,13 +204,7 @@ onMounted(async () => {
       @close="showDeckCodeModal = false"
       @update-import-code="setImportDeckCode"
       @copy-code="copyDeckCode"
-      @import-code="
-        () =>
-          importDeckFromCode(
-            availableCards,
-            (cards) => (deckCards.value = cards)
-          )
-      "
+      @import-code="() => importDeckFromCode(availableCards, setDeckCards)"
     />
 
     <!-- デッキリセット確認モーダル -->
@@ -219,6 +216,9 @@ onMounted(async () => {
       @confirm="confirmResetDeck"
       @cancel="cancelResetDeck"
     />
+
+    <!-- トーストコンテナ -->
+    <ToastContainer :toasts="toasts" @remove-toast="removeToast" />
   </div>
 </template>
 

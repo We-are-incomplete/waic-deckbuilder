@@ -1,15 +1,12 @@
 import { ref, nextTick } from "vue";
 import html2canvas from "html2canvas-pro";
 import { EXPORT_CONFIG } from "../constants/export";
-import {
-  calculateCardWidth,
-  generateFileName,
-  downloadCanvas,
-  handleError,
-} from "../utils/export";
+import { generateFileName, downloadCanvas } from "../utils/export";
+import { useToast } from "./useToast"; // useToastをインポート
 
 export function useExport() {
   const isSaving = ref<boolean>(false);
+  const { showError } = useToast(); // useToastを初期化
 
   /**
    * すべての画像の読み込み完了を待つ
@@ -104,7 +101,8 @@ export function useExport() {
 
       console.log(`デッキ画像を保存しました: ${filename}`);
     } catch (e) {
-      handleError(e, "デッキ画像の保存に失敗しました");
+      showError("デッキ画像の保存に失敗しました。"); // エラーメッセージをトーストで表示
+      console.error("デッキ画像の保存に失敗しました:", e); // ロギングを直接行う
     } finally {
       isSaving.value = false;
     }
@@ -113,7 +111,5 @@ export function useExport() {
   return {
     isSaving,
     saveDeckAsPng,
-    calculateCardWidth,
-    EXPORT_CONFIG,
   };
 }
