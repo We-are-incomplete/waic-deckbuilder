@@ -15,8 +15,6 @@ import {
   createKindSort,
   createTypeSort,
 } from "../utils/sort";
-import { useDeckCode } from "./useDeckCode";
-import { useDeckReset } from "./useDeckReset";
 
 export function useDeck() {
   const deckCards = ref<DeckCard[]>([]);
@@ -34,26 +32,6 @@ export function useDeck() {
     deckName.value = "新しいデッキ";
     removeDeckNameFromLocalStorage();
   };
-
-  // 他のコンポーザブルを統合
-  const {
-    deckCode,
-    importDeckCode,
-    isGeneratingCode,
-    showDeckCodeModal,
-    error: deckCodeError,
-    generateAndShowDeckCode,
-    copyDeckCode,
-    importDeckFromCode,
-    setImportDeckCode,
-  } = useDeckCode(deckCards);
-
-  const {
-    showResetConfirmModal,
-    resetDeck,
-    confirmResetDeck,
-    cancelResetDeck,
-  } = useDeckReset(resetDeckCards, resetDeckName);
 
   // ソート関数インスタンス
   const naturalSort = createNaturalSort();
@@ -204,27 +182,16 @@ export function useDeck() {
   return {
     deckCards,
     deckName,
-    deckCode,
-    importDeckCode,
-    isGeneratingCode,
-    showDeckCodeModal,
-    showResetConfirmModal,
-    error: deckCodeError, // useDeckCodeからのエラーを公開
     sortedDeckCards,
     totalDeckCards,
     addCardToDeck,
     incrementCardCount,
     decrementCardCount,
     removeCardFromDeck,
-    resetDeck,
-    confirmResetDeck,
-    cancelResetDeck,
-    generateAndShowDeckCode,
-    copyDeckCode,
-    importDeckFromCode: (availableCards: readonly Card[]) =>
-      importDeckFromCode(availableCards, setDeckCards),
     initializeDeck,
     setDeckName,
-    setImportDeckCode,
+    setDeckCards, // setDeckCardsを公開
+    resetDeckCards, // resetDeckCardsを公開
+    resetDeckName, // resetDeckNameを公開
   };
 }

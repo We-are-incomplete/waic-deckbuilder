@@ -1,13 +1,7 @@
 import type { Card } from "../types/card";
 import type { DeckCard } from "../types/deck";
 import { STORAGE_KEYS } from "../constants/storage";
-
-/**
- * エラーハンドリング関数
- */
-const handleError = (error: unknown, message: string): void => {
-  console.error(message, error);
-};
+import { logger } from "./logger"; // loggerをインポート
 
 /**
  * デッキをローカルストレージに保存
@@ -20,7 +14,7 @@ export const saveDeckToLocalStorage = (deck: readonly DeckCard[]): void => {
     }));
     localStorage.setItem(STORAGE_KEYS.DECK_CARDS, JSON.stringify(simpleDeck));
   } catch (e) {
-    handleError(e, "デッキの保存に失敗しました");
+    logger.error("デッキの保存に失敗しました", e);
   }
 };
 
@@ -42,7 +36,7 @@ export const loadDeckFromLocalStorage = (
       })
       .filter((item: DeckCard | null): item is DeckCard => item !== null);
   } catch (e) {
-    handleError(e, "保存されたデッキの読み込みに失敗しました");
+    logger.error("保存されたデッキの読み込みに失敗しました", e);
     localStorage.removeItem(STORAGE_KEYS.DECK_CARDS);
     localStorage.removeItem(STORAGE_KEYS.DECK_NAME);
     return [];
@@ -70,7 +64,7 @@ export const removeDeckCardsFromLocalStorage = (): void => {
   try {
     localStorage.removeItem(STORAGE_KEYS.DECK_CARDS);
   } catch (e) {
-    handleError(e, "デッキカードの削除に失敗しました");
+    logger.error("デッキカードの削除に失敗しました", e);
   }
 };
 
@@ -81,6 +75,6 @@ export const removeDeckNameFromLocalStorage = (): void => {
   try {
     localStorage.removeItem(STORAGE_KEYS.DECK_NAME);
   } catch (e) {
-    handleError(e, "デッキ名の削除に失敗しました");
+    logger.error("デッキ名の削除に失敗しました", e);
   }
 };
