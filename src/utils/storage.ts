@@ -62,3 +62,25 @@ export const saveDeckName = (name: string): void => {
 export const loadDeckName = (): string => {
   return localStorage.getItem(STORAGE_KEYS.DECK_NAME) || "新しいデッキ";
 };
+
+/**
+ * デッキカードをローカルストレージから削除
+ */
+export const removeDeckCardsFromLocalStorage = (): void => {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.DECK_CARDS);
+  } catch (e) {
+    handleError(e, "デッキカードの削除に失敗しました");
+  }
+};
+
+/**
+ * デッキ名をローカルストレージから削除
+ */
+export const removeDeckNameFromLocalStorage = (): void => {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.DECK_NAME);
+  } catch (e) {
+    handleError(e, "デッキ名の削除に失敗しました");
+  }
+};

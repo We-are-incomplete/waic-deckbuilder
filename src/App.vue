@@ -5,6 +5,8 @@ import { useCards } from "./composables/useCards";
 import { useDeck } from "./composables/useDeck";
 import { useExport } from "./composables/useExport";
 import { useFilter } from "./composables/useFilter";
+import { useDeckCode } from "./composables/useDeckCode";
+import { useDeckReset } from "./composables/useDeckReset";
 
 import CardListSection from "./components/layout/CardListSection.vue";
 import DeckSection from "./components/layout/DeckSection.vue";
@@ -21,27 +23,37 @@ const { availableCards, isLoading, error, loadCards } = useCards();
 const {
   deckCards,
   deckName,
-  deckCode,
-  importDeckCode,
-  isGeneratingCode,
-  showDeckCodeModal,
-  showResetConfirmModal,
-  error: deckError,
   sortedDeckCards,
   totalDeckCards,
   addCardToDeck,
   incrementCardCount,
   decrementCardCount,
-  resetDeck,
-  confirmResetDeck,
-  cancelResetDeck,
+  removeCardFromDeck,
+  initializeDeck,
+  setDeckName,
+} = useDeck();
+
+const {
+  deckCode,
+  importDeckCode,
+  isGeneratingCode,
+  showDeckCodeModal,
+  error: deckCodeError,
   generateAndShowDeckCode,
   copyDeckCode,
   importDeckFromCode,
-  initializeDeck,
-  setDeckName,
   setImportDeckCode,
-} = useDeck();
+} = useDeckCode(deckCards);
+
+const { showResetConfirmModal, resetDeck, confirmResetDeck, cancelResetDeck } =
+  useDeckReset(
+    () => {
+      deckCards.value = [];
+    },
+    () => {
+      deckName.value = "新しいデッキ";
+    }
+  );
 
 const {
   isFilterModalOpen,
@@ -187,11 +199,17 @@ onMounted(async () => {
       :is-visible="showDeckCodeModal"
       :deck-code="deckCode"
       :import-deck-code="importDeckCode"
-      :error="deckError"
+      :error="deckCodeError"
       @close="showDeckCodeModal = false"
       @update-import-code="setImportDeckCode"
       @copy-code="copyDeckCode"
-      @import-code="handleImportDeckFromCode"
+      @import-code="
+        () =>
+          importDeckFromCode(
+            availableCards,
+            (cards) => (deckCards.value = cards)
+          )
+      "
     />
 
     <!-- デッキリセット確認モーダル -->
