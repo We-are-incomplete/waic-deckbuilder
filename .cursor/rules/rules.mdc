@@ -61,6 +61,7 @@ Deno.test("success case", async () => {
 
 ## 検証用コマンド
 
-- Lint 検証: `pnpx oxlint@latest`
-- テスト検証: `pnpx vitest`
+- Lint 検証: `pnpm oxlint`
+- テスト検証: `pnpm test`
+- 開発サーバー起動: `pnpm dev`
 
