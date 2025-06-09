@@ -1,4 +1,6 @@
+import { ok, err, type Result } from "neverthrow";
 import type { Card } from "../types/card";
+import { logger } from "./logger";
 
 // LRUキャッシュの設定
 const MAX_CACHE_SIZE = 200; // 最大キャッシュサイズ
@@ -10,145 +12,233 @@ interface CacheEntry {
   lastAccessed: number;
 }
 
-class LRUImageCache {
-  private cache = new Map<string, CacheEntry>();
-  private accessOrder: string[] = [];
-  private cleanupTimer: number | null = null;
-
-  constructor() {
-    // 定期的なクリーンアップの開始
-    this.startPeriodicCleanup();
-  }
-
-  get(key: string): HTMLImageElement | undefined {
-    const entry = this.cache.get(key);
-    if (entry) {
-      // アクセス時刻を更新
-      entry.lastAccessed = Date.now();
-
-      // アクセス順序を更新
-      const index = this.accessOrder.indexOf(key);
-      if (index > -1) {
-        this.accessOrder.splice(index, 1);
-      }
-      this.accessOrder.push(key);
-
-      return entry.image;
-    }
-    return undefined;
-  }
-
-  set(key: string, image: HTMLImageElement): void {
-    // 既存のエントリーがあれば削除
-    if (this.cache.has(key)) {
-      const index = this.accessOrder.indexOf(key);
-      if (index > -1) {
-        this.accessOrder.splice(index, 1);
-      }
-    }
-
-    // 新しいエントリーを追加
-    this.cache.set(key, {
-      image,
-      lastAccessed: Date.now(),
-    });
-    this.accessOrder.push(key);
-
-    // サイズ制限をチェックし、必要に応じて古いエントリーを削除
-    this.evictIfNecessary();
-  }
-
-  has(key: string): boolean {
-    return this.cache.has(key);
-  }
-
-  private evictIfNecessary(): void {
-    while (this.cache.size > MAX_CACHE_SIZE) {
-      const oldestKey = this.accessOrder.shift();
-      if (oldestKey) {
-        this.cache.delete(oldestKey);
-      }
-    }
-  }
-
-  private startPeriodicCleanup(): void {
-    this.cleanupTimer = setInterval(() => {
-      this.cleanupStaleEntries();
-    }, CACHE_CLEANUP_INTERVAL);
-  }
-
-  private cleanupStaleEntries(): void {
-    const now = Date.now();
-    const staleThreshold = 30 * 60 * 1000; // 30分間未使用のエントリーを削除
-
-    const keysToDelete: string[] = [];
-
-    for (const [key, entry] of this.cache.entries()) {
-      if (now - entry.lastAccessed > staleThreshold) {
-        keysToDelete.push(key);
-      }
-    }
-
-    for (const key of keysToDelete) {
-      this.cache.delete(key);
-      const index = this.accessOrder.indexOf(key);
-      if (index > -1) {
-        this.accessOrder.splice(index, 1);
-      }
-    }
-
-    console.log(
-      `Image cache cleanup: removed ${keysToDelete.length} stale entries`
-    );
-  }
-
-  // 手動でキャッシュをクリアするメソッド
-  clear(): void {
-    this.cache.clear();
-    this.accessOrder = [];
-  }
-
-  // キャッシュの統計情報を取得
-  getStats(): { size: number; maxSize: number } {
-    return {
-      size: this.cache.size,
-      maxSize: MAX_CACHE_SIZE,
-    };
-  }
-
-  // クリーンアップタイマーを停止（アプリ終了時など）
-  destroy(): void {
-    if (this.cleanupTimer) {
-      clearInterval(this.cleanupTimer);
-      this.cleanupTimer = null;
-    }
-    this.clear();
-  }
+// キャッシュの状態を管理する型
+interface CacheState {
+  cache: Map<string, CacheEntry>;
+  accessOrder: string[];
+  cleanupTimer: number | null;
 }
 
-// グローバルなLRUキャッシュインスタンス
-export const cardCache = new LRUImageCache();
+// グローバルなキャッシュ状態
+const cacheState: CacheState = {
+  cache: new Map<string, CacheEntry>(),
+  accessOrder: [],
+  cleanupTimer: null,
+};
+
+/**
+ * キャッシュからエントリーを取得
+ */
+const getCacheEntry = (
+  key: string
+): Result<HTMLImageElement | undefined, string> => {
+  if (!key) {
+    return err("キーが指定されていません");
+  }
+
+  const entry = cacheState.cache.get(key);
+  if (!entry) {
+    return ok(undefined);
+  }
+
+  // アクセス時刻を更新
+  entry.lastAccessed = Date.now();
+
+  // アクセス順序を更新
+  const index = cacheState.accessOrder.indexOf(key);
+  if (index > -1) {
+    cacheState.accessOrder.splice(index, 1);
+  }
+  cacheState.accessOrder.push(key);
+
+  return ok(entry.image);
+};
+
+/**
+ * キャッシュにエントリーを設定
+ */
+const setCacheEntry = (
+  key: string,
+  image: HTMLImageElement
+): Result<void, string> => {
+  if (!key) {
+    return err("キーが指定されていません");
+  }
+
+  if (!image) {
+    return err("画像が指定されていません");
+  }
+
+  // 既存のエントリーがあれば削除
+  if (cacheState.cache.has(key)) {
+    const index = cacheState.accessOrder.indexOf(key);
+    if (index > -1) {
+      cacheState.accessOrder.splice(index, 1);
+    }
+  }
+
+  // 新しいエントリーを追加
+  cacheState.cache.set(key, {
+    image,
+    lastAccessed: Date.now(),
+  });
+  cacheState.accessOrder.push(key);
+
+  // サイズ制限をチェックし、必要に応じて古いエントリーを削除
+  evictIfNecessary();
+
+  return ok(undefined);
+};
+
+/**
+ * キャッシュにキーが存在するかチェック
+ */
+const hasCacheEntry = (key: string): boolean => {
+  if (!key) {
+    return false;
+  }
+  return cacheState.cache.has(key);
+};
+
+/**
+ * 必要に応じて古いエントリーを削除
+ */
+const evictIfNecessary = (): void => {
+  while (cacheState.cache.size > MAX_CACHE_SIZE) {
+    const oldestKey = cacheState.accessOrder.shift();
+    if (!oldestKey) {
+      break;
+    }
+    cacheState.cache.delete(oldestKey);
+  }
+};
+
+/**
+ * 古いエントリーをクリーンアップ
+ */
+const cleanupStaleEntries = (): void => {
+  const now = Date.now();
+  const staleThreshold = 30 * 60 * 1000; // 30分間未使用のエントリーを削除
+
+  const keysToDelete: string[] = [];
+
+  for (const [key, entry] of cacheState.cache.entries()) {
+    if (now - entry.lastAccessed > staleThreshold) {
+      keysToDelete.push(key);
+    }
+  }
+
+  for (const key of keysToDelete) {
+    cacheState.cache.delete(key);
+    const index = cacheState.accessOrder.indexOf(key);
+    if (index > -1) {
+      cacheState.accessOrder.splice(index, 1);
+    }
+  }
+
+  logger.info(
+    `Image cache cleanup: removed ${keysToDelete.length} stale entries`
+  );
+};
+
+/**
+ * 定期的なクリーンアップを開始
+ */
+const startPeriodicCleanup = (): void => {
+  if (cacheState.cleanupTimer) {
+    return; // 既に開始済み
+  }
+
+  cacheState.cleanupTimer = setInterval(() => {
+    cleanupStaleEntries();
+  }, CACHE_CLEANUP_INTERVAL);
+};
+
+/**
+ * キャッシュをクリア
+ */
+const clearCache = (): void => {
+  cacheState.cache.clear();
+  cacheState.accessOrder = [];
+};
+
+/**
+ * キャッシュの統計情報を取得
+ */
+const getCacheStats = (): { size: number; maxSize: number } => {
+  return {
+    size: cacheState.cache.size,
+    maxSize: MAX_CACHE_SIZE,
+  };
+};
+
+/**
+ * クリーンアップタイマーを停止
+ */
+const destroyCache = (): void => {
+  if (cacheState.cleanupTimer) {
+    clearInterval(cacheState.cleanupTimer);
+    cacheState.cleanupTimer = null;
+  }
+  clearCache();
+};
+
+// 初期化
+startPeriodicCleanup();
+
+// 既存コードとの互換性のためのレガシーオブジェクト
+export const cardCache = {
+  get: (key: string) => {
+    const result = getCacheEntry(key);
+    return result.isOk() ? result.value : undefined;
+  },
+  set: (key: string, image: HTMLImageElement) => {
+    setCacheEntry(key, image);
+  },
+  has: hasCacheEntry,
+  clear: clearCache,
+  getStats: getCacheStats,
+  destroy: destroyCache,
+};
 
 /**
  * カード画像URLを取得
  */
-export const getCardImageUrl = (cardId: string): string => {
-  return `${import.meta.env.BASE_URL}cards/${cardId}.avif`;
+export const getCardImageUrl = (cardId: string): Result<string, string> => {
+  if (!cardId) {
+    return err("カードIDが指定されていません");
+  }
+
+  return ok(`${import.meta.env.BASE_URL}cards/${cardId}.avif`);
 };
 
 /**
  * 画像エラー時の処理
  */
-export const handleImageError = (event: Event): void => {
+export const handleImageError = (event: Event): Result<void, string> => {
+  if (!event || !event.target) {
+    return err("イベントまたはターゲットが指定されていません");
+  }
+
   const target = event.target as HTMLImageElement;
+  if (!target) {
+    return err("イベントターゲットが画像要素ではありません");
+  }
+
   target.src = `${import.meta.env.BASE_URL}placeholder.avif`;
   target.onerror = null;
+
+  return ok(undefined);
 };
 
 /**
  * 画像のプリロード処理
  */
-export const preloadImages = (cards: readonly Card[]): void => {
+export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
+  if (!cards || cards.length === 0) {
+    return ok(undefined); // 空配列は正常
+  }
+
   let currentIndex = 0;
 
   const processBatch = (deadline?: IdleDeadline): void => {
@@ -157,10 +247,18 @@ export const preloadImages = (cards: readonly Card[]): void => {
       (!deadline || deadline.timeRemaining() > 0)
     ) {
       const card = cards[currentIndex];
-      if (!cardCache.has(card.id)) {
+      if (!card || !card.id) {
+        currentIndex++;
+        continue;
+      }
+
+      if (!hasCacheEntry(card.id)) {
         const img = new Image();
-        img.src = getCardImageUrl(card.id);
-        cardCache.set(card.id, img);
+        const urlResult = getCardImageUrl(card.id);
+        if (urlResult.isOk()) {
+          img.src = urlResult.value;
+          setCacheEntry(card.id, img);
+        }
       }
       currentIndex++;
     }
@@ -181,18 +279,20 @@ export const preloadImages = (cards: readonly Card[]): void => {
     // requestIdleCallbackがサポートされていない場合の初期呼び出し
     setTimeout(() => processBatch(), 100);
   }
+
+  return ok(undefined);
 };
 
 // キャッシュ管理用のユーティリティ関数をエクスポート
 export const clearImageCache = (): void => {
-  cardCache.clear();
+  clearCache();
 };
 
 export const getImageCacheStats = (): { size: number; maxSize: number } => {
-  return cardCache.getStats();
+  return getCacheStats();
 };
 
 // アプリケーション終了時のクリーンアップ（必要に応じて呼び出し）
 export const destroyImageCache = (): void => {
-  cardCache.destroy();
+  destroyCache();
 };

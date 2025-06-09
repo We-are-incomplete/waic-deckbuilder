@@ -19,6 +19,7 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.4",
     "@vue/tsconfig": "^0.7.0",
+    "jsdom": "^26.1.0",
     "oxlint": "^0.18.0",
     "typescript": "~5.8.3",
     "vite": "^6.3.5",
