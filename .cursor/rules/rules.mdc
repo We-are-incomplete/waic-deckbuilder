@@ -1,3 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
 あなたはプログラミングの専門家です。
 
 ## コーディングルール
@@ -58,3 +63,4 @@ Deno.test("success case", async () => {
 
 - Lint 検証: `pnpx oxlint@latest`
 - テスト検証: `pnpx vitest`
+
