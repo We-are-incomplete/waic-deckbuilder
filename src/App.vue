@@ -130,17 +130,6 @@ const handleCardNavigation = (direction: "previous" | "next") => {
     @contextmenu.prevent
     @selectstart.prevent
   >
-    <!-- 背景アニメーション -->
-    <div class="absolute inset-0 overflow-hidden pointer-events-none">
-      <div
-        class="absolute -top-1/2 -right-1/2 w-full h-full bg-gradient-to-br from-blue-500/5 to-purple-600/5 rounded-full blur-3xl animate-pulse"
-      ></div>
-      <div
-        class="absolute -bottom-1/2 -left-1/2 w-full h-full bg-gradient-to-tr from-emerald-500/5 to-cyan-500/5 rounded-full blur-3xl animate-pulse"
-        style="animation-delay: 2s"
-      ></div>
-    </div>
-
     <!-- メインコンテンツエリア -->
     <div class="flex flex-col lg:flex-row flex-1 overflow-hidden">
       <!-- デッキセクション -->
