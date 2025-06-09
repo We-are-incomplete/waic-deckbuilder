@@ -18,15 +18,22 @@ interface Emits {
   (e: "addCard", card: Card): void;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
 // モーダルの状態
 const isImageModalVisible = ref(false);
 const selectedCardImage = ref<string | null>(null);
+const selectedCard = ref<Card | null>(null);
+const selectedCardIndex = ref<number | null>(null);
 
 // カード画像を拡大表示
 const openImageModal = (card: Card) => {
+  const cardIndex = props.sortedAndFilteredCards.findIndex(
+    (c) => c.id === card.id
+  );
+  selectedCard.value = card;
+  selectedCardIndex.value = cardIndex;
   selectedCardImage.value = getCardImageUrlSafe(card.id);
   isImageModalVisible.value = true;
 };
@@ -35,6 +42,27 @@ const openImageModal = (card: Card) => {
 const closeImageModal = () => {
   isImageModalVisible.value = false;
   selectedCardImage.value = null;
+  selectedCard.value = null;
+  selectedCardIndex.value = null;
+};
+
+// カードナビゲーション
+const handleCardNavigation = (direction: "previous" | "next") => {
+  if (selectedCardIndex.value === null) return;
+
+  let newIndex: number;
+  if (direction === "previous") {
+    newIndex = selectedCardIndex.value - 1;
+  } else {
+    newIndex = selectedCardIndex.value + 1;
+  }
+
+  if (newIndex >= 0 && newIndex < props.sortedAndFilteredCards.length) {
+    const newCard = props.sortedAndFilteredCards[newIndex];
+    selectedCard.value = newCard;
+    selectedCardIndex.value = newIndex;
+    selectedCardImage.value = getCardImageUrlSafe(newCard.id);
+  }
 };
 
 // 長押し機能の設定
@@ -212,7 +240,11 @@ const getLongPressHandler = (card: Card) => {
     <CardImageModal
       :is-visible="isImageModalVisible"
       :image-src="selectedCardImage"
+      :current-card="selectedCard"
+      :card-index="selectedCardIndex"
+      :total-cards="sortedAndFilteredCards.length"
       @close="closeImageModal"
+      @navigate="handleCardNavigation"
     />
   </div>
 </template>

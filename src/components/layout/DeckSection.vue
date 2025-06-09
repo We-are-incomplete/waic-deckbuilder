@@ -2,7 +2,6 @@
 import { computed, ref } from "vue";
 import type { DeckCard } from "../../types";
 import DeckExportContainer from "./DeckExportContainer.vue";
-import CardImageModal from "../modals/CardImageModal.vue";
 import { handleImageError } from "../../utils/image";
 import { getCardImageUrlSafe } from "../../utils/imageHelpers";
 import { useLongPress } from "../../composables/useLongPress";
@@ -23,6 +22,7 @@ interface Emits {
   (e: "resetDeck"): void;
   (e: "incrementCardCount", cardId: string): void;
   (e: "decrementCardCount", cardId: string): void;
+  (e: "openImageModal", cardId: string): void;
 }
 
 defineProps<Props>();
@@ -36,20 +36,9 @@ const exportContainer = computed(
   () => deckExportContainerRef.value?.exportContainer || null
 );
 
-// モーダルの状態
-const isImageModalVisible = ref(false);
-const selectedCardImage = ref<string | null>(null);
-
 // カード画像を拡大表示
 const openImageModal = (cardId: string) => {
-  selectedCardImage.value = getCardImageUrlSafe(cardId);
-  isImageModalVisible.value = true;
-};
-
-// モーダルを閉じる
-const closeImageModal = () => {
-  isImageModalVisible.value = false;
-  selectedCardImage.value = null;
+  emit("openImageModal", cardId);
 };
 
 // 長押し機能の設定（デッキカード用）
@@ -79,7 +68,7 @@ defineExpose({
 
 <template>
   <div
-    class="flex flex-col flex-grow-0 h-1/2 p-1 sm:p-2 border-b border-slate-700/50 overflow-hidden relative z-10 backdrop-blur-sm"
+    class="flex flex-col flex-grow-0 h-1/2 p-1 sm:p-2 border-b border-slate-700/50 relative z-10 backdrop-blur-sm"
   >
     <!-- デッキ名入力 (モバイル優先) -->
     <div class="mb-1 px-1">
@@ -374,13 +363,6 @@ defineExpose({
       :deck-cards="deckCards"
       :sorted-deck-cards="sortedDeckCards"
       :is-saving="isSaving"
-    />
-
-    <!-- カード画像拡大モーダル -->
-    <CardImageModal
-      :is-visible="isImageModalVisible"
-      :image-src="selectedCardImage"
-      @close="closeImageModal"
     />
   </div>
 </template>

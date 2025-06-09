@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { onMounted, defineAsyncComponent } from "vue";
+import { onMounted, defineAsyncComponent, ref } from "vue";
 
 import { useApp } from "./composables";
 import { CardListSection, DeckSection, ToastContainer } from "./components";
+import type { Card } from "./types";
+import { getCardImageUrlSafe } from "./utils/imageHelpers";
 
 const ConfirmModal = defineAsyncComponent(
   () => import("./components/modals/ConfirmModal.vue")
@@ -12,6 +14,9 @@ const DeckCodeModal = defineAsyncComponent(
 );
 const FilterModal = defineAsyncComponent(
   () => import("./components/modals/FilterModal.vue")
+);
+const CardImageModal = defineAsyncComponent(
+  () => import("./components/modals/CardImageModal.vue")
 );
 
 // アプリケーション状態の初期化
@@ -64,6 +69,55 @@ const {
 
 // アプリケーションの初期化
 onMounted(initializeApp);
+
+// モーダルの状態
+const isImageModalVisible = ref(false);
+const selectedCardImage = ref<string | null>(null);
+const selectedCard = ref<Card | null>(null);
+const selectedCardIndex = ref<number | null>(null);
+
+// カード画像を拡大表示
+const openImageModal = (cardId: string) => {
+  const deckCard = sortedDeckCards.value.find(
+    (item) => item.card.id === cardId
+  );
+  if (deckCard) {
+    const cardIndex = sortedDeckCards.value.findIndex(
+      (item) => item.card.id === cardId
+    );
+    selectedCard.value = deckCard.card;
+    selectedCardIndex.value = cardIndex;
+    selectedCardImage.value = getCardImageUrlSafe(cardId);
+    isImageModalVisible.value = true;
+  }
+};
+
+// モーダルを閉じる
+const closeImageModal = () => {
+  isImageModalVisible.value = false;
+  selectedCardImage.value = null;
+  selectedCard.value = null;
+  selectedCardIndex.value = null;
+};
+
+// カードナビゲーション
+const handleCardNavigation = (direction: "previous" | "next") => {
+  if (selectedCardIndex.value === null) return;
+
+  let newIndex: number;
+  if (direction === "previous") {
+    newIndex = selectedCardIndex.value - 1;
+  } else {
+    newIndex = selectedCardIndex.value + 1;
+  }
+
+  if (newIndex >= 0 && newIndex < sortedDeckCards.value.length) {
+    const newDeckCard = sortedDeckCards.value[newIndex];
+    selectedCard.value = newDeckCard.card;
+    selectedCardIndex.value = newIndex;
+    selectedCardImage.value = getCardImageUrlSafe(newDeckCard.card.id);
+  }
+};
 </script>
 
 <template>
@@ -100,6 +154,7 @@ onMounted(initializeApp);
         @reset-deck="resetDeck"
         @increment-card-count="incrementCardCount"
         @decrement-card-count="decrementCardCount"
+        @open-image-modal="openImageModal"
         class="lg:w-1/2 lg:h-full overflow-y-auto"
       />
 
@@ -146,6 +201,17 @@ onMounted(initializeApp);
       confirm-text="リセットする"
       @confirm="confirmResetDeck"
       @cancel="cancelResetDeck"
+    />
+
+    <!-- カード画像拡大モーダル -->
+    <CardImageModal
+      :is-visible="isImageModalVisible"
+      :image-src="selectedCardImage"
+      :current-card="selectedCard"
+      :card-index="selectedCardIndex"
+      :total-cards="sortedDeckCards.length"
+      @close="closeImageModal"
+      @navigate="handleCardNavigation"
     />
 
     <!-- トーストコンテナ -->
