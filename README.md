@@ -3,7 +3,7 @@
 ## 開発環境
 
 - Node.js v24.1.0
-- pnpm 10.11.1
+- pnpm v10.12.1
 
 ## インストールとセットアップ
 
@@ -31,15 +31,3 @@
 - Vite
 - TypeScript
 - Tailwind CSS
-
-## プロジェクト構造
-
-- `public/`: 静的アセット（カード画像、カードデータなど）
-- `src/`: アプリケーションのソースコード
-  - `src/App.vue`: メインアプリケーションコンポーネント
-  - `src/main.ts`: アプリケーションのエントリーポイント
-  - `src/components/`: 再利用可能な Vue コンポーネント
-  - `src/composables/`: 再利用可能な Vue Composition API 関数
-  - `src/constants/`: アプリケーション全体で使用される定数
-  - `src/types/`: TypeScript の型定義
-  - `src/utils/`: ユーティリティ関数
