@@ -2,8 +2,10 @@
 import { computed, ref } from "vue";
 import type { DeckCard } from "../../types";
 import DeckExportContainer from "./DeckExportContainer.vue";
+import CardImageModal from "../modals/CardImageModal.vue";
 import { handleImageError } from "../../utils/image";
 import { getCardImageUrlSafe } from "../../utils/imageHelpers";
+import { useLongPress } from "../../composables/useLongPress";
 
 interface Props {
   deckCards: readonly DeckCard[];
@@ -33,6 +35,42 @@ const deckExportContainerRef = ref<InstanceType<
 const exportContainer = computed(
   () => deckExportContainerRef.value?.exportContainer || null
 );
+
+// モーダルの状態
+const isImageModalVisible = ref(false);
+const selectedCardImage = ref<string | null>(null);
+
+// カード画像を拡大表示
+const openImageModal = (cardId: string) => {
+  selectedCardImage.value = getCardImageUrlSafe(cardId);
+  isImageModalVisible.value = true;
+};
+
+// モーダルを閉じる
+const closeImageModal = () => {
+  isImageModalVisible.value = false;
+  selectedCardImage.value = null;
+};
+
+// 長押し機能の設定（デッキカード用）
+const deckCardLongPressHandlers = new Map<
+  string,
+  ReturnType<typeof useLongPress>
+>();
+
+const getDeckCardLongPressHandler = (cardId: string) => {
+  if (!deckCardLongPressHandlers.has(cardId)) {
+    deckCardLongPressHandlers.set(
+      cardId,
+      useLongPress({
+        delay: 500, // 500msで長押し判定
+        onLongPress: () => openImageModal(cardId),
+        // onPressは設定しない（デッキ内のカードは長押しのみで拡大表示）
+      })
+    );
+  }
+  return deckCardLongPressHandlers.get(cardId)!;
+};
 
 defineExpose({
   exportContainer,
@@ -228,13 +266,21 @@ defineExpose({
       >
         <div
           class="w-full relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+          @mousedown="getDeckCardLongPressHandler(item.card.id).startPress"
+          @mouseup="getDeckCardLongPressHandler(item.card.id).endPress"
+          @mouseleave="getDeckCardLongPressHandler(item.card.id).cancelPress"
+          @touchstart="getDeckCardLongPressHandler(item.card.id).startPress"
+          @touchend="getDeckCardLongPressHandler(item.card.id).endPress"
+          @touchcancel="getDeckCardLongPressHandler(item.card.id).cancelPress"
+          @contextmenu.prevent
+          title="長押し: 拡大表示"
         >
           <img
             :src="getCardImageUrlSafe(item.card.id)"
             @error="handleImageError"
             :alt="item.card.name"
             loading="lazy"
-            class="block w-full h-full object-cover transition-transform duration-200"
+            class="block w-full h-full object-cover transition-transform duration-200 select-none"
           />
           <div
             class="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-slate-900/80 via-slate-900/40 to-transparent rounded-b-lg"
@@ -328,6 +374,13 @@ defineExpose({
       :deck-cards="deckCards"
       :sorted-deck-cards="sortedDeckCards"
       :is-saving="isSaving"
+    />
+
+    <!-- カード画像拡大モーダル -->
+    <CardImageModal
+      :is-visible="isImageModalVisible"
+      :image-src="selectedCardImage"
+      @close="closeImageModal"
     />
   </div>
 </template>

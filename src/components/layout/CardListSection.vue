@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { ref } from "vue";
 import type { Card } from "../../types";
 import { handleImageError } from "../../utils/image";
 import { getCardImageUrlSafe } from "../../utils/imageHelpers";
+import { useLongPress } from "../../composables/useLongPress";
+import CardImageModal from "../modals/CardImageModal.vue";
 
 interface Props {
   availableCards: readonly Card[];
@@ -18,7 +21,38 @@ interface Emits {
 defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-// カード画像URLを取得するcomputed property
+// モーダルの状態
+const isImageModalVisible = ref(false);
+const selectedCardImage = ref<string | null>(null);
+
+// カード画像を拡大表示
+const openImageModal = (card: Card) => {
+  selectedCardImage.value = getCardImageUrlSafe(card.id);
+  isImageModalVisible.value = true;
+};
+
+// モーダルを閉じる
+const closeImageModal = () => {
+  isImageModalVisible.value = false;
+  selectedCardImage.value = null;
+};
+
+// 長押し機能の設定
+const longPressHandlers = new Map<string, ReturnType<typeof useLongPress>>();
+
+const getLongPressHandler = (card: Card) => {
+  if (!longPressHandlers.has(card.id)) {
+    longPressHandlers.set(
+      card.id,
+      useLongPress({
+        delay: 500, // 500msで長押し判定
+        onLongPress: () => openImageModal(card),
+        onPress: () => emit("addCard", card),
+      })
+    );
+  }
+  return longPressHandlers.get(card.id)!;
+};
 </script>
 
 <template>
@@ -148,18 +182,24 @@ const emit = defineEmits<Emits>();
         v-for="card in sortedAndFilteredCards"
         :key="card.id"
         class="group flex flex-col items-center cursor-pointer transition-all duration-200 active:scale-95"
-        @click="emit('addCard', card)"
-        title="デッキに追加"
+        title="クリック: デッキに追加 / 長押し: 拡大表示"
       >
         <div
           class="w-full relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+          @mousedown="getLongPressHandler(card).startPress"
+          @mouseup="getLongPressHandler(card).endPress"
+          @mouseleave="getLongPressHandler(card).cancelPress"
+          @touchstart="getLongPressHandler(card).startPress"
+          @touchend="getLongPressHandler(card).endPress"
+          @touchcancel="getLongPressHandler(card).cancelPress"
+          @contextmenu.prevent
         >
           <img
             :src="getCardImageUrlSafe(card.id)"
             @error="handleImageError"
             :alt="card.name"
             loading="lazy"
-            class="block w-full h-full object-cover transition-transform duration-200"
+            class="block w-full h-full object-cover transition-transform duration-200 select-none"
           />
           <div
             class="absolute inset-0 bg-gradient-to-t from-slate-900/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200"
@@ -167,5 +207,12 @@ const emit = defineEmits<Emits>();
         </div>
       </div>
     </div>
+
+    <!-- カード画像拡大モーダル -->
+    <CardImageModal
+      :is-visible="isImageModalVisible"
+      :image-src="selectedCardImage"
+      @close="closeImageModal"
+    />
   </div>
 </template>
