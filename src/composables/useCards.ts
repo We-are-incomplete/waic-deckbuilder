@@ -1,6 +1,6 @@
 import { ref, shallowRef, readonly } from "vue";
-import type { Card } from "../types/card";
-import { preloadImages } from "../utils/image";
+import type { Card } from "../types";
+import { preloadImages, logger } from "../utils";
 
 export function useCards() {
   const availableCards = shallowRef<readonly Card[]>([]);
@@ -23,9 +23,9 @@ export function useCards() {
       availableCards.value = readonly(data);
       preloadImages(data);
     } catch (e) {
-      console.error("カードデータの読み込みに失敗しました:", e);
-      error.value =
-        "カードデータの読み込みに失敗しました。ページを再読み込みしてください。";
+      const errorMessage = "カードデータの読み込みに失敗しました";
+      logger.error(errorMessage + ":", e);
+      error.value = errorMessage + "。ページを再読み込みしてください。";
     } finally {
       isLoading.value = false;
     }

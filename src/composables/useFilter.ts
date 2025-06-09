@@ -1,13 +1,12 @@
-import { ref, readonly, computed, type Ref } from "vue"; // computedとRefをインポート
-import type { Card } from "../types/card";
-import type { FilterCriteria } from "../types/filter";
-import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants/game";
-import { createCardFilter } from "../utils/filter";
+import { ref, readonly, computed, type Ref } from "vue";
+import type { Card, FilterCriteria } from "../types";
+import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants";
 import {
+  createCardFilter,
   createNaturalSort,
   createKindSort,
   createTypeSort,
-} from "../utils/sort";
+} from "../utils";
 
 export function useFilter(availableCards: Ref<readonly Card[]>) {
   // availableCardsを引数として受け取る

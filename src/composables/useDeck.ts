@@ -1,7 +1,6 @@
 import { ref, computed, watch, readonly } from "vue";
-import type { Card } from "../types/card";
-import type { DeckCard } from "../types/deck";
-import { GAME_CONSTANTS } from "../constants/game";
+import type { Card, DeckCard } from "../types";
+import { GAME_CONSTANTS } from "../constants";
 import {
   saveDeckToLocalStorage,
   loadDeckFromLocalStorage,
@@ -9,12 +8,11 @@ import {
   loadDeckName,
   removeDeckCardsFromLocalStorage,
   removeDeckNameFromLocalStorage,
-} from "../utils/storage";
-import {
   createNaturalSort,
   createKindSort,
   createTypeSort,
-} from "../utils/sort";
+  createDebounce,
+} from "../utils";
 
 export function useDeck() {
   const deckCards = ref<DeckCard[]>([]);
@@ -145,32 +143,20 @@ export function useDeck() {
   };
 
   // デッキ変更時のローカルストレージ保存（デバウンス）
-  let deckSaveTimer: number | null = null;
-  watch(
-    deckCards,
-    (newDeck: DeckCard[]) => {
-      if (deckSaveTimer) {
-        clearTimeout(deckSaveTimer);
-      }
-      deckSaveTimer = setTimeout(() => {
-        saveDeckToLocalStorage(newDeck);
-        deckSaveTimer = null;
-      }, 300); // 300msのデバウンス
-    },
-    { deep: true }
+  const { debouncedFunc: debouncedSaveDeck } = createDebounce(
+    (newDeck: DeckCard[]) => saveDeckToLocalStorage(newDeck),
+    300
   );
 
+  watch(deckCards, debouncedSaveDeck, { deep: true });
+
   // デッキ名変更時のローカルストレージ保存（デバウンス）
-  let deckNameSaveTimer: number | null = null;
-  watch(deckName, (newName: string) => {
-    if (deckNameSaveTimer) {
-      clearTimeout(deckNameSaveTimer);
-    }
-    deckNameSaveTimer = setTimeout(() => {
-      saveDeckName(newName);
-      deckNameSaveTimer = null;
-    }, 300); // 300msのデバウンス
-  });
+  const { debouncedFunc: debouncedSaveDeckName } = createDebounce(
+    (newName: string) => saveDeckName(newName),
+    300
+  );
+
+  watch(deckName, debouncedSaveDeckName);
 
   /**
    * デッキ名を設定

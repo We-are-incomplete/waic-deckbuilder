@@ -1,17 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref, defineAsyncComponent } from "vue";
+import { onMounted, defineAsyncComponent } from "vue";
 
-import { useCards } from "./composables/useCards";
-import { useDeck } from "./composables/useDeck";
-import { useExport } from "./composables/useExport";
-import { useFilter } from "./composables/useFilter";
-import { useDeckCode } from "./composables/useDeckCode";
-import { useDeckReset } from "./composables/useDeckReset";
-import { useToast } from "./composables/useToast"; // useToastをインポート
+import { useApp } from "./composables";
+import { CardListSection, DeckSection, ToastContainer } from "./components";
 
-import CardListSection from "./components/layout/CardListSection.vue";
-import DeckSection from "./components/layout/DeckSection.vue";
-import ToastContainer from "./components/layout/ToastContainer.vue"; // ToastContainerをインポート
 const ConfirmModal = defineAsyncComponent(
   () => import("./components/modals/ConfirmModal.vue")
 );
@@ -22,118 +14,56 @@ const FilterModal = defineAsyncComponent(
   () => import("./components/modals/FilterModal.vue")
 );
 
-// ===================================
-// コンポーザブル
-// ===================================
-
-const { availableCards, isLoading, error, loadCards } = useCards();
-
+// アプリケーション状態の初期化
 const {
+  // Template refs
+  deckSectionRef,
+
+  // State
+  availableCards,
+  isLoading,
+  error,
   deckCards,
   deckName,
   sortedDeckCards,
   totalDeckCards,
-  addCardToDeck,
-  incrementCardCount,
-  decrementCardCount,
-  initializeDeck,
-  setDeckName,
-  setDeckCards, // 追加
-  resetDeckCards, // 追加
-  resetDeckName, // 追加
-} = useDeck();
-
-const {
   deckCode,
   importDeckCode,
   isGeneratingCode,
   showDeckCodeModal,
-  error: deckCodeError,
+  deckCodeError,
+  showResetConfirmModal,
+  toasts,
+  isFilterModalOpen,
+  filterCriteria,
+  allTags,
+  sortedAndFilteredCards,
+  allKinds,
+  allTypes,
+  isSaving,
+
+  // Actions
+  addCardToDeck,
+  incrementCardCount,
+  decrementCardCount,
+  setDeckName,
   generateAndShowDeckCode,
   copyDeckCode,
   importDeckFromCode,
   setImportDeckCode,
-} = useDeckCode(deckCards);
-
-const { showResetConfirmModal, resetDeck, confirmResetDeck, cancelResetDeck } =
-  useDeckReset(resetDeckCards, resetDeckName); // コールバックを修正
-
-const { toasts, showError, showSuccess, removeToast } = useToast(); // useToastを初期化し、showSuccessとremoveToastを追加
-
-const {
-  isFilterModalOpen,
-  filterCriteria,
-  allTags, // computedプロパティとして直接取得
-  sortedAndFilteredCards, // computedプロパティとして直接取得
+  resetDeck,
+  confirmResetDeck,
+  cancelResetDeck,
+  removeToast,
   openFilterModal,
   closeFilterModal,
   updateFilterCriteria,
-  allKinds,
-  allTypes,
-} = useFilter(availableCards);
+  saveDeckAsPng,
+  initializeApp,
+} = useApp();
 
-const { isSaving, saveDeckAsPng: exportSaveDeckAsPng } = useExport();
-
-// ===================================
-// テンプレート参照
-// ===================================
-
-const deckSectionRef = ref<InstanceType<typeof DeckSection> | null>(null);
-
-// ===================================
-// 算出プロパティ
-// ===================================
-
-// useFilterから直接取得するため削除
-// /**
-//  * 全タグリスト（優先タグを先頭に配置）
-//  */
-// const allTags = computed(() => getAllTags(availableCards.value));
-
-// /**
-//  * ソート・フィルター済みカード一覧
-//  */
-// const sortedAndFilteredAvailableCards = computed(() =>
-//   getSortedAndFilteredCards(availableCards.value)
-// );
-
-// ===================================
-// メソッド
-// ===================================
-
-/**
- * デッキをPNG画像として保存
- */
-const saveDeckAsPng = async (): Promise<void> => {
-  const exportContainer = deckSectionRef.value?.exportContainer;
-  if (exportContainer) {
-    try {
-      await exportSaveDeckAsPng(deckName.value, exportContainer);
-      showSuccess("デッキ画像を保存しました！"); // 成功メッセージ
-    } catch (error) {
-      showError("デッキ画像の保存中にエラーが発生しました。"); // エラーメッセージ
-      console.error("デッキ画像の保存中にエラーが発生しました:", error);
-    }
-  }
-};
-
-// ===================================
-// ライフサイクル
-// ===================================
-
-/**
- * コンポーネントマウント時の処理
- */
-onMounted(async () => {
-  try {
-    await loadCards();
-    // カードが読み込まれた後にデッキを初期化
-    initializeDeck(availableCards.value);
-  } catch (error) {
-    showError("カードの読み込み中にエラーが発生しました。"); // エラーメッセージ
-    console.error("カードの読み込み中にエラーが発生しました:", error);
-  }
-});
+// アプリケーションの初期化
+onMounted(initializeApp);
 </script>
 
 <template>
@@ -205,7 +135,7 @@ onMounted(async () => {
       @close="showDeckCodeModal = false"
       @update-import-code="setImportDeckCode"
       @copy-code="copyDeckCode"
-      @import-code="() => importDeckFromCode(availableCards, setDeckCards)"
+      @import-code="importDeckFromCode"
     />
 
     <!-- デッキリセット確認モーダル -->
