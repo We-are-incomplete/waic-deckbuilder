@@ -10,7 +10,7 @@
   >
     <div
       ref="modalContent"
-      class="max-w-[98vw] max-h-[98vh]"
+      class="max-w-[98vw] max-h-[98vh] outline-none"
       @click.stop
       tabindex="-1"
     >
@@ -36,7 +36,7 @@
           v-if="imageSrc"
           :src="imageSrc"
           :alt="imageAltText"
-          class="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+          class="max-w-full max-h-full object-contain shadow-2xl"
           @error="handleImageError"
           @load="isImageLoading = false"
         />
