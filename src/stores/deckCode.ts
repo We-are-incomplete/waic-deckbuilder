@@ -12,17 +12,19 @@ import {
 import { useDeckStore } from "./deck";
 import { useToastStore } from "./toast";
 
+// ソート関数インスタンス
+const naturalSort = createNaturalSort();
+const kindSort = createKindSort();
+const typeSort = createTypeSort();
+
 export const useDeckCodeStore = defineStore("deckCode", () => {
   const deckCode = ref<string>("");
   const importDeckCode = ref<string>("");
   const isGeneratingCode = ref<boolean>(false);
   const showDeckCodeModal = ref<boolean>(false);
   const error = ref<string | null>(null);
-
-  // ソート関数インスタンス
-  const naturalSort = createNaturalSort();
-  const kindSort = createKindSort();
-  const typeSort = createTypeSort();
+  const deckStore = useDeckStore();
+  const toastStore = useToastStore();
 
   /**
    * デッキカードの比較関数
@@ -45,9 +47,6 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
    * デッキコードを生成・表示
    */
   const generateAndShowDeckCode = (): void => {
-    const deckStore = useDeckStore();
-    const toastStore = useToastStore();
-
     isGeneratingCode.value = true;
     error.value = null;
     try {

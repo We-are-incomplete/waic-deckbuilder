@@ -10,7 +10,8 @@ import { handleError } from "../utils";
 
 export const useAppStore = defineStore("app", () => {
   // Template refs
-  const deckSectionRef = ref<any>(null);
+  const deckSectionRef = ref<HTMLElement | null>(null);
+  const exportContainerRef = ref<HTMLElement | null>(null);
   const showResetConfirmModal = ref<boolean>(false);
 
   // 各ストアのインスタンス取得
@@ -42,7 +43,7 @@ export const useAppStore = defineStore("app", () => {
    * PNG保存処理
    */
   const saveDeckAsPng = async (): Promise<void> => {
-    const exportContainer = deckSectionRef.value?.exportContainer;
+    const exportContainer = exportContainerRef.value;
     if (exportContainer) {
       try {
         await exportStore.saveDeckAsPng(deckStore.deckName, exportContainer);
@@ -83,6 +84,7 @@ export const useAppStore = defineStore("app", () => {
   return {
     // Template refs
     deckSectionRef,
+    exportContainerRef,
 
     // Reset state
     showResetConfirmModal,
