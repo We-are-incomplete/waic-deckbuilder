@@ -76,10 +76,6 @@ export function useDeck() {
    * カードをデッキに追加
    */
   const addCardToDeck = (card: Card): void => {
-    if (totalDeckCards.value >= GAME_CONSTANTS.MAX_DECK_SIZE) {
-      return;
-    }
-
     const existingCardIndex = deckCards.value.findIndex(
       (item: DeckCard) => item.card.id === card.id
     );
@@ -100,9 +96,6 @@ export function useDeck() {
    * カード枚数を増やす
    */
   const incrementCardCount = (cardId: string): void => {
-    if (totalDeckCards.value >= GAME_CONSTANTS.MAX_DECK_SIZE) {
-      return;
-    }
     const item = deckCards.value.find(
       (item: DeckCard) => item.card.id === cardId
     );
