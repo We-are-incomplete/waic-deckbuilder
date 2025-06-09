@@ -2,7 +2,8 @@
 import { computed, ref } from "vue";
 import type { DeckCard } from "../../types";
 import DeckExportContainer from "./DeckExportContainer.vue";
-import { getCardImageUrl, handleImageError } from "../../utils/image";
+import { handleImageError } from "../../utils/image";
+import { getCardImageUrlSafe } from "../../utils/imageHelpers";
 
 interface Props {
   deckCards: readonly DeckCard[];
@@ -28,17 +29,6 @@ const emit = defineEmits<Emits>();
 const deckExportContainerRef = ref<InstanceType<
   typeof DeckExportContainer
 > | null>(null);
-
-/**
- * カード画像URLを安全に取得
- */
-const getCardImageUrlSafe = (cardId: string): string => {
-  const result = getCardImageUrl(cardId);
-  if (result.isOk()) {
-    return result.value;
-  }
-  return ""; // エラー時は空文字を返す
-};
 
 const exportContainer = computed(
   () => deckExportContainerRef.value?.exportContainer || null

@@ -88,12 +88,16 @@ export function useApp() {
   };
 
   const initializeApp = async (): Promise<void> => {
-    try {
-      await loadCards();
-      initializeDeck(availableCards.value);
-    } catch (error) {
-      handleError("カードの読み込み中にエラーが発生しました", error, showError);
+    const loadResult = await loadCards();
+    if (loadResult.isErr()) {
+      handleError(
+        "カードの読み込み中にエラーが発生しました",
+        loadResult.error,
+        showError
+      );
+      return;
     }
+    initializeDeck(availableCards.value);
   };
 
   return {

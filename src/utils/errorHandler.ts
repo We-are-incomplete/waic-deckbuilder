@@ -6,18 +6,15 @@ import { logger } from "./logger";
  * @param baseMessage 基本エラーメッセージ
  * @param error エラーオブジェクト
  * @param showErrorFunc トースト表示用関数（オプション）
- * @returns 成功時はフォーマットされたエラーメッセージ、失敗時はエラー情報
  */
 export function handleError(
   baseMessage: string,
   error: unknown,
   showErrorFunc?: (message: string) => void
-): Result<string, { message: string; originalError: unknown }> {
+): void {
   if (!baseMessage) {
-    return err({
-      message: "ベースメッセージが指定されていません",
-      originalError: error,
-    });
+    logger.error("ベースメッセージが指定されていません", error);
+    return;
   }
 
   const fullMessage = `${baseMessage}: ${
@@ -27,10 +24,8 @@ export function handleError(
   logger.error(baseMessage, error);
 
   if (showErrorFunc) {
-    showErrorFunc(baseMessage + "。");
+    showErrorFunc(fullMessage);
   }
-
-  return ok(fullMessage);
 }
 
 /**
@@ -60,10 +55,7 @@ export async function safeAsyncOperation(
     await operation();
     return ok(undefined);
   } catch (caughtError) {
-    const errorResult = handleError(errorMessage, caughtError, showErrorFunc);
-    if (errorResult.isErr()) {
-      return err(errorResult.error);
-    }
-    return err({ message: errorResult.value, originalError: caughtError });
+    handleError(errorMessage, caughtError, showErrorFunc);
+    return err({ message: errorMessage, originalError: caughtError });
   }
 }

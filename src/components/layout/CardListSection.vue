@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Card } from "../../types";
-import { getCardImageUrl, handleImageError } from "../../utils/image";
+import { handleImageError } from "../../utils/image";
+import { getCardImageUrlSafe } from "../../utils/imageHelpers";
 
 interface Props {
   availableCards: readonly Card[];
@@ -18,13 +19,6 @@ defineProps<Props>();
 const emit = defineEmits<Emits>();
 
 // カード画像URLを取得するcomputed property
-const getCardImageUrlSafe = (cardId: string): string => {
-  const result = getCardImageUrl(cardId);
-  if (result.isOk()) {
-    return result.value;
-  }
-  return ""; // エラー時は空文字を返す
-};
 </script>
 
 <template>

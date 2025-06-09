@@ -16,7 +16,7 @@ interface CacheEntry {
 interface CacheState {
   cache: Map<string, CacheEntry>;
   accessOrder: string[];
-  cleanupTimer: number | null;
+  cleanupTimer: ReturnType<typeof setInterval> | null;
 }
 
 // グローバルなキャッシュ状態
