@@ -1,14 +1,14 @@
 import { ref, type Ref } from "vue";
-import type { Card } from "../types/card";
-import type { DeckCard } from "../types/deck";
-import { encodeDeckCode, decodeDeckCode } from "../utils/deckCode";
-import { logger } from "../utils/logger";
-import { useToast } from "./useToast";
+import type { Card, DeckCard } from "../types";
 import {
+  encodeDeckCode,
+  decodeDeckCode,
+  logger,
   createNaturalSort,
   createKindSort,
   createTypeSort,
-} from "../utils/sort";
+} from "../utils";
+import { useToast } from "./useToast";
 
 // ソート関数インスタンス
 const naturalSort = createNaturalSort();

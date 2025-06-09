@@ -2,7 +2,8 @@
 import { computed, ref } from "vue";
 import type { DeckCard } from "../../types";
 import DeckExportContainer from "./DeckExportContainer.vue";
-import { getCardImageUrl, handleImageError } from "../../utils/image";
+import { handleImageError } from "../../utils/image";
+import { getCardImageUrlSafe } from "../../utils/imageHelpers";
 
 interface Props {
   deckCards: readonly DeckCard[];
@@ -229,7 +230,7 @@ defineExpose({
           class="w-full relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
         >
           <img
-            :src="getCardImageUrl(item.card.id)"
+            :src="getCardImageUrlSafe(item.card.id)"
             @error="handleImageError"
             :alt="item.card.name"
             loading="lazy"

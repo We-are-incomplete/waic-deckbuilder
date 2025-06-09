@@ -8,64 +8,73 @@ export const LogLevel = {
   ERROR: 3,
 } as const;
 
-export type LogLevel = (typeof LogLevel)[keyof typeof LogLevel];
+type LogLevel = (typeof LogLevel)[keyof typeof LogLevel];
 
 /**
- * ロガークラス
- * 開発環境でのみデバッグ・情報ログを出力し、本番環境では警告・エラーログのみ出力
+ * ログレベルに応じてログを出力するかどうかを判定
  */
-class Logger {
-  private isDevelopment = import.meta.env.DEV;
+const shouldLog = (level: LogLevel): boolean => {
+  const isDevelopment = import.meta.env.DEV;
 
-  /**
-   * ログレベルに応じてログを出力するかどうかを判定
-   */
-  private shouldLog(level: LogLevel): boolean {
-    if (this.isDevelopment) {
-      return true; // 開発環境では全てのログを出力
-    }
-    // 本番環境では警告とエラーのみ出力
-    return level >= LogLevel.WARN;
+  if (isDevelopment) {
+    return true; // 開発環境では全てのログを出力
   }
 
-  /**
-   * デバッグログ（開発環境でのみ出力）
-   */
-  debug(message: string, ...args: any[]): void {
-    if (this.shouldLog(LogLevel.DEBUG)) {
-      console.log(`[DEBUG] ${message}`, ...args);
-    }
-  }
-
-  /**
-   * 情報ログ（開発環境でのみ出力）
-   */
-  info(message: string, ...args: any[]): void {
-    if (this.shouldLog(LogLevel.INFO)) {
-      console.info(`[INFO] ${message}`, ...args);
-    }
-  }
-
-  /**
-   * 警告ログ
-   */
-  warn(message: string, ...args: any[]): void {
-    if (this.shouldLog(LogLevel.WARN)) {
-      console.warn(`[WARN] ${message}`, ...args);
-    }
-  }
-
-  /**
-   * エラーログ
-   */
-  error(message: string, ...args: any[]): void {
-    if (this.shouldLog(LogLevel.ERROR)) {
-      console.error(`[ERROR] ${message}`, ...args);
-    }
-  }
-}
+  // 本番環境では警告とエラーのみ出力
+  return level >= LogLevel.WARN;
+};
 
 /**
- * ロガーのシングルトンインスタンス
+ * デバッグログ（開発環境でのみ出力）
  */
-export const logger = new Logger();
+export const debug = (message: string, ...args: any[]): void => {
+  if (!shouldLog(LogLevel.DEBUG)) {
+    return;
+  }
+
+  console.log(`[DEBUG] ${message}`, ...args);
+};
+
+/**
+ * 情報ログ（開発環境でのみ出力）
+ */
+export const info = (message: string, ...args: any[]): void => {
+  if (!shouldLog(LogLevel.INFO)) {
+    return;
+  }
+
+  console.info(`[INFO] ${message}`, ...args);
+};
+
+/**
+ * 警告ログ
+ */
+export const warn = (message: string, ...args: any[]): void => {
+  if (!shouldLog(LogLevel.WARN)) {
+    return;
+  }
+
+  console.warn(`[WARN] ${message}`, ...args);
+};
+
+/**
+ * エラーログ
+ */
+export const error = (message: string, ...args: any[]): void => {
+  if (!shouldLog(LogLevel.ERROR)) {
+    return;
+  }
+
+  console.error(`[ERROR] ${message}`, ...args);
+};
+
+/**
+ * ロガー関数をまとめたオブジェクト
+ * 既存コードとの互換性のため
+ */
+export const logger = {
+  debug,
+  info,
+  warn,
+  error,
+} as const;

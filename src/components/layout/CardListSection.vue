@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Card } from "../../types";
-import { getCardImageUrl, handleImageError } from "../../utils/image";
+import { handleImageError } from "../../utils/image";
+import { getCardImageUrlSafe } from "../../utils/imageHelpers";
 
 interface Props {
   availableCards: readonly Card[];
@@ -16,6 +17,8 @@ interface Emits {
 
 defineProps<Props>();
 const emit = defineEmits<Emits>();
+
+// カード画像URLを取得するcomputed property
 </script>
 
 <template>
@@ -152,7 +155,7 @@ const emit = defineEmits<Emits>();
           class="w-full relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
         >
           <img
-            :src="getCardImageUrl(card.id)"
+            :src="getCardImageUrlSafe(card.id)"
             @error="handleImageError"
             :alt="card.name"
             loading="lazy"

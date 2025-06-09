@@ -1,8 +1,8 @@
 import { ref, nextTick } from "vue";
 import html2canvas from "html2canvas-pro";
-import { EXPORT_CONFIG } from "../constants/export";
-import { generateFileName, downloadCanvas } from "../utils/export";
-import { useToast } from "./useToast"; // useToastをインポート
+import { EXPORT_CONFIG } from "../constants";
+import { generateFileName, downloadCanvas, logger } from "../utils";
+import { useToast } from "./useToast";
 
 export function useExport() {
   const isSaving = ref<boolean>(false);
@@ -99,11 +99,12 @@ export function useExport() {
       const filename = generateFileName(deckName);
       downloadCanvas(canvas, filename);
 
-      showSuccess(`デッキ画像を保存しました: ${filename}`); // 保存成功時のトーストを追加
-      console.log(`デッキ画像を保存しました: ${filename}`);
+      showSuccess(`デッキ画像を保存しました: ${filename}`);
+      logger.info(`デッキ画像を保存しました: ${filename}`);
     } catch (e) {
-      showError("デッキ画像の保存に失敗しました。"); // エラーメッセージをトーストで表示
-      console.error("デッキ画像の保存に失敗しました:", e); // ロギングを直接行う
+      const errorMessage = "デッキ画像の保存に失敗しました";
+      showError(errorMessage + "。");
+      logger.error(errorMessage + ":", e);
     } finally {
       isSaving.value = false;
     }

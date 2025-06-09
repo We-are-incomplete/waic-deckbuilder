@@ -1,7 +1,6 @@
 import { ref, computed, watch, readonly } from "vue";
-import type { Card } from "../types/card";
-import type { DeckCard } from "../types/deck";
-import { GAME_CONSTANTS } from "../constants/game";
+import type { Card, DeckCard } from "../types";
+import { GAME_CONSTANTS } from "../constants";
 import {
   saveDeckToLocalStorage,
   loadDeckFromLocalStorage,
@@ -9,12 +8,11 @@ import {
   loadDeckName,
   removeDeckCardsFromLocalStorage,
   removeDeckNameFromLocalStorage,
-} from "../utils/storage";
-import {
   createNaturalSort,
   createKindSort,
   createTypeSort,
-} from "../utils/sort";
+  createDebounce,
+} from "../utils";
 
 export function useDeck() {
   const deckCards = ref<DeckCard[]>([]);
@@ -140,37 +138,48 @@ export function useDeck() {
    * ローカルストレージからデッキを初期化
    */
   const initializeDeck = (availableCards: readonly Card[]): void => {
-    deckCards.value = loadDeckFromLocalStorage(availableCards);
-    deckName.value = loadDeckName();
+    const loadDeckResult = loadDeckFromLocalStorage(availableCards);
+    if (loadDeckResult.isOk()) {
+      deckCards.value = loadDeckResult.value;
+    } else {
+      deckCards.value = [];
+    }
+
+    const loadNameResult = loadDeckName();
+    if (loadNameResult.isOk()) {
+      deckName.value = loadNameResult.value;
+    } else {
+      deckName.value = "新しいデッキ";
+    }
   };
 
   // デッキ変更時のローカルストレージ保存（デバウンス）
-  let deckSaveTimer: number | null = null;
-  watch(
-    deckCards,
-    (newDeck: DeckCard[]) => {
-      if (deckSaveTimer) {
-        clearTimeout(deckSaveTimer);
-      }
-      deckSaveTimer = setTimeout(() => {
-        saveDeckToLocalStorage(newDeck);
-        deckSaveTimer = null;
-      }, 300); // 300msのデバウンス
-    },
-    { deep: true }
+  const debounceResult = createDebounce(
+    (newDeck: DeckCard[]) => saveDeckToLocalStorage(newDeck),
+    300
   );
 
+  if (debounceResult.isErr()) {
+    throw new Error("unreachable");
+  }
+
+  const { debouncedFunc: debouncedSaveDeck } = debounceResult.value;
+
+  watch(deckCards, debouncedSaveDeck, { deep: true });
+
   // デッキ名変更時のローカルストレージ保存（デバウンス）
-  let deckNameSaveTimer: number | null = null;
-  watch(deckName, (newName: string) => {
-    if (deckNameSaveTimer) {
-      clearTimeout(deckNameSaveTimer);
-    }
-    deckNameSaveTimer = setTimeout(() => {
-      saveDeckName(newName);
-      deckNameSaveTimer = null;
-    }, 300); // 300msのデバウンス
-  });
+  const debounceNameResult = createDebounce(
+    (newName: string) => saveDeckName(newName),
+    300
+  );
+
+  if (debounceNameResult.isErr()) {
+    throw new Error("unreachable");
+  }
+
+  const { debouncedFunc: debouncedSaveDeckName } = debounceNameResult.value;
+
+  watch(deckName, debouncedSaveDeckName);
 
   /**
    * デッキ名を設定
