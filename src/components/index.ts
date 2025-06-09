@@ -1,6 +1,5 @@
 // Layout Components
 export { default as CardListSection } from "./layout/CardListSection.vue";
-export { default as DeckExportContainer } from "./layout/DeckExportContainer.vue";
 export { default as DeckSection } from "./layout/DeckSection.vue";
 export { default as ToastContainer } from "./layout/ToastContainer.vue";
 
