@@ -287,16 +287,10 @@ defineExpose({
       >
         <div
           class="w-full relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
-          @mousedown="getDeckCardLongPressHandler(item.card.id).startPress"
-          @mouseup="getDeckCardLongPressHandler(item.card.id).endPress"
-          @mouseleave="getDeckCardLongPressHandler(item.card.id).cancelPress"
-          @touchstart.passive="
-            getDeckCardLongPressHandler(item.card.id).startPress
-          "
-          @touchend.passive="getDeckCardLongPressHandler(item.card.id).endPress"
-          @touchcancel.passive="
-            getDeckCardLongPressHandler(item.card.id).cancelPress
-          "
+          @pointerdown="getDeckCardLongPressHandler(item.card.id).startPress"
+          @pointerup="getDeckCardLongPressHandler(item.card.id).endPress"
+          @pointerleave="getDeckCardLongPressHandler(item.card.id).cancelPress"
+          @pointercancel="getDeckCardLongPressHandler(item.card.id).cancelPress"
           @contextmenu.prevent
           title="長押し: 拡大表示"
         >

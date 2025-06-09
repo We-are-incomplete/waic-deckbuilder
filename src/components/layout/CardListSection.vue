@@ -247,16 +247,12 @@ onUnmounted(() => {
       >
         <div
           class="w-full relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
-          @mousedown="
+          @pointerdown="
             (event) => getLongPressHandler(card, index).startPress(event)
           "
-          @mouseup="() => getLongPressHandler(card, index).endPress()"
-          @mouseleave="() => getLongPressHandler(card, index).cancelPress()"
-          @touchstart="
-            (event) => getLongPressHandler(card, index).startPress(event)
-          "
-          @touchend="() => getLongPressHandler(card, index).endPress()"
-          @touchcancel="() => getLongPressHandler(card, index).cancelPress()"
+          @pointerup="() => getLongPressHandler(card, index).endPress()"
+          @pointerleave="() => getLongPressHandler(card, index).cancelPress()"
+          @pointercancel="() => getLongPressHandler(card, index).cancelPress()"
           @contextmenu.prevent
         >
           <img
