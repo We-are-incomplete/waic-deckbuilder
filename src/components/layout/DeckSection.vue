@@ -4,6 +4,7 @@ import type { DeckCard } from "../../types";
 import DeckExportContainer from "./DeckExportContainer.vue";
 import { handleImageError } from "../../utils/image";
 import { getCardImageUrlSafe } from "../../utils/imageHelpers";
+import { useLongPress } from "../../composables/useLongPress";
 
 interface Props {
   deckCards: readonly DeckCard[];
@@ -21,9 +22,10 @@ interface Emits {
   (e: "resetDeck"): void;
   (e: "incrementCardCount", cardId: string): void;
   (e: "decrementCardCount", cardId: string): void;
+  (e: "openImageModal", cardId: string): void;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
 const deckExportContainerRef = ref<InstanceType<
@@ -34,6 +36,60 @@ const exportContainer = computed(
   () => deckExportContainerRef.value?.exportContainer || null
 );
 
+// カード画像を拡大表示
+const openImageModal = (cardId: string) => {
+  emit("openImageModal", cardId);
+};
+
+// 長押し機能の設定（デッキカード用）
+const deckCardLongPressHandlers = new Map<
+  string,
+  ReturnType<typeof useLongPress>
+>();
+
+const getDeckCardLongPressHandler = (cardId: string) => {
+  if (!deckCardLongPressHandlers.has(cardId)) {
+    deckCardLongPressHandlers.set(
+      cardId,
+      useLongPress({
+        delay: 500, // 500msで長押し判定
+        onLongPress: () => openImageModal(cardId),
+        // onPressは設定しない（デッキ内のカードは長押しのみで拡大表示）
+      })
+    );
+  }
+  return deckCardLongPressHandlers.get(cardId)!;
+};
+
+// ハンドラーのクリーンアップ機能
+const cleanupCardHandler = (cardId: string) => {
+  deckCardLongPressHandlers.delete(cardId);
+};
+
+// 全てのハンドラーをクリーンアップ
+const cleanupAllHandlers = () => {
+  deckCardLongPressHandlers.clear();
+};
+
+// カードデクリメント時にクリーンアップも実行
+const handleDecrementCard = (cardId: string) => {
+  // 現在のカードの情報を取得
+  const currentCard = props.deckCards.find((card) => card.card.id === cardId);
+
+  // カウントが1の場合、デクリメント後に削除されるためハンドラーもクリーンアップ
+  if (currentCard && currentCard.count === 1) {
+    cleanupCardHandler(cardId);
+  }
+
+  emit("decrementCardCount", cardId);
+};
+
+// デッキリセット時にクリーンアップも実行
+const handleResetDeck = () => {
+  cleanupAllHandlers();
+  emit("resetDeck");
+};
+
 defineExpose({
   exportContainer,
 });
@@ -41,7 +97,7 @@ defineExpose({
 
 <template>
   <div
-    class="flex flex-col flex-grow-0 h-1/2 p-1 sm:p-2 border-b border-slate-700/50 overflow-hidden relative z-10 backdrop-blur-sm"
+    class="flex flex-col flex-grow-0 h-1/2 p-1 sm:p-2 border-b border-slate-700/50 relative z-10 backdrop-blur-sm"
   >
     <!-- デッキ名入力 (モバイル優先) -->
     <div class="mb-1 px-1">
@@ -54,7 +110,7 @@ defineExpose({
         <input
           id="deckName"
           type="text"
-          :value="deckName"
+          :value="props.deckName"
           @input="
             emit('updateDeckName', ($event.target as HTMLInputElement).value)
           "
@@ -68,12 +124,12 @@ defineExpose({
     <div class="flex flex-wrap gap-1 mb-1 px-1">
       <button
         @click="emit('generateDeckCode')"
-        :disabled="isGeneratingCode"
+        :disabled="props.isGeneratingCode"
         class="group relative flex-1 min-w-0 px-1 sm:px-2 py-0.5 sm:py-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded text-xs font-medium hover:from-blue-700 hover:to-blue-800 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-blue-500/25"
         title="デッキコードの入出力"
       >
         <span
-          v-if="!isGeneratingCode"
+          v-if="!props.isGeneratingCode"
           class="flex items-center justify-center gap-1"
         >
           <svg
@@ -114,11 +170,14 @@ defineExpose({
 
       <button
         @click="emit('saveDeckAsPng')"
-        :disabled="deckCards.length === 0 || isSaving"
+        :disabled="props.deckCards.length === 0 || props.isSaving"
         class="group relative flex-1 min-w-0 px-1 sm:px-2 py-0.5 sm:py-1 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded text-xs font-medium hover:from-emerald-700 hover:to-emerald-800 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-emerald-500/25"
         title="デッキ画像を保存"
       >
-        <span v-if="!isSaving" class="flex items-center justify-center gap-1">
+        <span
+          v-if="!props.isSaving"
+          class="flex items-center justify-center gap-1"
+        >
           <svg
             class="w-3 h-3"
             fill="none"
@@ -156,8 +215,8 @@ defineExpose({
       </button>
 
       <button
-        @click="emit('resetDeck')"
-        :disabled="deckCards.length === 0"
+        @click="handleResetDeck"
+        :disabled="props.deckCards.length === 0"
         class="group relative flex-1 min-w-0 px-1 sm:px-2 py-0.5 sm:py-1 bg-gradient-to-r from-red-600 to-red-700 text-white rounded text-xs font-medium hover:from-red-700 hover:to-red-800 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-red-500/25"
         title="デッキをリセット"
       >
@@ -190,27 +249,27 @@ defineExpose({
         <span
           class="text-sm font-bold"
           :class="[
-            totalDeckCards === 60
+            props.totalDeckCards === 60
               ? 'text-green-400'
-              : totalDeckCards > 50
+              : props.totalDeckCards > 50
               ? 'text-yellow-400'
               : 'text-slate-100',
           ]"
         >
-          {{ totalDeckCards }}
+          {{ props.totalDeckCards }}
         </span>
         <span class="text-xs text-slate-400">/ 60</span>
         <div class="w-12 sm:w-16 h-1 bg-slate-700 rounded-full overflow-hidden">
           <div
             class="h-full transition-all duration-300 rounded-full"
             :class="[
-              totalDeckCards === 60
+              props.totalDeckCards === 60
                 ? 'bg-green-500'
-                : totalDeckCards > 50
+                : props.totalDeckCards > 50
                 ? 'bg-yellow-500'
                 : 'bg-blue-500',
             ]"
-            :style="{ width: `${(totalDeckCards / 60) * 100}%` }"
+            :style="{ width: `${(props.totalDeckCards / 60) * 100}%` }"
           ></div>
         </div>
       </div>
@@ -222,19 +281,31 @@ defineExpose({
       class="flex-grow overflow-y-auto grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3 lg:gap-4 p-1 sm:p-2 bg-slate-800/40 backdrop-blur-sm rounded border border-slate-700/50 shadow-xl"
     >
       <div
-        v-for="item in sortedDeckCards"
+        v-for="item in props.sortedDeckCards"
         :key="item.card.id"
         class="group flex flex-col items-center relative h-fit transition-all duration-200"
       >
         <div
           class="w-full relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+          @mousedown="getDeckCardLongPressHandler(item.card.id).startPress"
+          @mouseup="getDeckCardLongPressHandler(item.card.id).endPress"
+          @mouseleave="getDeckCardLongPressHandler(item.card.id).cancelPress"
+          @touchstart.passive="
+            getDeckCardLongPressHandler(item.card.id).startPress
+          "
+          @touchend.passive="getDeckCardLongPressHandler(item.card.id).endPress"
+          @touchcancel.passive="
+            getDeckCardLongPressHandler(item.card.id).cancelPress
+          "
+          @contextmenu.prevent
+          title="長押し: 拡大表示"
         >
           <img
             :src="getCardImageUrlSafe(item.card.id)"
             @error="handleImageError"
             :alt="item.card.name"
             loading="lazy"
-            class="block w-full h-full object-cover transition-transform duration-200"
+            class="block w-full h-full object-cover transition-transform duration-200 select-none"
           />
           <div
             class="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-slate-900/80 via-slate-900/40 to-transparent rounded-b-lg"
@@ -245,7 +316,7 @@ defineExpose({
           class="absolute bottom-2 w-full px-1 flex items-center justify-center gap-1"
         >
           <button
-            @click="emit('decrementCardCount', item.card.id)"
+            @click="handleDecrementCard(item.card.id)"
             class="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-full flex items-center justify-center leading-none transition-all duration-200 shadow-lg hover:shadow-red-500/25"
           >
             <svg
@@ -270,7 +341,7 @@ defineExpose({
           <button
             @click="emit('incrementCardCount', item.card.id)"
             class="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-full flex items-center justify-center leading-none transition-all duration-200 shadow-lg hover:shadow-emerald-500/25 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed"
-            :disabled="item.count >= 4 || totalDeckCards >= 60"
+            :disabled="item.count >= 4 || props.totalDeckCards >= 60"
           >
             <svg
               class="w-3 h-3 sm:w-4 sm:h-4"
@@ -290,7 +361,7 @@ defineExpose({
       </div>
 
       <div
-        v-if="deckCards.length === 0"
+        v-if="props.deckCards.length === 0"
         class="col-span-full text-center mt-2 sm:mt-4"
       >
         <div class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-4">
@@ -324,10 +395,10 @@ defineExpose({
     <!-- エクスポート用の非表示コンテナ -->
     <DeckExportContainer
       ref="deckExportContainerRef"
-      :deck-name="deckName"
-      :deck-cards="deckCards"
-      :sorted-deck-cards="sortedDeckCards"
-      :is-saving="isSaving"
+      :deck-name="props.deckName"
+      :deck-cards="props.deckCards"
+      :sorted-deck-cards="props.sortedDeckCards"
+      :is-saving="props.isSaving"
     />
   </div>
 </template>

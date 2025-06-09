@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { onMounted, defineAsyncComponent } from "vue";
+import { onMounted, defineAsyncComponent, ref } from "vue";
 
 import { useApp } from "./composables";
 import { CardListSection, DeckSection, ToastContainer } from "./components";
+import type { Card } from "./types";
+import { getCardImageUrlSafe } from "./utils/imageHelpers";
 
 const ConfirmModal = defineAsyncComponent(
   () => import("./components/modals/ConfirmModal.vue")
@@ -12,6 +14,9 @@ const DeckCodeModal = defineAsyncComponent(
 );
 const FilterModal = defineAsyncComponent(
   () => import("./components/modals/FilterModal.vue")
+);
+const CardImageModal = defineAsyncComponent(
+  () => import("./components/modals/CardImageModal.vue")
 );
 
 // アプリケーション状態の初期化
@@ -64,6 +69,59 @@ const {
 
 // アプリケーションの初期化
 onMounted(initializeApp);
+
+// モーダルの状態
+const imageModalState = ref({
+  isVisible: false,
+  selectedCard: null as Card | null,
+  selectedImage: null as string | null,
+  selectedIndex: null as number | null,
+});
+
+// カード画像を拡大表示
+const openImageModal = (cardId: string) => {
+  // 単一の検索で deckCard と index を同時に取得
+  const cardIndex = sortedDeckCards.value.findIndex(
+    (item) => item.card.id === cardId
+  );
+
+  if (cardIndex !== -1) {
+    const deckCard = sortedDeckCards.value[cardIndex];
+    imageModalState.value.selectedCard = deckCard.card;
+    imageModalState.value.selectedIndex = cardIndex;
+    imageModalState.value.selectedImage = getCardImageUrlSafe(cardId);
+    imageModalState.value.isVisible = true;
+  }
+};
+
+// モーダルを閉じる
+const closeImageModal = () => {
+  imageModalState.value.isVisible = false;
+  imageModalState.value.selectedImage = null;
+  imageModalState.value.selectedCard = null;
+  imageModalState.value.selectedIndex = null;
+};
+
+// カードナビゲーション
+const handleCardNavigation = (direction: "previous" | "next") => {
+  if (imageModalState.value.selectedIndex === null) return;
+
+  let newIndex: number;
+  if (direction === "previous") {
+    newIndex = imageModalState.value.selectedIndex - 1;
+  } else {
+    newIndex = imageModalState.value.selectedIndex + 1;
+  }
+
+  if (newIndex >= 0 && newIndex < sortedDeckCards.value.length) {
+    const newDeckCard = sortedDeckCards.value[newIndex];
+    imageModalState.value.selectedCard = newDeckCard.card;
+    imageModalState.value.selectedIndex = newIndex;
+    imageModalState.value.selectedImage = getCardImageUrlSafe(
+      newDeckCard.card.id
+    );
+  }
+};
 </script>
 
 <template>
@@ -100,6 +158,7 @@ onMounted(initializeApp);
         @reset-deck="resetDeck"
         @increment-card-count="incrementCardCount"
         @decrement-card-count="decrementCardCount"
+        @open-image-modal="openImageModal"
         class="lg:w-1/2 lg:h-full overflow-y-auto"
       />
 
@@ -146,6 +205,17 @@ onMounted(initializeApp);
       confirm-text="リセットする"
       @confirm="confirmResetDeck"
       @cancel="cancelResetDeck"
+    />
+
+    <!-- カード画像拡大モーダル -->
+    <CardImageModal
+      :is-visible="imageModalState.isVisible"
+      :image-src="imageModalState.selectedImage"
+      :current-card="imageModalState.selectedCard"
+      :card-index="imageModalState.selectedIndex"
+      :total-cards="sortedDeckCards.length"
+      @close="closeImageModal"
+      @navigate="handleCardNavigation"
     />
 
     <!-- トーストコンテナ -->

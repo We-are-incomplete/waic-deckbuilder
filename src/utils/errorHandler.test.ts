@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { handleError, safeAsyncOperation } from "./errorHandler";
+import { ERROR_MESSAGES } from "../constants";
 
 describe("errorHandler", () => {
   describe("handleError", () => {
@@ -26,7 +27,9 @@ describe("errorHandler", () => {
         throw new Error("unreachable");
       }
 
-      expect(result.error.message).toBe("ベースメッセージが指定されていません");
+      expect(result.error.message).toBe(
+        ERROR_MESSAGES.VALIDATION.BASE_MESSAGE_NOT_PROVIDED
+      );
     });
 
     it("Error以外のエラーも処理できる", () => {
@@ -60,7 +63,9 @@ describe("errorHandler", () => {
         throw new Error("unreachable");
       }
 
-      expect(result.error.message).toBe("操作が指定されていません");
+      expect(result.error.message).toBe(
+        ERROR_MESSAGES.VALIDATION.OPERATION_NOT_PROVIDED
+      );
     });
 
     it("エラーメッセージが指定されていない場合にエラーを返す", async () => {
@@ -71,7 +76,9 @@ describe("errorHandler", () => {
         throw new Error("unreachable");
       }
 
-      expect(result.error.message).toBe("エラーメッセージが指定されていません");
+      expect(result.error.message).toBe(
+        ERROR_MESSAGES.VALIDATION.ERROR_MESSAGE_NOT_PROVIDED
+      );
     });
 
     it("非同期操作でエラーが発生した場合にエラーを返す", async () => {

@@ -1,5 +1,6 @@
 import { ok, err, type Result } from "neverthrow";
 import { logger } from "./logger";
+import { ERROR_MESSAGES } from "../constants";
 
 /**
  * エラーを統一的に処理するヘルパー関数
@@ -11,10 +12,11 @@ export function handleError(
   baseMessage: string,
   error: unknown,
   showErrorFunc?: (message: string) => void
-): void {
+): Result<string, { message: string }> {
   if (!baseMessage) {
-    logger.error("ベースメッセージが指定されていません", error);
-    return;
+    const errorMessage = ERROR_MESSAGES.VALIDATION.BASE_MESSAGE_NOT_PROVIDED;
+    logger.error(errorMessage, error);
+    return err({ message: errorMessage });
   }
 
   const fullMessage = `${baseMessage}: ${
@@ -24,8 +26,10 @@ export function handleError(
   logger.error(baseMessage, error);
 
   if (showErrorFunc) {
-    showErrorFunc(fullMessage);
+    showErrorFunc(`${baseMessage}。`);
   }
+
+  return ok(fullMessage);
 }
 
 /**
@@ -41,12 +45,15 @@ export async function safeAsyncOperation(
   showErrorFunc?: (message: string) => void
 ): Promise<Result<void, { message: string; originalError: unknown }>> {
   if (!operation) {
-    return err({ message: "操作が指定されていません", originalError: null });
+    return err({
+      message: ERROR_MESSAGES.VALIDATION.OPERATION_NOT_PROVIDED,
+      originalError: null,
+    });
   }
 
   if (!errorMessage) {
     return err({
-      message: "エラーメッセージが指定されていません",
+      message: ERROR_MESSAGES.VALIDATION.ERROR_MESSAGE_NOT_PROVIDED,
       originalError: null,
     });
   }
@@ -55,7 +62,8 @@ export async function safeAsyncOperation(
     await operation();
     return ok(undefined);
   } catch (caughtError) {
-    handleError(errorMessage, caughtError, showErrorFunc);
-    return err({ message: errorMessage, originalError: caughtError });
+    const errorResult = handleError(errorMessage, caughtError, showErrorFunc);
+    const fullMessage = errorResult.isOk() ? errorResult.value : errorMessage;
+    return err({ message: fullMessage, originalError: caughtError });
   }
 }
