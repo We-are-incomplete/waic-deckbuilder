@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { defineComponent } from "vue";
+import { mount } from "@vue/test-utils";
 import { useLongPress } from "./useLongPress";
 
 describe("useLongPress", () => {
@@ -13,11 +15,21 @@ describe("useLongPress", () => {
 
   it("長押しコールバックが指定した時間後に呼ばれる", async () => {
     const onLongPress = vi.fn();
-    const { startPress, endPress } = useLongPress({
-      delay: 500,
-      onLongPress,
+    let composableResult: ReturnType<typeof useLongPress>;
+
+    const TestComponent = defineComponent({
+      setup() {
+        composableResult = useLongPress({
+          delay: 500,
+          onLongPress,
+        });
+        return composableResult;
+      },
+      template: "<div></div>",
     });
 
+    const wrapper = mount(TestComponent);
+    const { startPress, endPress } = composableResult!;
     const mockEvent = new Event("mousedown");
     startPress(mockEvent);
 
@@ -30,17 +42,28 @@ describe("useLongPress", () => {
     expect(onLongPress).toHaveBeenCalledTimes(1);
 
     endPress();
+    wrapper.unmount();
   });
 
-  it("短時間で終了した場合は通常のプレスコールバックが呼ばれる", () => {
+  it("短時間で終了した場合は通常のプレスコールバックが呼ばれる", async () => {
     const onLongPress = vi.fn();
     const onPress = vi.fn();
-    const { startPress, endPress } = useLongPress({
-      delay: 500,
-      onLongPress,
-      onPress,
+    let composableResult: ReturnType<typeof useLongPress>;
+
+    const TestComponent = defineComponent({
+      setup() {
+        composableResult = useLongPress({
+          delay: 500,
+          onLongPress,
+          onPress,
+        });
+        return composableResult;
+      },
+      template: "<div></div>",
     });
 
+    const wrapper = mount(TestComponent);
+    const { startPress, endPress } = composableResult!;
     const mockEvent = new Event("mousedown");
     startPress(mockEvent);
 
@@ -50,17 +73,28 @@ describe("useLongPress", () => {
 
     expect(onLongPress).not.toHaveBeenCalled();
     expect(onPress).toHaveBeenCalledTimes(1);
+    wrapper.unmount();
   });
 
-  it("キャンセルした場合はどちらのコールバックも呼ばれない", () => {
+  it("キャンセルした場合はどちらのコールバックも呼ばれない", async () => {
     const onLongPress = vi.fn();
     const onPress = vi.fn();
-    const { startPress, cancelPress } = useLongPress({
-      delay: 500,
-      onLongPress,
-      onPress,
+    let composableResult: ReturnType<typeof useLongPress>;
+
+    const TestComponent = defineComponent({
+      setup() {
+        composableResult = useLongPress({
+          delay: 500,
+          onLongPress,
+          onPress,
+        });
+        return composableResult;
+      },
+      template: "<div></div>",
     });
 
+    const wrapper = mount(TestComponent);
+    const { startPress, cancelPress } = composableResult!;
     const mockEvent = new Event("mousedown");
     startPress(mockEvent);
 
@@ -71,17 +105,28 @@ describe("useLongPress", () => {
     vi.advanceTimersByTime(300);
     expect(onLongPress).not.toHaveBeenCalled();
     expect(onPress).not.toHaveBeenCalled();
+    wrapper.unmount();
   });
 
-  it("長押し後に終了してもプレスコールバックは呼ばれない", () => {
+  it("長押し後に終了してもプレスコールバックは呼ばれない", async () => {
     const onLongPress = vi.fn();
     const onPress = vi.fn();
-    const { startPress, endPress } = useLongPress({
-      delay: 500,
-      onLongPress,
-      onPress,
+    let composableResult: ReturnType<typeof useLongPress>;
+
+    const TestComponent = defineComponent({
+      setup() {
+        composableResult = useLongPress({
+          delay: 500,
+          onLongPress,
+          onPress,
+        });
+        return composableResult;
+      },
+      template: "<div></div>",
     });
 
+    const wrapper = mount(TestComponent);
+    const { startPress, endPress } = composableResult!;
     const mockEvent = new Event("mousedown");
     startPress(mockEvent);
 
@@ -92,12 +137,23 @@ describe("useLongPress", () => {
     // 終了してもプレスコールバックは呼ばれない
     endPress();
     expect(onPress).not.toHaveBeenCalled();
+    wrapper.unmount();
   });
 
-  it("デフォルトの長押し時間が500msに設定されている", () => {
+  it("デフォルトの長押し時間が500msに設定されている", async () => {
     const onLongPress = vi.fn();
-    const { startPress } = useLongPress({ onLongPress });
+    let composableResult: ReturnType<typeof useLongPress>;
 
+    const TestComponent = defineComponent({
+      setup() {
+        composableResult = useLongPress({ onLongPress });
+        return composableResult;
+      },
+      template: "<div></div>",
+    });
+
+    const wrapper = mount(TestComponent);
+    const { startPress } = composableResult!;
     const mockEvent = new Event("mousedown");
     startPress(mockEvent);
 
@@ -106,15 +162,28 @@ describe("useLongPress", () => {
 
     vi.advanceTimersByTime(1);
     expect(onLongPress).toHaveBeenCalledTimes(1);
+    wrapper.unmount();
   });
 
-  it("イベントのpreventDefaultが呼ばれる", () => {
-    const { startPress } = useLongPress({});
-    const mockEvent = new Event("mousedown");
+  it("contextmenuイベントのpreventDefaultが呼ばれる", async () => {
+    let composableResult: ReturnType<typeof useLongPress>;
+
+    const TestComponent = defineComponent({
+      setup() {
+        composableResult = useLongPress({});
+        return composableResult;
+      },
+      template: "<div></div>",
+    });
+
+    const wrapper = mount(TestComponent);
+    const { startPress } = composableResult!;
+    const mockEvent = new Event("contextmenu");
     const preventDefaultSpy = vi.spyOn(mockEvent, "preventDefault");
 
     startPress(mockEvent);
 
     expect(preventDefaultSpy).toHaveBeenCalled();
+    wrapper.unmount();
   });
 });

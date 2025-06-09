@@ -1,5 +1,6 @@
 import { ok, err, type Result } from "neverthrow";
 import { logger } from "./logger";
+import { ERROR_MESSAGES } from "../constants";
 
 /**
  * エラーを統一的に処理するヘルパー関数
@@ -13,7 +14,7 @@ export function handleError(
   showErrorFunc?: (message: string) => void
 ): Result<string, { message: string }> {
   if (!baseMessage) {
-    const errorMessage = "ベースメッセージが指定されていません";
+    const errorMessage = ERROR_MESSAGES.VALIDATION.BASE_MESSAGE_NOT_PROVIDED;
     logger.error(errorMessage, error);
     return err({ message: errorMessage });
   }
@@ -44,12 +45,15 @@ export async function safeAsyncOperation(
   showErrorFunc?: (message: string) => void
 ): Promise<Result<void, { message: string; originalError: unknown }>> {
   if (!operation) {
-    return err({ message: "操作が指定されていません", originalError: null });
+    return err({
+      message: ERROR_MESSAGES.VALIDATION.OPERATION_NOT_PROVIDED,
+      originalError: null,
+    });
   }
 
   if (!errorMessage) {
     return err({
-      message: "エラーメッセージが指定されていません",
+      message: ERROR_MESSAGES.VALIDATION.ERROR_MESSAGE_NOT_PROVIDED,
       originalError: null,
     });
   }

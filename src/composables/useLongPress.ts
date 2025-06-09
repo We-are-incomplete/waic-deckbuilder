@@ -7,14 +7,19 @@ export interface UseLongPressOptions {
 }
 
 export function useLongPress(options: UseLongPressOptions = {}) {
-  const { delay = 500, onLongPress, onPress } = options;
-
-  let pressTimer: number | null = null;
+  const {
+    delay = window.navigator.userAgent.includes("Mobile") ? 400 : 500,
+    onLongPress,
+    onPress,
+  } = options;
+  let pressTimer: ReturnType<typeof setTimeout> | null = null;
   let isLongPress = ref(false);
 
   const startPress = (event: Event) => {
-    // デフォルトのコンテキストメニューを無効化
-    event.preventDefault();
+    // デフォルトのコンテキストメニューを無効化（contextmenuイベントの場合のみ）
+    if (event.type === "contextmenu") {
+      event.preventDefault();
+    }
 
     isLongPress.value = false;
     pressTimer = setTimeout(() => {

@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, onUnmounted, watchEffect, defineAsyncComponent } from "vue";
 import type { Card } from "../../types";
 import { handleImageError } from "../../utils/image";
 import { getCardImageUrlSafe } from "../../utils/imageHelpers";
 import { useLongPress } from "../../composables/useLongPress";
-import CardImageModal from "../modals/CardImageModal.vue";
+
+const CardImageModal = defineAsyncComponent(
+  () => import("../modals/CardImageModal.vue")
+);
 
 interface Props {
   availableCards: readonly Card[];
@@ -28,10 +31,7 @@ const selectedCard = ref<Card | null>(null);
 const selectedCardIndex = ref<number | null>(null);
 
 // カード画像を拡大表示
-const openImageModal = (card: Card) => {
-  const cardIndex = props.sortedAndFilteredCards.findIndex(
-    (c) => c.id === card.id
-  );
+const openImageModal = (card: Card, cardIndex: number) => {
   selectedCard.value = card;
   selectedCardIndex.value = cardIndex;
   selectedCardImage.value = getCardImageUrlSafe(card.id);
@@ -68,19 +68,52 @@ const handleCardNavigation = (direction: "previous" | "next") => {
 // 長押し機能の設定
 const longPressHandlers = new Map<string, ReturnType<typeof useLongPress>>();
 
-const getLongPressHandler = (card: Card) => {
+// longPressHandlersのクリーンアップ関数
+const cleanupLongPressHandlers = () => {
+  longPressHandlers.clear();
+};
+
+// 使用されていないハンドラーをクリーンアップ
+const cleanupUnusedHandlers = () => {
+  const currentCardIds = new Set(
+    props.sortedAndFilteredCards.map((card) => card.id)
+  );
+  const handlersToDelete: string[] = [];
+
+  for (const cardId of longPressHandlers.keys()) {
+    if (!currentCardIds.has(cardId)) {
+      handlersToDelete.push(cardId);
+    }
+  }
+
+  for (const cardId of handlersToDelete) {
+    longPressHandlers.delete(cardId);
+  }
+};
+
+const getLongPressHandler = (card: Card, index: number) => {
   if (!longPressHandlers.has(card.id)) {
     longPressHandlers.set(
       card.id,
       useLongPress({
         delay: 500, // 500msで長押し判定
-        onLongPress: () => openImageModal(card),
+        onLongPress: () => openImageModal(card, index),
         onPress: () => emit("addCard", card),
       })
     );
   }
   return longPressHandlers.get(card.id)!;
 };
+
+// カードリストが変更されたら使用されていないハンドラーをクリーンアップ
+watchEffect(() => {
+  cleanupUnusedHandlers();
+});
+
+// コンポーネントアンマウント時に全てのハンドラーをクリーンアップ
+onUnmounted(() => {
+  cleanupLongPressHandlers();
+});
 </script>
 
 <template>
@@ -207,19 +240,23 @@ const getLongPressHandler = (card: Card) => {
 
       <div
         v-else
-        v-for="card in sortedAndFilteredCards"
+        v-for="(card, index) in sortedAndFilteredCards"
         :key="card.id"
         class="group flex flex-col items-center cursor-pointer transition-all duration-200 active:scale-95"
         title="クリック: デッキに追加 / 長押し: 拡大表示"
       >
         <div
           class="w-full relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
-          @mousedown="getLongPressHandler(card).startPress"
-          @mouseup="getLongPressHandler(card).endPress"
-          @mouseleave="getLongPressHandler(card).cancelPress"
-          @touchstart="getLongPressHandler(card).startPress"
-          @touchend="getLongPressHandler(card).endPress"
-          @touchcancel="getLongPressHandler(card).cancelPress"
+          @mousedown="
+            (event) => getLongPressHandler(card, index).startPress(event)
+          "
+          @mouseup="() => getLongPressHandler(card, index).endPress()"
+          @mouseleave="() => getLongPressHandler(card, index).cancelPress()"
+          @touchstart="
+            (event) => getLongPressHandler(card, index).startPress(event)
+          "
+          @touchend="() => getLongPressHandler(card, index).endPress()"
+          @touchcancel="() => getLongPressHandler(card, index).cancelPress()"
           @contextmenu.prevent
         >
           <img

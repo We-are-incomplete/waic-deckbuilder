@@ -71,51 +71,55 @@ const {
 onMounted(initializeApp);
 
 // モーダルの状態
-const isImageModalVisible = ref(false);
-const selectedCardImage = ref<string | null>(null);
-const selectedCard = ref<Card | null>(null);
-const selectedCardIndex = ref<number | null>(null);
+const imageModalState = ref({
+  isVisible: false,
+  selectedCard: null as Card | null,
+  selectedImage: null as string | null,
+  selectedIndex: null as number | null,
+});
 
 // カード画像を拡大表示
 const openImageModal = (cardId: string) => {
-  const deckCard = sortedDeckCards.value.find(
+  // 単一の検索で deckCard と index を同時に取得
+  const cardIndex = sortedDeckCards.value.findIndex(
     (item) => item.card.id === cardId
   );
-  if (deckCard) {
-    const cardIndex = sortedDeckCards.value.findIndex(
-      (item) => item.card.id === cardId
-    );
-    selectedCard.value = deckCard.card;
-    selectedCardIndex.value = cardIndex;
-    selectedCardImage.value = getCardImageUrlSafe(cardId);
-    isImageModalVisible.value = true;
+
+  if (cardIndex !== -1) {
+    const deckCard = sortedDeckCards.value[cardIndex];
+    imageModalState.value.selectedCard = deckCard.card;
+    imageModalState.value.selectedIndex = cardIndex;
+    imageModalState.value.selectedImage = getCardImageUrlSafe(cardId);
+    imageModalState.value.isVisible = true;
   }
 };
 
 // モーダルを閉じる
 const closeImageModal = () => {
-  isImageModalVisible.value = false;
-  selectedCardImage.value = null;
-  selectedCard.value = null;
-  selectedCardIndex.value = null;
+  imageModalState.value.isVisible = false;
+  imageModalState.value.selectedImage = null;
+  imageModalState.value.selectedCard = null;
+  imageModalState.value.selectedIndex = null;
 };
 
 // カードナビゲーション
 const handleCardNavigation = (direction: "previous" | "next") => {
-  if (selectedCardIndex.value === null) return;
+  if (imageModalState.value.selectedIndex === null) return;
 
   let newIndex: number;
   if (direction === "previous") {
-    newIndex = selectedCardIndex.value - 1;
+    newIndex = imageModalState.value.selectedIndex - 1;
   } else {
-    newIndex = selectedCardIndex.value + 1;
+    newIndex = imageModalState.value.selectedIndex + 1;
   }
 
   if (newIndex >= 0 && newIndex < sortedDeckCards.value.length) {
     const newDeckCard = sortedDeckCards.value[newIndex];
-    selectedCard.value = newDeckCard.card;
-    selectedCardIndex.value = newIndex;
-    selectedCardImage.value = getCardImageUrlSafe(newDeckCard.card.id);
+    imageModalState.value.selectedCard = newDeckCard.card;
+    imageModalState.value.selectedIndex = newIndex;
+    imageModalState.value.selectedImage = getCardImageUrlSafe(
+      newDeckCard.card.id
+    );
   }
 };
 </script>
@@ -205,10 +209,10 @@ const handleCardNavigation = (direction: "previous" | "next") => {
 
     <!-- カード画像拡大モーダル -->
     <CardImageModal
-      :is-visible="isImageModalVisible"
-      :image-src="selectedCardImage"
-      :current-card="selectedCard"
-      :card-index="selectedCardIndex"
+      :is-visible="imageModalState.isVisible"
+      :image-src="imageModalState.selectedImage"
+      :current-card="imageModalState.selectedCard"
+      :card-index="imageModalState.selectedIndex"
       :total-cards="sortedDeckCards.length"
       @close="closeImageModal"
       @navigate="handleCardNavigation"
