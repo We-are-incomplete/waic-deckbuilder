@@ -11,10 +11,11 @@ export function handleError(
   baseMessage: string,
   error: unknown,
   showErrorFunc?: (message: string) => void
-): void {
+): Result<string, { message: string }> {
   if (!baseMessage) {
-    logger.error("ベースメッセージが指定されていません", error);
-    return;
+    const errorMessage = "ベースメッセージが指定されていません";
+    logger.error(errorMessage, error);
+    return err({ message: errorMessage });
   }
 
   const fullMessage = `${baseMessage}: ${
@@ -24,8 +25,10 @@ export function handleError(
   logger.error(baseMessage, error);
 
   if (showErrorFunc) {
-    showErrorFunc(fullMessage);
+    showErrorFunc(`${baseMessage}。`);
   }
+
+  return ok(fullMessage);
 }
 
 /**
@@ -55,7 +58,8 @@ export async function safeAsyncOperation(
     await operation();
     return ok(undefined);
   } catch (caughtError) {
-    handleError(errorMessage, caughtError, showErrorFunc);
-    return err({ message: errorMessage, originalError: caughtError });
+    const errorResult = handleError(errorMessage, caughtError, showErrorFunc);
+    const fullMessage = errorResult.isOk() ? errorResult.value : errorMessage;
+    return err({ message: fullMessage, originalError: caughtError });
   }
 }
