@@ -269,12 +269,18 @@ export const useDeckStore = defineStore("deck", () => {
   );
 
   if (debounceResult.isErr()) {
-    throw new Error("debounce作成に失敗しました");
+    errorHandler.value.handleRuntimeError(
+      "デッキ保存用のdebounce作成に失敗しました",
+      debounceResult.error
+    );
+    // フォールバック: デバウンスなしで直接保存
+    watch(deckCards, (newDeck) => saveDeckToLocalStorage(newDeck), {
+      deep: true,
+    });
+  } else {
+    const { debouncedFunc: debouncedSaveDeck } = debounceResult.value;
+    watch(deckCards, debouncedSaveDeck, { deep: true });
   }
-
-  const { debouncedFunc: debouncedSaveDeck } = debounceResult.value;
-
-  watch(deckCards, debouncedSaveDeck, { deep: true });
 
   // デッキ名変更時のローカルストレージ保存（デバウンス）
   const debounceNameResult = createDebounce(
@@ -283,12 +289,16 @@ export const useDeckStore = defineStore("deck", () => {
   );
 
   if (debounceNameResult.isErr()) {
-    throw new Error("debounce作成に失敗しました");
+    errorHandler.value.handleRuntimeError(
+      "デッキ名保存用のdebounce作成に失敗しました",
+      debounceNameResult.error
+    );
+    // フォールバック: デバウンスなしで直接保存
+    watch(deckName, (newName) => saveDeckName(newName));
+  } else {
+    const { debouncedFunc: debouncedSaveDeckName } = debounceNameResult.value;
+    watch(deckName, debouncedSaveDeckName);
   }
-
-  const { debouncedFunc: debouncedSaveDeckName } = debounceNameResult.value;
-
-  watch(deckName, debouncedSaveDeckName);
 
   return {
     // リアクティブな状態

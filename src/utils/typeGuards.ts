@@ -286,46 +286,32 @@ export const isPresent = <T>(value: T | null | undefined): value is T => {
 };
 
 /**
- * 型アサーション用のヘルパー
+ * 型アサーション用のヘルパー（Result型版）
  */
-export const assertType = <T>(
+export const validateType = <T>(
   value: unknown,
   guard: (value: unknown) => value is T,
   errorMessage?: string
-): asserts value is T => {
-  if (!guard(value)) {
-    throw new TypeError(errorMessage || `Value does not match expected type`);
-  }
-};
-
-export const assertArray = <T>(
-  value: unknown,
-  itemGuard: (item: unknown) => item is T,
-  errorMessage?: string
-): asserts value is T[] => {
-  if (!isArrayOf(value, itemGuard)) {
-    throw new TypeError(
-      errorMessage || `Value is not a valid array of the expected type`
-    );
-  }
-};
-
-/**
- * 実行時型検証のためのヘルパー
- */
-export const validate = <T>(
-  value: unknown,
-  guard: (value: unknown) => value is T
 ): { isValid: true; value: T } | { isValid: false; error: string } => {
   if (guard(value)) {
     return { isValid: true, value };
   }
-  return { isValid: false, error: "Type validation failed" };
+  return {
+    isValid: false,
+    error: errorMessage || `Value does not match expected type`,
+  };
 };
 
-export const validateArray = <T>(
+export const validateArrayType = <T>(
   value: unknown,
-  itemGuard: (item: unknown) => item is T
+  itemGuard: (item: unknown) => item is T,
+  errorMessage?: string
 ): { isValid: true; value: T[] } | { isValid: false; error: string } => {
-  return validate(value, (v): v is T[] => isArrayOf(v, itemGuard));
+  if (isArrayOf(value, itemGuard)) {
+    return { isValid: true, value };
+  }
+  return {
+    isValid: false,
+    error: errorMessage || `Value is not a valid array of the expected type`,
+  };
 };

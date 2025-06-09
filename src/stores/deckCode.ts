@@ -11,6 +11,7 @@ import {
 } from "../utils";
 import { useDeckStore } from "./deck";
 import { useToastStore } from "./toast";
+import { fromAsyncThrowable } from "neverthrow";
 
 // ソート関数インスタンス
 const naturalSort = createNaturalSort();
@@ -76,23 +77,17 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
   const copyDeckCode = async (): Promise<void> => {
     const toastStore = useToastStore();
     error.value = null;
-    try {
-      // 最新のClipboard APIを使用
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(deckCode.value);
-        toastStore.showSuccess("デッキコードをコピーしました");
-      } else {
+
+    // Clipboard APIを安全にラップ
+    const safeClipboardWrite = fromAsyncThrowable(
+      async (text: string) => {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+          return;
+        }
         // フォールバック: document.execCommandを使用
-        throw new Error("Clipboard API not supported or failed");
-      }
-    } catch (e) {
-      logger.warn(
-        "Clipboard APIが利用できないか、失敗しました。フォールバックを試行します。",
-        e
-      );
-      try {
         const textarea = document.createElement("textarea");
-        textarea.value = deckCode.value;
+        textarea.value = text;
         // 画面外に配置してユーザーに見えないようにする
         textarea.style.position = "fixed";
         textarea.style.left = "-9999px";
@@ -101,15 +96,25 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
         textarea.focus();
         textarea.select();
 
-        document.execCommand("copy");
+        const success = document.execCommand("copy");
         document.body.removeChild(textarea);
-        toastStore.showSuccess("デッキコードをコピーしました");
-      } catch (fallbackError) {
-        const errorMessage = "デッキコードのコピーに失敗しました";
-        logger.error(errorMessage + ":", fallbackError);
-        error.value = errorMessage;
-        toastStore.showError(errorMessage);
-      }
+
+        if (!success) {
+          throw new Error("execCommand failed");
+        }
+      },
+      (error: unknown) => error
+    );
+
+    const result = await safeClipboardWrite(deckCode.value);
+
+    if (result.isOk()) {
+      toastStore.showSuccess("デッキコードをコピーしました");
+    } else {
+      const errorMessage = "デッキコードのコピーに失敗しました";
+      logger.error(errorMessage + ":", result.error);
+      error.value = errorMessage;
+      toastStore.showError(errorMessage);
     }
   };
 

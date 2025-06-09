@@ -115,7 +115,8 @@ export const memoizeArrayComputation = <TItem, TReturn>(
   const arrayKeySerializer = (args: readonly unknown[]): string => {
     const items = args[0] as readonly TItem[];
     if (!Array.isArray(items)) {
-      throw new Error("First argument must be an array");
+      // エラーをthrowする代わりに、デフォルトキーを返す
+      return `invalid-array-${Date.now()}`;
     }
 
     // 配列の内容を基にしたハッシュ生成
@@ -148,15 +149,21 @@ export const memoizeObjectComputation = <
   const objectKeySerializer = (args: readonly unknown[]): string => {
     const obj = args[0] as TObject;
     if (typeof obj !== "object" || obj === null) {
-      throw new Error("First argument must be an object");
+      // エラーをthrowする代わりに、デフォルトキーを返す
+      return `invalid-object-${Date.now()}`;
     }
 
     // オブジェクトの安定したキー生成
-    const sortedKeys = Object.keys(obj).sort();
-    const keyValuePairs = sortedKeys.map(
-      (key) => `${key}:${JSON.stringify(obj[key])}`
-    );
-    return keyValuePairs.join("|");
+    try {
+      const sortedKeys = Object.keys(obj).sort();
+      const keyValuePairs = sortedKeys.map(
+        (key) => `${key}:${JSON.stringify(obj[key])}`
+      );
+      return keyValuePairs.join("|");
+    } catch {
+      // JSONシリアライズできない場合はオブジェクトの型とキー数を使用
+      return `object-keys:${Object.keys(obj).length}`;
+    }
   };
 
   return memoize(fn, {

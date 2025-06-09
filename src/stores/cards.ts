@@ -7,6 +7,7 @@ import {
   type ShowToastFunction,
 } from "../utils/errorHandler";
 import * as CardDomain from "../domain/card";
+import { fromAsyncThrowable, ok, err, type Result } from "neverthrow";
 
 // カードストア専用のエラー型
 type CardStoreError =
@@ -30,20 +31,27 @@ export const useCardsStore = defineStore("cards", () => {
   /**
    * カードデータを取得する純粋関数
    */
-  const fetchCardData = async (): Promise<Card[]> => {
-    const response = await fetch(`${import.meta.env.BASE_URL}cards.json`);
+  const fetchCardData = async (): Promise<Result<Card[], unknown>> => {
+    const safeFetch = fromAsyncThrowable(
+      async (): Promise<Card[]> => {
+        const response = await fetch(`${import.meta.env.BASE_URL}cards.json`);
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
 
-    const data = await response.json();
+        const data = await response.json();
 
-    if (!Array.isArray(data)) {
-      throw new Error("カードデータの形式が不正です");
-    }
+        if (!Array.isArray(data)) {
+          throw new Error("カードデータの形式が不正です");
+        }
 
-    return data;
+        return data;
+      },
+      (error: unknown) => error
+    );
+
+    return await safeFetch();
   };
 
   /**
@@ -63,6 +71,16 @@ export const useCardsStore = defineStore("cards", () => {
     }
 
     return validCards;
+  };
+
+  /**
+   * 有効なカードデータの存在を検証
+   */
+  const ensureValidCards = (cards: Card[]): Result<Card[], string> => {
+    if (cards.length === 0) {
+      return err("有効なカードデータが見つかりませんでした");
+    }
+    return ok(cards);
   };
 
   /**
@@ -133,26 +151,33 @@ export const useCardsStore = defineStore("cards", () => {
     const result = await safeAsyncOperation(
       async () => {
         // データ取得
-        const rawCards = await fetchCardData();
+        const fetchResult = await fetchCardData();
+        if (fetchResult.isErr()) {
+          throw fetchResult.error;
+        }
+        const rawCards = fetchResult.value;
 
         // データ検証
         const validCards = validateCards(rawCards);
 
-        if (validCards.length === 0) {
-          throw new Error("有効なカードデータが見つかりませんでした");
+        // 有効なカードの存在を確認
+        const checkedCardsResult = ensureValidCards(validCards);
+        if (checkedCardsResult.isErr()) {
+          throw new Error(checkedCardsResult.error);
         }
+        const checkedCards = checkedCardsResult.value;
 
         // ストアに設定
-        availableCards.value = readonly(validCards);
+        availableCards.value = readonly(checkedCards);
 
         // 画像プリロード（非同期、エラーでも続行）
-        const preloadResult = preloadImages(validCards);
+        const preloadResult = preloadImages(checkedCards);
         if (preloadResult.isErr()) {
           logger.warn("画像のプリロードに失敗しました:", preloadResult.error);
           // プリロードの失敗は致命的ではないので続行
         }
 
-        logger.info(`${validCards.length}枚のカードを読み込みました`);
+        logger.info(`${checkedCards.length}枚のカードを読み込みました`);
       },
       "カードデータの読み込み",
       showToast
