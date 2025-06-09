@@ -13,6 +13,7 @@
     "@tailwindcss/vite": "^4.1.8",
     "html2canvas-pro": "^1.5.11",
     "neverthrow": "^8.2.0",
+    "pinia": "^3.0.3",
     "tailwindcss": "^4.1.8",
     "vue": "^3.5.16"
   },

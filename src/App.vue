@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, defineAsyncComponent, ref } from "vue";
 
-import { useApp } from "./composables";
+import { useAppStore } from "./stores";
 import { CardListSection, DeckSection, ToastContainer } from "./components";
 import type { Card } from "./types";
 import { getCardImageUrlSafe } from "./utils/imageHelpers";
@@ -19,56 +19,13 @@ const CardImageModal = defineAsyncComponent(
   () => import("./components/modals/CardImageModal.vue")
 );
 
-// アプリケーション状態の初期化
-const {
-  // Template refs
-  deckSectionRef,
-
-  // State
-  availableCards,
-  isLoading,
-  error,
-  deckCards,
-  deckName,
-  sortedDeckCards,
-  totalDeckCards,
-  deckCode,
-  importDeckCode,
-  isGeneratingCode,
-  showDeckCodeModal,
-  deckCodeError,
-  showResetConfirmModal,
-  toasts,
-  isFilterModalOpen,
-  filterCriteria,
-  allTags,
-  sortedAndFilteredCards,
-  allKinds,
-  allTypes,
-  isSaving,
-
-  // Actions
-  addCardToDeck,
-  incrementCardCount,
-  decrementCardCount,
-  setDeckName,
-  generateAndShowDeckCode,
-  copyDeckCode,
-  importDeckFromCode,
-  setImportDeckCode,
-  resetDeck,
-  confirmResetDeck,
-  cancelResetDeck,
-  removeToast,
-  openFilterModal,
-  closeFilterModal,
-  updateFilterCriteria,
-  saveDeckAsPng,
-  initializeApp,
-} = useApp();
+// ストア初期化
+const appStore = useAppStore();
+const { cardsStore, deckStore, filterStore, toastStore, deckCodeStore } =
+  appStore;
 
 // アプリケーションの初期化
-onMounted(initializeApp);
+onMounted(appStore.initializeApp);
 
 // モーダルの状態
 const imageModalState = ref({
@@ -81,12 +38,12 @@ const imageModalState = ref({
 // カード画像を拡大表示
 const openImageModal = (cardId: string) => {
   // 単一の検索で deckCard と index を同時に取得
-  const cardIndex = sortedDeckCards.value.findIndex(
+  const cardIndex = deckStore.sortedDeckCards.findIndex(
     (item) => item.card.id === cardId
   );
 
   if (cardIndex !== -1) {
-    const deckCard = sortedDeckCards.value[cardIndex];
+    const deckCard = deckStore.sortedDeckCards[cardIndex];
     imageModalState.value.selectedCard = deckCard.card;
     imageModalState.value.selectedIndex = cardIndex;
     imageModalState.value.selectedImage = getCardImageUrlSafe(cardId);
@@ -113,8 +70,8 @@ const handleCardNavigation = (direction: "previous" | "next") => {
     newIndex = imageModalState.value.selectedIndex + 1;
   }
 
-  if (newIndex >= 0 && newIndex < sortedDeckCards.value.length) {
-    const newDeckCard = sortedDeckCards.value[newIndex];
+  if (newIndex >= 0 && newIndex < deckStore.sortedDeckCards.length) {
+    const newDeckCard = deckStore.sortedDeckCards[newIndex];
     imageModalState.value.selectedCard = newDeckCard.card;
     imageModalState.value.selectedIndex = newIndex;
     imageModalState.value.selectedImage = getCardImageUrlSafe(
@@ -135,65 +92,65 @@ const handleCardNavigation = (direction: "previous" | "next") => {
       <!-- デッキセクション -->
       <DeckSection
         ref="deckSectionRef"
-        :deck-cards="deckCards"
-        :deck-name="deckName"
-        :sorted-deck-cards="sortedDeckCards"
-        :total-deck-cards="totalDeckCards"
-        :is-generating-code="isGeneratingCode"
-        :is-saving="isSaving"
-        @update-deck-name="setDeckName"
-        @generate-deck-code="generateAndShowDeckCode"
-        @save-deck-as-png="saveDeckAsPng"
-        @reset-deck="resetDeck"
-        @increment-card-count="incrementCardCount"
-        @decrement-card-count="decrementCardCount"
+        :deck-cards="deckStore.deckCards"
+        :deck-name="deckStore.deckName"
+        :sorted-deck-cards="deckStore.sortedDeckCards"
+        :total-deck-cards="deckStore.totalDeckCards"
+        :is-generating-code="deckCodeStore.isGeneratingCode"
+        :is-saving="appStore.exportStore.isSaving"
+        @update-deck-name="deckStore.setDeckName"
+        @generate-deck-code="deckCodeStore.generateAndShowDeckCode"
+        @save-deck-as-png="appStore.saveDeckAsPng"
+        @reset-deck="appStore.resetDeck"
+        @increment-card-count="deckStore.incrementCardCount"
+        @decrement-card-count="deckStore.decrementCardCount"
         @open-image-modal="openImageModal"
         class="lg:w-1/2 lg:h-full overflow-y-auto"
       />
 
       <!-- カード一覧セクション -->
       <CardListSection
-        :available-cards="availableCards"
-        :sorted-and-filtered-cards="sortedAndFilteredCards"
-        :is-loading="isLoading"
-        :error="error"
-        @open-filter="openFilterModal"
-        @add-card="addCardToDeck"
+        :available-cards="cardsStore.availableCards"
+        :sorted-and-filtered-cards="filterStore.sortedAndFilteredCards"
+        :is-loading="cardsStore.isLoading"
+        :error="cardsStore.error"
+        @open-filter="filterStore.openFilterModal"
+        @add-card="deckStore.addCardToDeck"
         class="lg:w-1/2 lg:h-full overflow-y-auto"
       />
     </div>
 
     <!-- フィルターモーダル -->
     <FilterModal
-      :is-visible="isFilterModalOpen"
-      :filter-criteria="filterCriteria"
-      :all-kinds="allKinds"
-      :all-types="allTypes"
-      :all-tags="allTags"
-      @close="closeFilterModal"
-      @update-filter="updateFilterCriteria"
+      :is-visible="filterStore.isFilterModalOpen"
+      :filter-criteria="filterStore.filterCriteria"
+      :all-kinds="filterStore.allKinds"
+      :all-types="filterStore.allTypes"
+      :all-tags="filterStore.allTags"
+      @close="filterStore.closeFilterModal"
+      @update-filter="filterStore.updateFilterCriteria"
     />
 
     <!-- デッキコードモーダル -->
     <DeckCodeModal
-      :is-visible="showDeckCodeModal"
-      :deck-code="deckCode"
-      :import-deck-code="importDeckCode"
-      :error="deckCodeError"
-      @close="showDeckCodeModal = false"
-      @update-import-code="setImportDeckCode"
-      @copy-code="copyDeckCode"
-      @import-code="importDeckFromCode"
+      :is-visible="deckCodeStore.showDeckCodeModal"
+      :deck-code="deckCodeStore.deckCode"
+      :import-deck-code="deckCodeStore.importDeckCode"
+      :error="deckCodeStore.error"
+      @close="deckCodeStore.showDeckCodeModal = false"
+      @update-import-code="deckCodeStore.setImportDeckCode"
+      @copy-code="deckCodeStore.copyDeckCode"
+      @import-code="appStore.importDeckFromCode"
     />
 
     <!-- デッキリセット確認モーダル -->
     <ConfirmModal
-      :is-visible="showResetConfirmModal"
+      :is-visible="appStore.showResetConfirmModal"
       title="デッキリセット"
       message="デッキ内容を全てリセットしてもよろしいですか？"
       confirm-text="リセットする"
-      @confirm="confirmResetDeck"
-      @cancel="cancelResetDeck"
+      @confirm="appStore.confirmResetDeck"
+      @cancel="appStore.cancelResetDeck"
     />
 
     <!-- カード画像拡大モーダル -->
@@ -202,13 +159,16 @@ const handleCardNavigation = (direction: "previous" | "next") => {
       :image-src="imageModalState.selectedImage"
       :current-card="imageModalState.selectedCard"
       :card-index="imageModalState.selectedIndex"
-      :total-cards="sortedDeckCards.length"
+      :total-cards="deckStore.sortedDeckCards.length"
       @close="closeImageModal"
       @navigate="handleCardNavigation"
     />
 
     <!-- トーストコンテナ -->
-    <ToastContainer :toasts="toasts" @remove-toast="removeToast" />
+    <ToastContainer
+      :toasts="toastStore.toasts"
+      @remove-toast="toastStore.removeToast"
+    />
   </div>
 </template>
 
