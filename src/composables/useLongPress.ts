@@ -21,6 +21,12 @@ export function useLongPress(options: UseLongPressOptions = {}) {
       event.preventDefault();
     }
 
+    // 既存のタイマーをクリア（重複イベントを防ぐ）
+    if (pressTimer) {
+      clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+
     isLongPress.value = false;
     pressTimer = setTimeout(() => {
       isLongPress.value = true;
