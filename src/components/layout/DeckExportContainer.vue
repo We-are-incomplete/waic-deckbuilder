@@ -26,6 +26,17 @@ const MARGIN_MEDIUM = 44;
 const MARGIN_LARGE = 56;
 
 /**
+ * カード画像URLを安全に取得
+ */
+const getCardImageUrlSafe = (cardId: string): string => {
+  const result = getCardImageUrl(cardId);
+  if (result.isOk()) {
+    return result.value;
+  }
+  return ""; // エラー時は空文字を返す
+};
+
+/**
  * カード枚数に基づいてカード幅を計算
  */
 const calculateCardWidth = (cardCount: number): string => {
@@ -86,7 +97,7 @@ defineExpose({ exportContainer });
       >
         <!-- カード画像 -->
         <img
-          :src="getCardImageUrl(item.card.id)"
+          :src="getCardImageUrlSafe(item.card.id)"
           :alt="item.card.name"
           class="w-full h-full object-cover"
           :style="{

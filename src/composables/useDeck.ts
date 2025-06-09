@@ -138,23 +138,46 @@ export function useDeck() {
    * ローカルストレージからデッキを初期化
    */
   const initializeDeck = (availableCards: readonly Card[]): void => {
-    deckCards.value = loadDeckFromLocalStorage(availableCards);
-    deckName.value = loadDeckName();
+    const loadDeckResult = loadDeckFromLocalStorage(availableCards);
+    if (loadDeckResult.isOk()) {
+      deckCards.value = loadDeckResult.value;
+    } else {
+      deckCards.value = [];
+    }
+
+    const loadNameResult = loadDeckName();
+    if (loadNameResult.isOk()) {
+      deckName.value = loadNameResult.value;
+    } else {
+      deckName.value = "新しいデッキ";
+    }
   };
 
   // デッキ変更時のローカルストレージ保存（デバウンス）
-  const { debouncedFunc: debouncedSaveDeck } = createDebounce(
+  const debounceResult = createDebounce(
     (newDeck: DeckCard[]) => saveDeckToLocalStorage(newDeck),
     300
   );
 
+  if (debounceResult.isErr()) {
+    throw new Error("unreachable");
+  }
+
+  const { debouncedFunc: debouncedSaveDeck } = debounceResult.value;
+
   watch(deckCards, debouncedSaveDeck, { deep: true });
 
   // デッキ名変更時のローカルストレージ保存（デバウンス）
-  const { debouncedFunc: debouncedSaveDeckName } = createDebounce(
+  const debounceNameResult = createDebounce(
     (newName: string) => saveDeckName(newName),
     300
   );
+
+  if (debounceNameResult.isErr()) {
+    throw new Error("unreachable");
+  }
+
+  const { debouncedFunc: debouncedSaveDeckName } = debounceNameResult.value;
 
   watch(deckName, debouncedSaveDeckName);
 

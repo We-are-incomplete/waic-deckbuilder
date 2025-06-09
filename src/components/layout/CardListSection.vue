@@ -16,6 +16,15 @@ interface Emits {
 
 defineProps<Props>();
 const emit = defineEmits<Emits>();
+
+// カード画像URLを取得するcomputed property
+const getCardImageUrlSafe = (cardId: string): string => {
+  const result = getCardImageUrl(cardId);
+  if (result.isOk()) {
+    return result.value;
+  }
+  return ""; // エラー時は空文字を返す
+};
 </script>
 
 <template>
@@ -152,7 +161,7 @@ const emit = defineEmits<Emits>();
           class="w-full relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
         >
           <img
-            :src="getCardImageUrl(card.id)"
+            :src="getCardImageUrlSafe(card.id)"
             @error="handleImageError"
             :alt="card.name"
             loading="lazy"

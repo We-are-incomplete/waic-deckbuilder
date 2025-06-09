@@ -29,6 +29,17 @@ const deckExportContainerRef = ref<InstanceType<
   typeof DeckExportContainer
 > | null>(null);
 
+/**
+ * カード画像URLを安全に取得
+ */
+const getCardImageUrlSafe = (cardId: string): string => {
+  const result = getCardImageUrl(cardId);
+  if (result.isOk()) {
+    return result.value;
+  }
+  return ""; // エラー時は空文字を返す
+};
+
 const exportContainer = computed(
   () => deckExportContainerRef.value?.exportContainer || null
 );
@@ -229,7 +240,7 @@ defineExpose({
           class="w-full relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
         >
           <img
-            :src="getCardImageUrl(item.card.id)"
+            :src="getCardImageUrlSafe(item.card.id)"
             @error="handleImageError"
             :alt="item.card.name"
             loading="lazy"
