@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ToastMessage } from "../../composables/useToast";
+import type { ToastMessage } from "../../stores/toast";
 
 defineProps<{
   toasts: ToastMessage[];

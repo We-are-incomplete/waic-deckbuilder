@@ -1,4 +1,5 @@
-import { ref, type Ref } from "vue";
+import { defineStore } from "pinia";
+import { ref } from "vue";
 import type { Card, DeckCard } from "../types";
 import {
   encodeDeckCode,
@@ -8,21 +9,22 @@ import {
   createKindSort,
   createTypeSort,
 } from "../utils";
-import { useToast } from "./useToast";
+import { useDeckStore } from "./deck";
+import { useToastStore } from "./toast";
 
 // ソート関数インスタンス
 const naturalSort = createNaturalSort();
 const kindSort = createKindSort();
 const typeSort = createTypeSort();
 
-export function useDeckCode(deckCards: Ref<DeckCard[]>) {
+export const useDeckCodeStore = defineStore("deckCode", () => {
   const deckCode = ref<string>("");
   const importDeckCode = ref<string>("");
   const isGeneratingCode = ref<boolean>(false);
   const showDeckCodeModal = ref<boolean>(false);
   const error = ref<string | null>(null);
-
-  const { showError, showSuccess } = useToast();
+  const deckStore = useDeckStore();
+  const toastStore = useToastStore();
 
   /**
    * デッキカードの比較関数
@@ -49,7 +51,7 @@ export function useDeckCode(deckCards: Ref<DeckCard[]>) {
     error.value = null;
     try {
       // デッキカードをソートしてからエンコード
-      const sortedDeck = [...deckCards.value].sort(compareDeckCards);
+      const sortedDeck = [...deckStore.deckCards].sort(compareDeckCards);
       deckCode.value = encodeDeckCode(sortedDeck);
       logger.debug("生成されたデッキコード:", deckCode.value);
       logger.debug("デッキカード数:", sortedDeck.length);
@@ -62,7 +64,7 @@ export function useDeckCode(deckCards: Ref<DeckCard[]>) {
       const errorMessage = "デッキコードの生成に失敗しました";
       logger.error(errorMessage + ":", e);
       error.value = errorMessage;
-      showError(errorMessage);
+      toastStore.showError(errorMessage);
     } finally {
       isGeneratingCode.value = false;
     }
@@ -72,12 +74,13 @@ export function useDeckCode(deckCards: Ref<DeckCard[]>) {
    * デッキコードをクリップボードにコピー
    */
   const copyDeckCode = async (): Promise<void> => {
+    const toastStore = useToastStore();
     error.value = null;
     try {
       // 最新のClipboard APIを使用
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(deckCode.value);
-        showSuccess("デッキコードをコピーしました");
+        toastStore.showSuccess("デッキコードをコピーしました");
       } else {
         // フォールバック: document.execCommandを使用
         throw new Error("Clipboard API not supported or failed");
@@ -100,12 +103,12 @@ export function useDeckCode(deckCards: Ref<DeckCard[]>) {
 
         document.execCommand("copy");
         document.body.removeChild(textarea);
-        showSuccess("デッキコードをコピーしました");
+        toastStore.showSuccess("デッキコードをコピーしました");
       } catch (fallbackError) {
         const errorMessage = "デッキコードのコピーに失敗しました";
         logger.error(errorMessage + ":", fallbackError);
         error.value = errorMessage;
-        showError(errorMessage);
+        toastStore.showError(errorMessage);
       }
     }
   };
@@ -113,10 +116,9 @@ export function useDeckCode(deckCards: Ref<DeckCard[]>) {
   /**
    * デッキコードからインポート
    */
-  const importDeckFromCode = (
-    availableCards: readonly Card[],
-    setDeckCards: (cards: DeckCard[]) => void
-  ): void => {
+  const importDeckFromCode = (availableCards: readonly Card[]): void => {
+    const deckStore = useDeckStore();
+    const toastStore = useToastStore();
     error.value = null;
 
     // 入力検証：空文字列チェック
@@ -124,7 +126,7 @@ export function useDeckCode(deckCards: Ref<DeckCard[]>) {
       const warningMessage = "デッキコードが空です";
       logger.warn(warningMessage);
       error.value = warningMessage;
-      showError(warningMessage);
+      toastStore.showError(warningMessage);
       return;
     }
 
@@ -137,7 +139,7 @@ export function useDeckCode(deckCards: Ref<DeckCard[]>) {
       const warningMessage = `デッキコードが長すぎます（最大${MAX_DECK_CODE_LENGTH}文字）`;
       logger.warn(warningMessage);
       error.value = warningMessage;
-      showError(warningMessage);
+      toastStore.showError(warningMessage);
       return;
     }
 
@@ -150,7 +152,7 @@ export function useDeckCode(deckCards: Ref<DeckCard[]>) {
       const warningMessage = "無効なデッキコード形式です";
       logger.warn(warningMessage);
       error.value = warningMessage;
-      showError(warningMessage);
+      toastStore.showError(warningMessage);
       return;
     }
 
@@ -162,7 +164,7 @@ export function useDeckCode(deckCards: Ref<DeckCard[]>) {
         const warningMessage = `無効なカードID形式が含まれています: ${cardId}`;
         logger.warn(warningMessage);
         error.value = warningMessage;
-        showError(warningMessage);
+        toastStore.showError(warningMessage);
         return;
       }
     }
@@ -179,10 +181,10 @@ export function useDeckCode(deckCards: Ref<DeckCard[]>) {
       logger.debug("デコード結果:", importedCards);
 
       if (importedCards.length > 0) {
-        setDeckCards(importedCards); // deckCardsを更新
+        deckStore.setDeckCards(importedCards);
         importDeckCode.value = "";
         showDeckCodeModal.value = false;
-        showSuccess(
+        toastStore.showSuccess(
           `デッキをインポートしました（${importedCards.length}種類のカード）`
         );
       } else {
@@ -191,14 +193,14 @@ export function useDeckCode(deckCards: Ref<DeckCard[]>) {
         logger.warn(warningMessage);
         logger.debug("入力されたデッキコード:", trimmedCode);
         error.value = warningMessage;
-        showError(warningMessage);
+        toastStore.showError(warningMessage);
       }
     } catch (e) {
       const errorMessage = "デッキコードの復元に失敗しました";
       logger.error(errorMessage + ":", e);
       logger.debug("入力されたデッキコード:", trimmedCode);
       error.value = errorMessage;
-      showError(errorMessage);
+      toastStore.showError(errorMessage);
     }
   };
 
@@ -220,4 +222,4 @@ export function useDeckCode(deckCards: Ref<DeckCard[]>) {
     importDeckFromCode,
     setImportDeckCode,
   };
-}
+});

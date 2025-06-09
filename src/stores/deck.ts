@@ -1,3 +1,4 @@
+import { defineStore } from "pinia";
 import { ref, computed, watch, readonly } from "vue";
 import type { Card, DeckCard } from "../types";
 import { GAME_CONSTANTS } from "../constants";
@@ -14,22 +15,9 @@ import {
   createDebounce,
 } from "../utils";
 
-export function useDeck() {
+export const useDeckStore = defineStore("deck", () => {
   const deckCards = ref<DeckCard[]>([]);
   const deckName = ref<string>("新しいデッキ");
-
-  // ヘルパー関数
-  const setDeckCards = (cards: DeckCard[]) => {
-    deckCards.value = cards;
-  };
-  const resetDeckCards = () => {
-    deckCards.value = [];
-    removeDeckCardsFromLocalStorage();
-  };
-  const resetDeckName = () => {
-    deckName.value = "新しいデッキ";
-    removeDeckNameFromLocalStorage();
-  };
 
   // ソート関数インスタンス
   const naturalSort = createNaturalSort();
@@ -146,6 +134,36 @@ export function useDeck() {
     }
   };
 
+  /**
+   * デッキカードを設定
+   */
+  const setDeckCards = (cards: DeckCard[]) => {
+    deckCards.value = cards;
+  };
+
+  /**
+   * デッキカードをリセット
+   */
+  const resetDeckCards = () => {
+    deckCards.value = [];
+    removeDeckCardsFromLocalStorage();
+  };
+
+  /**
+   * デッキ名をリセット
+   */
+  const resetDeckName = () => {
+    deckName.value = "新しいデッキ";
+    removeDeckNameFromLocalStorage();
+  };
+
+  /**
+   * デッキ名を設定
+   */
+  const setDeckName = (name: string): void => {
+    deckName.value = name;
+  };
+
   // デッキ変更時のローカルストレージ保存（デバウンス）
   const debounceResult = createDebounce(
     (newDeck: DeckCard[]) => saveDeckToLocalStorage(newDeck),
@@ -174,13 +192,6 @@ export function useDeck() {
 
   watch(deckName, debouncedSaveDeckName);
 
-  /**
-   * デッキ名を設定
-   */
-  const setDeckName = (name: string): void => {
-    deckName.value = name;
-  };
-
   return {
     deckCards,
     deckName,
@@ -192,8 +203,8 @@ export function useDeck() {
     removeCardFromDeck,
     initializeDeck,
     setDeckName,
-    setDeckCards, // setDeckCardsを公開
-    resetDeckCards, // resetDeckCardsを公開
-    resetDeckName, // resetDeckNameを公開
+    setDeckCards,
+    resetDeckCards,
+    resetDeckName,
   };
-}
+});

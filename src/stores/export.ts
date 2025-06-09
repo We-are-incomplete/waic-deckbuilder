@@ -1,12 +1,12 @@
+import { defineStore } from "pinia";
 import { ref, nextTick } from "vue";
 import html2canvas from "html2canvas-pro";
 import { EXPORT_CONFIG } from "../constants";
 import { generateFileName, downloadCanvas, logger } from "../utils";
-import { useToast } from "./useToast";
+import { useToastStore } from "./toast";
 
-export function useExport() {
+export const useExportStore = defineStore("export", () => {
   const isSaving = ref<boolean>(false);
-  const { showError, showSuccess } = useToast(); // useToastを初期化
 
   /**
    * すべての画像の読み込み完了を待つ
@@ -75,6 +75,7 @@ export function useExport() {
   ): Promise<void> => {
     if (!exportContainer) return;
 
+    const toastStore = useToastStore();
     isSaving.value = true;
 
     try {
@@ -99,11 +100,11 @@ export function useExport() {
       const filename = generateFileName(deckName);
       downloadCanvas(canvas, filename);
 
-      showSuccess(`デッキ画像を保存しました: ${filename}`);
+      toastStore.showSuccess(`デッキ画像を保存しました: ${filename}`);
       logger.info(`デッキ画像を保存しました: ${filename}`);
     } catch (e) {
       const errorMessage = "デッキ画像の保存に失敗しました";
-      showError(errorMessage + "。");
+      toastStore.showError(errorMessage + "。");
       logger.error(errorMessage + ":", e);
     } finally {
       isSaving.value = false;
@@ -114,4 +115,4 @@ export function useExport() {
     isSaving,
     saveDeckAsPng,
   };
-}
+});

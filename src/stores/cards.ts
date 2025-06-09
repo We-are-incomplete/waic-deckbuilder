@@ -1,9 +1,10 @@
+import { defineStore } from "pinia";
 import { ref, shallowRef, readonly } from "vue";
 import { ok, err, type Result } from "neverthrow";
 import type { Card } from "../types";
 import { preloadImages, logger } from "../utils";
 
-export function useCards() {
+export const useCardsStore = defineStore("cards", () => {
   const availableCards = shallowRef<readonly Card[]>([]);
   const isLoading = ref<boolean>(true);
   const error = ref<string | null>(null);
@@ -61,4 +62,4 @@ export function useCards() {
     error,
     loadCards,
   };
-}
+});

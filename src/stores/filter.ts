@@ -1,4 +1,5 @@
-import { ref, readonly, computed, type Ref } from "vue";
+import { defineStore } from "pinia";
+import { ref, readonly, computed } from "vue";
 import type { Card, FilterCriteria } from "../types";
 import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants";
 import {
@@ -7,9 +8,9 @@ import {
   createKindSort,
   createTypeSort,
 } from "../utils";
+import { useCardsStore } from "./cards";
 
-export function useFilter(availableCards: Ref<readonly Card[]>) {
-  // availableCardsを引数として受け取る
+export const useFilterStore = defineStore("filter", () => {
   const isFilterModalOpen = ref<boolean>(false);
   const filterCriteria = ref<FilterCriteria>({
     text: "",
@@ -30,10 +31,9 @@ export function useFilter(availableCards: Ref<readonly Card[]>) {
    * 全タグリスト（優先タグを先頭に配置）
    */
   const allTags = computed(() => {
-    // computedプロパティに変更
+    const cardsStore = useCardsStore();
     const tags = new Set<string>();
-    for (const card of availableCards.value) {
-      // .valueでアクセス
+    for (const card of cardsStore.availableCards) {
       if (card.tags) {
         if (Array.isArray(card.tags)) {
           // タグが配列の場合
@@ -62,8 +62,11 @@ export function useFilter(availableCards: Ref<readonly Card[]>) {
    * ソート・フィルター済みカード一覧
    */
   const sortedAndFilteredCards = computed(() => {
-    // computedプロパティとして定義
-    const filtered = cardFilter(availableCards.value, filterCriteria.value); // .valueでアクセス
+    const cardsStore = useCardsStore();
+    const filtered = cardFilter(
+      cardsStore.availableCards,
+      filterCriteria.value
+    );
     const sorted = [...filtered];
 
     sorted.sort((a: Card, b: Card) => {
@@ -103,7 +106,7 @@ export function useFilter(availableCards: Ref<readonly Card[]>) {
   return {
     isFilterModalOpen,
     filterCriteria,
-    allTags, // computedプロパティとして公開
+    allTags,
     sortedAndFilteredCards,
     openFilterModal,
     closeFilterModal,
@@ -111,4 +114,4 @@ export function useFilter(availableCards: Ref<readonly Card[]>) {
     allKinds: readonly([...CARD_KINDS]),
     allTypes: readonly([...CARD_TYPES]),
   };
-}
+});

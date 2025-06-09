@@ -1,3 +1,4 @@
+import { defineStore } from "pinia";
 import { ref } from "vue";
 
 export interface ToastMessage {
@@ -16,7 +17,7 @@ function generateUUID(): string {
   });
 }
 
-export function useToast() {
+export const useToastStore = defineStore("toast", () => {
   const toasts = ref<ToastMessage[]>([]);
 
   const showToast = (
@@ -92,4 +93,4 @@ export function useToast() {
     showWarning,
     showInfo,
   };
-}
+});
