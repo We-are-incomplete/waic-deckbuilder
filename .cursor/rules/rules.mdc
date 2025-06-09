@@ -25,46 +25,10 @@ alwaysApply: true
 - 公開 API は最小限に保ち、実装の詳細は隠蔽する
 - モジュールの境界と依存関係を最小化する
 
-## テストコードの品質
+## 使用コマンド
 
-- テストケースでも早期リターンパターンを使用する
-- `Result<T, E>`型のテストでは、エラーケースで`throw new Error("unreachable")`を使用する
-- 可読性向上のため、深いネストを避ける
+Windows PowerShell で実行します。
 
-## 基本的なコード例
-
-`file.ts`に対して`file.test.ts`テストを追加します。
-
-```ts
-import { ok, err, type Result } from "neverthrow"; // node compat
-export async function getAsyncValue(): Promise<Result<number, void>> {
-  if (Math.random() > 0.5) {
-    return ok(42);
-  } else {
-    return err();
-  }
-}
-```
-
-### テストの例
-
-```ts
-// 良い例: 早期リターンパターン
-Deno.test("success case", async () => {
-  const result = await getAsyncValue();
-  if (result.isErr()) {
-    throw new Error("unreachable");
-  }
-  expect(result.value).toBe(42);
-});
-```
-
-## 検証用コマンド
-
-Windows PowerShell を利用します。
-
-- Lint 検証: `pnpm oxlint`
-- テスト検証: `pnpm test`
+- Linter: `pnpm oxlint`
 - 開発サーバー起動: `pnpm dev`
 - ビルド: `pnpm build`
-
