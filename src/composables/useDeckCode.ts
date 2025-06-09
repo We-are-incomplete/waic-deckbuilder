@@ -155,8 +155,7 @@ export function useDeckCode(deckCards: Ref<DeckCard[]>) {
     }
 
     // 各カードIDのフォーマット検証
-    // 例: "AA-1", "BA-10" のような形式を想定 (アルファベット2文字-数字1桁以上)
-    const cardIdPattern = /^[A-Z]{2}-\d+$/;
+    const cardIdPattern = /^([A-Z]|ex|prm)(A|S|M|D)-\d+$/;
     const cardIds = trimmedCode.split("/");
     for (const cardId of cardIds) {
       if (!cardIdPattern.test(cardId)) {
