@@ -9,7 +9,6 @@ import {
   loadDeckName,
   removeDeckCardsFromLocalStorage,
   removeDeckNameFromLocalStorage,
-  createNaturalSort,
   createDebounce,
 } from "../utils";
 import {
@@ -17,6 +16,7 @@ import {
   type ShowToastFunction,
 } from "../utils/errorHandler";
 import * as DeckDomain from "../domain/deck";
+import { sortDeckCards } from "../domain/sort";
 
 export const useDeckStore = defineStore("deck", () => {
   const deckCards = ref<DeckCard[]>([]);
@@ -26,44 +26,11 @@ export const useDeckStore = defineStore("deck", () => {
   let showToast: ShowToastFunction | undefined;
   const errorHandler = computed(() => createErrorHandler(showToast));
 
-  // ソート関数インスタンス
-  const naturalSort = createNaturalSort();
-
-  /**
-   * デッキカードの比較関数（レガシー型対応）
-   */
-  const compareDeckCards = (a: DeckCard, b: DeckCard): number => {
-    // 種別で比較（レガシー型の場合は文字列）
-    const kindA =
-      typeof a.card.kind === "string" ? a.card.kind : String(a.card.kind);
-    const kindB =
-      typeof b.card.kind === "string" ? b.card.kind : String(b.card.kind);
-    const kindComparison = kindA.localeCompare(kindB);
-    if (kindComparison !== 0) return kindComparison;
-
-    // タイプで比較（レガシー型の場合は文字列）
-    const getFirstType = (type: any): string => {
-      if (typeof type === "string") return type;
-      if (Array.isArray(type)) return String(type[0]);
-      return String(type);
-    };
-
-    const typeA = getFirstType(a.card.type);
-    const typeB = getFirstType(b.card.type);
-    const typeComparison = typeA.localeCompare(typeB);
-    if (typeComparison !== 0) return typeComparison;
-
-    // IDで比較
-    return naturalSort(a.card.id, b.card.id);
-  };
-
   /**
    * ソート済みデッキカード
    */
   const sortedDeckCards = computed(() => {
-    const sorted = [...deckCards.value];
-    sorted.sort(compareDeckCards);
-    return readonly(sorted);
+    return readonly(sortDeckCards(deckCards.value));
   });
 
   /**

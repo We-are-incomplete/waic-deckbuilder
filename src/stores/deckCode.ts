@@ -1,22 +1,11 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import type { Card, DeckCard } from "../types";
-import {
-  encodeDeckCode,
-  decodeDeckCode,
-  logger,
-  createNaturalSort,
-  createKindSort,
-  createTypeSort,
-} from "../utils";
+import { encodeDeckCode, decodeDeckCode, logger } from "../utils";
 import { useDeckStore } from "./deck";
 import { useToastStore } from "./toast";
 import { fromAsyncThrowable } from "neverthrow";
-
-// ソート関数インスタンス
-const naturalSort = createNaturalSort();
-const kindSort = createKindSort();
-const typeSort = createTypeSort();
+import { sortDeckCards } from "../domain/sort";
 
 export const useDeckCodeStore = defineStore("deckCode", () => {
   const deckCode = ref<string>("");
@@ -28,23 +17,6 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
   const toastStore = useToastStore();
 
   /**
-   * デッキカードの比較関数
-   * カード種別、タイプ、IDの順で比較する
-   */
-  const compareDeckCards = (a: DeckCard, b: DeckCard): number => {
-    const cardA = a.card;
-    const cardB = b.card;
-
-    const kindComparison = kindSort({ kind: cardA.kind }, { kind: cardB.kind });
-    if (kindComparison !== 0) return kindComparison;
-
-    const typeComparison = typeSort({ type: cardA.type }, { type: cardB.type });
-    if (typeComparison !== 0) return typeComparison;
-
-    return naturalSort(cardA.id, cardB.id);
-  };
-
-  /**
    * デッキコードを生成・表示
    */
   const generateAndShowDeckCode = (): void => {
@@ -52,7 +24,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
     error.value = null;
     try {
       // デッキカードをソートしてからエンコード
-      const sortedDeck = [...deckStore.deckCards].sort(compareDeckCards);
+      const sortedDeck = sortDeckCards(deckStore.deckCards);
       deckCode.value = encodeDeckCode(sortedDeck);
       logger.debug("生成されたデッキコード:", deckCode.value);
       logger.debug("デッキカード数:", sortedDeck.length);

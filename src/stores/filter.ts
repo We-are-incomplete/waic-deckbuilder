@@ -1,14 +1,14 @@
 import { defineStore } from "pinia";
 import { ref, readonly, computed } from "vue";
 import type { Card, FilterCriteria } from "../types";
-import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants";
-import { createNaturalSort } from "../utils";
+import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants/game";
 import * as CardDomain from "../domain/card";
 import {
   memoizeArrayComputation,
   memoizeObjectComputation,
 } from "../utils/memoization";
 import { useCardsStore } from "./cards";
+import { sortCards } from "../domain/sort";
 
 export const useFilterStore = defineStore("filter", () => {
   const isFilterModalOpen = ref<boolean>(false);
@@ -19,16 +19,11 @@ export const useFilterStore = defineStore("filter", () => {
     tags: [],
   });
 
-  // ソート関数インスタンス
-  const naturalSort = createNaturalSort();
-
   // メモ化されたフィルタリング関数
   const memoizedCardFiltering = memoizeArrayComputation(
     (cards: readonly Card[]) => {
       // カード配列全体のソート処理をメモ化
-      const sorted = [...cards];
-      sorted.sort(compareCards);
-      return readonly(sorted);
+      return readonly(sortCards(cards));
     },
     { maxSize: 10, ttl: 5 * 60 * 1000 } // 5分間キャッシュ
   );
@@ -58,32 +53,6 @@ export const useFilterStore = defineStore("filter", () => {
     },
     { maxSize: 5, ttl: 10 * 60 * 1000 } // 10分間キャッシュ
   );
-
-  /**
-   * カード比較関数（レガシー型対応）
-   */
-  const compareCards = (a: Card, b: Card): number => {
-    // 種別で比較
-    const kindA = typeof a.kind === "string" ? a.kind : String(a.kind);
-    const kindB = typeof b.kind === "string" ? b.kind : String(b.kind);
-    const kindComparison = kindA.localeCompare(kindB);
-    if (kindComparison !== 0) return kindComparison;
-
-    // タイプで比較
-    const getFirstType = (type: any): string => {
-      if (typeof type === "string") return type;
-      if (Array.isArray(type)) return String(type[0]);
-      return String(type);
-    };
-
-    const typeA = getFirstType(a.type);
-    const typeB = getFirstType(b.type);
-    const typeComparison = typeA.localeCompare(typeB);
-    if (typeComparison !== 0) return typeComparison;
-
-    // IDで比較
-    return naturalSort(a.id, b.id);
-  };
 
   /**
    * 全タグリスト（優先タグを先頭に配置）
@@ -255,10 +224,7 @@ export const useFilterStore = defineStore("filter", () => {
       filterCriteria.value
     );
 
-    const sorted = [...filtered];
-    sorted.sort(compareCards);
-
-    return readonly(sorted);
+    return readonly(sortCards(filtered));
   });
 
   /**
