@@ -251,6 +251,8 @@ defineExpose({
           :class="[
             props.totalDeckCards === 60
               ? 'text-green-400'
+              : props.totalDeckCards > 60
+              ? 'text-red-400'
               : props.totalDeckCards > 50
               ? 'text-yellow-400'
               : 'text-slate-100',
@@ -265,11 +267,15 @@ defineExpose({
             :class="[
               props.totalDeckCards === 60
                 ? 'bg-green-500'
+                : props.totalDeckCards > 60
+                ? 'bg-red-500'
                 : props.totalDeckCards > 50
                 ? 'bg-yellow-500'
                 : 'bg-blue-500',
             ]"
-            :style="{ width: `${(props.totalDeckCards / 60) * 100}%` }"
+            :style="{
+              width: `${Math.min((props.totalDeckCards / 60) * 100, 100)}%`,
+            }"
           ></div>
         </div>
       </div>
@@ -335,7 +341,7 @@ defineExpose({
           <button
             @click="emit('incrementCardCount', item.card.id)"
             class="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-full flex items-center justify-center leading-none transition-all duration-200 shadow-lg hover:shadow-emerald-500/25 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed"
-            :disabled="item.count >= 4 || props.totalDeckCards >= 60"
+            :disabled="item.count >= 4"
           >
             <svg
               class="w-3 h-3 sm:w-4 sm:h-4"
