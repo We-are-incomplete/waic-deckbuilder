@@ -10,35 +10,51 @@ import {
   removeDeckCardsFromLocalStorage,
   removeDeckNameFromLocalStorage,
   createNaturalSort,
-  createKindSort,
-  createTypeSort,
   createDebounce,
 } from "../utils";
+import {
+  createErrorHandler,
+  type ShowToastFunction,
+} from "../utils/errorHandler";
+import * as DeckDomain from "../domain/deck";
 
 export const useDeckStore = defineStore("deck", () => {
   const deckCards = ref<DeckCard[]>([]);
   const deckName = ref<string>("新しいデッキ");
 
+  // エラーハンドラー（トースト関数は後でセットアップ時に設定）
+  let showToast: ShowToastFunction | undefined;
+  const errorHandler = computed(() => createErrorHandler(showToast));
+
   // ソート関数インスタンス
   const naturalSort = createNaturalSort();
-  const kindSort = createKindSort();
-  const typeSort = createTypeSort();
 
   /**
-   * デッキカードの比較関数
-   * カード種別、タイプ、IDの順で比較する
+   * デッキカードの比較関数（レガシー型対応）
    */
   const compareDeckCards = (a: DeckCard, b: DeckCard): number => {
-    const cardA = a.card;
-    const cardB = b.card;
-
-    const kindComparison = kindSort({ kind: cardA.kind }, { kind: cardB.kind });
+    // 種別で比較（レガシー型の場合は文字列）
+    const kindA =
+      typeof a.card.kind === "string" ? a.card.kind : String(a.card.kind);
+    const kindB =
+      typeof b.card.kind === "string" ? b.card.kind : String(b.card.kind);
+    const kindComparison = kindA.localeCompare(kindB);
     if (kindComparison !== 0) return kindComparison;
 
-    const typeComparison = typeSort({ type: cardA.type }, { type: cardB.type });
+    // タイプで比較（レガシー型の場合は文字列）
+    const getFirstType = (type: any): string => {
+      if (typeof type === "string") return type;
+      if (Array.isArray(type)) return String(type[0]);
+      return String(type);
+    };
+
+    const typeA = getFirstType(a.card.type);
+    const typeB = getFirstType(b.card.type);
+    const typeComparison = typeA.localeCompare(typeB);
     if (typeComparison !== 0) return typeComparison;
 
-    return naturalSort(cardA.id, cardB.id);
+    // IDで比較
+    return naturalSort(a.card.id, b.card.id);
   };
 
   /**
@@ -61,7 +77,38 @@ export const useDeckStore = defineStore("deck", () => {
   });
 
   /**
-   * カードをデッキに追加
+   * デッキの状態情報
+   */
+  const deckState = computed(() => {
+    // 新しい型システムのDeckCardに変換
+    const newDeckCards = deckCards.value.map((deckCard) => ({
+      card: deckCard.card,
+      count: deckCard.count,
+    }));
+    return DeckDomain.calculateDeckState(newDeckCards);
+  });
+
+  /**
+   * デッキが有効かどうか（簡易版）
+   */
+  const isDeckValid = computed(() => {
+    return (
+      totalDeckCards.value <= 60 && // 仮の上限
+      deckCards.value.every(
+        (item) => item.count <= GAME_CONSTANTS.MAX_CARD_COPIES
+      )
+    );
+  });
+
+  /**
+   * デッキのエラーメッセージ
+   */
+  const deckErrors = computed(() => {
+    return deckState.value.type === "invalid" ? deckState.value.errors : [];
+  });
+
+  /**
+   * カードをデッキに追加（従来版）
    */
   const addCardToDeck = (card: Card): void => {
     const existingCardIndex = deckCards.value.findIndex(
@@ -73,10 +120,20 @@ export const useDeckStore = defineStore("deck", () => {
         deckCards.value[existingCardIndex].count <
         GAME_CONSTANTS.MAX_CARD_COPIES
       ) {
-        deckCards.value[existingCardIndex].count++;
+        // 配列を新しいものに置き換える
+        const newDeckCards = [...deckCards.value];
+        newDeckCards[existingCardIndex] = {
+          ...newDeckCards[existingCardIndex],
+          count: newDeckCards[existingCardIndex].count + 1,
+        };
+        deckCards.value = newDeckCards;
+      } else {
+        errorHandler.value.handleValidationError(
+          `カード「${card.name}」は既に最大枚数です`
+        );
       }
     } else {
-      deckCards.value.push({ card: card, count: 1 });
+      deckCards.value = [...deckCards.value, { card: card, count: 1 }];
     }
   };
 
@@ -84,11 +141,24 @@ export const useDeckStore = defineStore("deck", () => {
    * カード枚数を増やす
    */
   const incrementCardCount = (cardId: string): void => {
-    const item = deckCards.value.find(
+    const existingCardIndex = deckCards.value.findIndex(
       (item: DeckCard) => item.card.id === cardId
     );
-    if (item && item.count < GAME_CONSTANTS.MAX_CARD_COPIES) {
-      item.count++;
+
+    if (existingCardIndex > -1) {
+      const item = deckCards.value[existingCardIndex];
+      if (item.count < GAME_CONSTANTS.MAX_CARD_COPIES) {
+        const newDeckCards = [...deckCards.value];
+        newDeckCards[existingCardIndex] = {
+          ...item,
+          count: item.count + 1,
+        };
+        deckCards.value = newDeckCards;
+      } else {
+        errorHandler.value.handleValidationError(
+          "カード枚数が上限に達しています"
+        );
+      }
     }
   };
 
@@ -96,13 +166,22 @@ export const useDeckStore = defineStore("deck", () => {
    * カード枚数を減らす
    */
   const decrementCardCount = (cardId: string): void => {
-    const item = deckCards.value.find(
+    const existingCardIndex = deckCards.value.findIndex(
       (item: DeckCard) => item.card.id === cardId
     );
-    if (item && item.count > 1) {
-      item.count--;
-    } else if (item && item.count === 1) {
-      removeCardFromDeck(cardId);
+
+    if (existingCardIndex > -1) {
+      const item = deckCards.value[existingCardIndex];
+      if (item.count > 1) {
+        const newDeckCards = [...deckCards.value];
+        newDeckCards[existingCardIndex] = {
+          ...item,
+          count: item.count - 1,
+        };
+        deckCards.value = newDeckCards;
+      } else if (item.count === 1) {
+        removeCardFromDeck(cardId);
+      }
     }
   };
 
@@ -124,6 +203,10 @@ export const useDeckStore = defineStore("deck", () => {
       deckCards.value = loadDeckResult.value;
     } else {
       deckCards.value = [];
+      errorHandler.value.handleRuntimeError(
+        "デッキの読み込みに失敗しました",
+        loadDeckResult.error
+      );
     }
 
     const loadNameResult = loadDeckName();
@@ -131,6 +214,10 @@ export const useDeckStore = defineStore("deck", () => {
       deckName.value = loadNameResult.value;
     } else {
       deckName.value = "新しいデッキ";
+      errorHandler.value.handleRuntimeError(
+        "デッキ名の読み込みに失敗しました",
+        loadNameResult.error
+      );
     }
   };
 
@@ -161,7 +248,18 @@ export const useDeckStore = defineStore("deck", () => {
    * デッキ名を設定
    */
   const setDeckName = (name: string): void => {
-    deckName.value = name;
+    if (!name || name.trim().length === 0) {
+      errorHandler.value.handleValidationError("デッキ名を入力してください");
+      return;
+    }
+    deckName.value = name.trim();
+  };
+
+  /**
+   * トースト表示関数を設定
+   */
+  const setToastFunction = (toastFunc: ShowToastFunction): void => {
+    showToast = toastFunc;
   };
 
   // デッキ変更時のローカルストレージ保存（デバウンス）
@@ -171,7 +269,7 @@ export const useDeckStore = defineStore("deck", () => {
   );
 
   if (debounceResult.isErr()) {
-    throw new Error("unreachable");
+    throw new Error("debounce作成に失敗しました");
   }
 
   const { debouncedFunc: debouncedSaveDeck } = debounceResult.value;
@@ -185,7 +283,7 @@ export const useDeckStore = defineStore("deck", () => {
   );
 
   if (debounceNameResult.isErr()) {
-    throw new Error("unreachable");
+    throw new Error("debounce作成に失敗しました");
   }
 
   const { debouncedFunc: debouncedSaveDeckName } = debounceNameResult.value;
@@ -193,10 +291,16 @@ export const useDeckStore = defineStore("deck", () => {
   watch(deckName, debouncedSaveDeckName);
 
   return {
+    // リアクティブな状態
     deckCards,
     deckName,
     sortedDeckCards,
     totalDeckCards,
+    deckState,
+    isDeckValid,
+    deckErrors,
+
+    // アクション
     addCardToDeck,
     incrementCardCount,
     decrementCardCount,
@@ -206,5 +310,6 @@ export const useDeckStore = defineStore("deck", () => {
     setDeckCards,
     resetDeckCards,
     resetDeckName,
+    setToastFunction,
   };
 });

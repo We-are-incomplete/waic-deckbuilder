@@ -69,15 +69,7 @@ export const useAppStore = defineStore("app", () => {
    * アプリケーション初期化
    */
   const initializeApp = async (): Promise<void> => {
-    const loadResult = await cardsStore.loadCards();
-    if (loadResult.isErr()) {
-      handleError(
-        "カードの読み込み中にエラーが発生しました",
-        loadResult.error,
-        toastStore.showError
-      );
-      return;
-    }
+    await cardsStore.loadCards();
     deckStore.initializeDeck(cardsStore.availableCards);
   };
 

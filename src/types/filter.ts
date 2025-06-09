@@ -1,8 +1,27 @@
 import type { CardKind, CardType } from "./card";
 
+// フィルター条件の代数的データ型
+export type FilterCondition =
+  | { readonly type: "text"; readonly value: string }
+  | { readonly type: "kind"; readonly values: readonly CardKind[] }
+  | { readonly type: "cardType"; readonly values: readonly CardType[] }
+  | { readonly type: "tags"; readonly values: readonly string[] }
+  | {
+      readonly type: "combined";
+      readonly conditions: readonly FilterCondition[];
+    };
+
+// フィルター条件
 export interface FilterCriteria {
-  text: string;
-  kind: CardKind[];
-  type: CardType[];
-  tags: string[];
+  readonly text: string;
+  readonly kind: readonly string[];
+  readonly type: readonly string[];
+  readonly tags: readonly string[];
 }
+
+// フィルター適用結果
+export type FilterResult<T> = {
+  readonly items: readonly T[];
+  readonly totalCount: number;
+  readonly filteredCount: number;
+};

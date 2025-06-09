@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { onMounted, defineAsyncComponent, ref } from "vue";
+import { onMounted, defineAsyncComponent, ref, provide } from "vue";
 
 import { useAppStore } from "./stores";
 import { CardListSection, DeckSection, ToastContainer } from "./components";
 import type { Card } from "./types";
 import { getCardImageUrlSafe } from "./utils/imageHelpers";
+import type { ShowToastFunction } from "./utils/errorHandler";
 
 const ConfirmModal = defineAsyncComponent(
   () => import("./components/modals/ConfirmModal.vue")
@@ -23,6 +24,17 @@ const CardImageModal = defineAsyncComponent(
 const appStore = useAppStore();
 const { cardsStore, deckStore, filterStore, toastStore, deckCodeStore } =
   appStore;
+
+// トースト関数をアプリケーション全体で利用可能にする
+const showToast: ShowToastFunction = (
+  message: string,
+  type: "success" | "error" | "warning" | "info" = "info"
+) => {
+  toastStore.showToast(message, type);
+};
+
+// 依存性注入でトースト関数を提供
+provide("showToast", showToast);
 
 // アプリケーションの初期化
 onMounted(appStore.initializeApp);
@@ -92,18 +104,11 @@ const handleCardNavigation = (direction: "previous" | "next") => {
       <!-- デッキセクション -->
       <DeckSection
         ref="deckSectionRef"
-        :deck-cards="deckStore.deckCards"
-        :deck-name="deckStore.deckName"
-        :sorted-deck-cards="deckStore.sortedDeckCards"
-        :total-deck-cards="deckStore.totalDeckCards"
         :is-generating-code="deckCodeStore.isGeneratingCode"
         :is-saving="appStore.exportStore.isSaving"
-        @update-deck-name="deckStore.setDeckName"
         @generate-deck-code="deckCodeStore.generateAndShowDeckCode"
         @save-deck-as-png="appStore.saveDeckAsPng"
         @reset-deck="appStore.resetDeck"
-        @increment-card-count="deckStore.incrementCardCount"
-        @decrement-card-count="deckStore.decrementCardCount"
         @open-image-modal="openImageModal"
         class="lg:w-1/2 lg:h-full overflow-y-auto"
       />
@@ -113,7 +118,7 @@ const handleCardNavigation = (direction: "previous" | "next") => {
         :available-cards="cardsStore.availableCards"
         :sorted-and-filtered-cards="filterStore.sortedAndFilteredCards"
         :is-loading="cardsStore.isLoading"
-        :error="cardsStore.error"
+        :error="cardsStore.error?.message || null"
         @open-filter="filterStore.openFilterModal"
         @add-card="deckStore.addCardToDeck"
         class="lg:w-1/2 lg:h-full overflow-y-auto"
@@ -123,12 +128,7 @@ const handleCardNavigation = (direction: "previous" | "next") => {
     <!-- フィルターモーダル -->
     <FilterModal
       :is-visible="filterStore.isFilterModalOpen"
-      :filter-criteria="filterStore.filterCriteria"
-      :all-kinds="filterStore.allKinds"
-      :all-types="filterStore.allTypes"
-      :all-tags="filterStore.allTags"
       @close="filterStore.closeFilterModal"
-      @update-filter="filterStore.updateFilterCriteria"
     />
 
     <!-- デッキコードモーダル -->
