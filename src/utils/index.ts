@@ -5,5 +5,6 @@ export * from "./export";
 export * from "./filter";
 export * from "./image";
 export * from "./logger";
+export * from "./memoization";
 export * from "./sort";
 export * from "./storage";
