@@ -22,7 +22,7 @@ export const isCardMatchingText = (card: Card, textLower: string): boolean => {
       );
     } else if (typeof card.tags === "string") {
       // タグが文字列の場合
-      return card.tags.toLowerCase().includes(textLower);
+      return (card.tags as string).toLowerCase().includes(textLower);
     }
   }
 
@@ -38,6 +38,27 @@ export const isCardMatchingType = (
 ): boolean => {
   const cardTypes = Array.isArray(card.type) ? card.type : [card.type];
   return cardTypes.some((type: CardType) => typeSet.has(type));
+};
+
+/**
+ * カードがタイプフィルター（文字列）にマッチするかチェック
+ */
+export const isCardMatchingTypeString = (
+  card: Card,
+  typeSet: Set<string>
+): boolean => {
+  const cardTypes = Array.isArray(card.type) ? card.type : [card.type];
+  return cardTypes.some((type: CardType) => {
+    const typeString = getTypeString(type);
+    return typeSet.has(typeString);
+  });
+};
+
+/**
+ * CardTypeから文字列表現を取得するヘルパー関数
+ */
+const getTypeString = (cardType: CardType): string => {
+  return cardType.value;
 };
 
 /**
@@ -79,12 +100,12 @@ export const createCardFilter = (): ((
       }
 
       // 種類フィルター
-      if (kindSet.size > 0 && !kindSet.has(card.kind)) {
+      if (kindSet.size > 0 && !kindSet.has(card.kind.type)) {
         return false;
       }
 
       // タイプフィルター
-      if (typeSet.size > 0 && !isCardMatchingType(card, typeSet)) {
+      if (typeSet.size > 0 && !isCardMatchingTypeString(card, typeSet)) {
         return false;
       }
 

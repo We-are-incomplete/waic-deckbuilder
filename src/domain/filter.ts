@@ -1,0 +1,56 @@
+import type { Card } from "../types/card";
+import type { FilterCondition } from "../types/filter";
+import {
+  searchCardsByName,
+  filterCardsByKind,
+  filterCardsByType,
+  filterCardsByTags,
+} from "./card";
+
+// フィルター条件を適用する純粋関数
+export const applyFilter = (
+  cards: readonly Card[],
+  condition: FilterCondition
+): readonly Card[] => {
+  switch (condition.type) {
+    case "text":
+      return searchCardsByName(cards, condition.value);
+
+    case "kind":
+      return filterCardsByKind(cards, condition.values);
+
+    case "cardType":
+      return filterCardsByType(cards, condition.values);
+
+    case "tags":
+      return filterCardsByTags(cards, condition.values);
+
+    case "combined":
+      return condition.conditions.reduce((filteredCards, subCondition) => {
+        // 空のフィルターをスキップして不要な処理を避ける
+        if (isEmptyFilter(subCondition)) {
+          return filteredCards;
+        }
+        return applyFilter(filteredCards, subCondition);
+      }, cards);
+  }
+};
+
+// フィルター条件が空かどうかをチェック
+export const isEmptyFilter = (condition: FilterCondition): boolean => {
+  switch (condition.type) {
+    case "text":
+      return !condition.value || condition.value.trim().length === 0;
+
+    case "kind":
+    case "cardType":
+    case "tags":
+      return condition.values.length === 0;
+
+    case "combined":
+      return (
+        condition.conditions.length === 0 ||
+        condition.conditions.every(isEmptyFilter)
+      );
+  }
+};

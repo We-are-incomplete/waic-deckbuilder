@@ -1,33 +1,51 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import type { DeckCard } from "../../types";
 import DeckExportContainer from "./DeckExportContainer.vue";
 import { handleImageError } from "../../utils/image";
 import { getCardImageUrlSafe } from "../../utils/imageHelpers";
 import { useLongPress } from "../../composables/useLongPress";
+import { useDeckOperations } from "../../composables/useDeckOperations";
+import { useDeckStore } from "../../stores/deck";
 
+// Props（必要最小限に削減）
 interface Props {
-  deckCards: readonly DeckCard[];
-  deckName: string;
-  sortedDeckCards: readonly DeckCard[];
-  totalDeckCards: number;
   isGeneratingCode: boolean;
   isSaving: boolean;
 }
 
+// Emits（ビジネスロジック以外のUIイベントのみ）
 interface Emits {
-  (e: "updateDeckName", value: string): void;
   (e: "generateDeckCode"): void;
   (e: "saveDeckAsPng"): void;
   (e: "resetDeck"): void;
-  (e: "incrementCardCount", cardId: string): void;
-  (e: "decrementCardCount", cardId: string): void;
   (e: "openImageModal", cardId: string): void;
 }
 
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
+// ストアとコンポーザブルの初期化
+const deckStore = useDeckStore();
+
+// デッキ操作のコンポーザブル
+const {
+  deckState,
+  incrementCardCount: handleIncrementCard,
+  decrementCardCount: handleDecrementCard,
+} = useDeckOperations();
+
+// 計算プロパティ（ストアから直接取得）
+const deckCards = computed(() => deckStore.deckCards);
+const deckName = computed(() => deckStore.deckName);
+const sortedDeckCards = computed(() => deckStore.sortedDeckCards);
+const totalDeckCards = computed(() => deckStore.totalDeckCards);
+
+// デッキ名の更新（ストアメソッドを直接使用）
+const updateDeckName = (value: string) => {
+  deckStore.setDeckName(value);
+};
+
+// エクスポート用参照
 const deckExportContainerRef = ref<InstanceType<
   typeof DeckExportContainer
 > | null>(null);
@@ -52,9 +70,8 @@ const getDeckCardLongPressHandler = (cardId: string) => {
     deckCardLongPressHandlers.set(
       cardId,
       useLongPress({
-        delay: 500, // 500msで長押し判定
+        delay: 500,
         onLongPress: () => openImageModal(cardId),
-        // onPressは設定しない（デッキ内のカードは長押しのみで拡大表示）
       })
     );
   }
@@ -66,32 +83,51 @@ const cleanupCardHandler = (cardId: string) => {
   deckCardLongPressHandlers.delete(cardId);
 };
 
-// 全てのハンドラーをクリーンアップ
 const cleanupAllHandlers = () => {
   deckCardLongPressHandlers.clear();
 };
 
-// カードデクリメント時にクリーンアップも実行
-const handleDecrementCard = (cardId: string) => {
+// カードデクリメント処理（ハンドラークリーンアップ付き）
+const decrementCard = (cardId: string) => {
   // 現在のカードの情報を取得
-  const currentCard = props.deckCards.find((card) => card.card.id === cardId);
+  const currentCard = deckCards.value.find((card) => card.card.id === cardId);
 
   // カウントが1の場合、デクリメント後に削除されるためハンドラーもクリーンアップ
   if (currentCard && currentCard.count === 1) {
     cleanupCardHandler(cardId);
   }
 
-  emit("decrementCardCount", cardId);
+  handleDecrementCard(cardId);
 };
 
-// デッキリセット時にクリーンアップも実行
-const handleResetDeck = () => {
-  cleanupAllHandlers();
+// デッキリセット処理（ハンドラークリーンアップ付き）
+const resetDeck = () => {
   emit("resetDeck");
 };
 
+// デッキ枚数の色分け計算
+
+const MAX_DECK_SIZE = 60;
+const WARNING_THRESHOLD = 50;
+
+const getDeckCountColor = (count: number) => {
+  if (count === MAX_DECK_SIZE) return "text-green-400";
+  if (count > MAX_DECK_SIZE) return "text-red-400";
+  if (count > WARNING_THRESHOLD) return "text-yellow-400";
+  return "text-slate-100";
+};
+
+const getDeckProgressColor = (count: number) => {
+  if (count === MAX_DECK_SIZE) return "bg-green-500";
+  if (count > MAX_DECK_SIZE) return "bg-red-500";
+  if (count > WARNING_THRESHOLD) return "bg-yellow-500";
+  return "bg-blue-500";
+};
+
+// エクスポート用
 defineExpose({
   exportContainer,
+  cleanupAllHandlers,
 });
 </script>
 
@@ -110,10 +146,8 @@ defineExpose({
         <input
           id="deckName"
           type="text"
-          :value="props.deckName"
-          @input="
-            emit('updateDeckName', ($event.target as HTMLInputElement).value)
-          "
+          :value="deckName"
+          @input="updateDeckName(($event.target as HTMLInputElement).value)"
           class="flex-grow px-1 sm:px-2 py-0.5 sm:py-1 text-xs sm:text-base rounded bg-slate-800/80 border border-slate-600/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 backdrop-blur-sm placeholder-slate-400"
           placeholder="デッキ名を入力"
         />
@@ -170,7 +204,7 @@ defineExpose({
 
       <button
         @click="emit('saveDeckAsPng')"
-        :disabled="props.deckCards.length === 0 || props.isSaving"
+        :disabled="deckCards.length === 0 || props.isSaving"
         class="group relative flex-1 min-w-0 px-1 sm:px-2 py-0.5 sm:py-1 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded text-xs font-medium hover:from-emerald-700 hover:to-emerald-800 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-emerald-500/25"
         title="デッキ画像を保存"
       >
@@ -215,8 +249,8 @@ defineExpose({
       </button>
 
       <button
-        @click="handleResetDeck"
-        :disabled="props.deckCards.length === 0"
+        @click="resetDeck"
+        :disabled="deckCards.length === 0"
         class="group relative flex-1 min-w-0 px-1 sm:px-2 py-0.5 sm:py-1 bg-gradient-to-r from-red-600 to-red-700 text-white rounded text-xs font-medium hover:from-red-700 hover:to-red-800 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-red-500/25"
         title="デッキをリセット"
       >
@@ -240,7 +274,7 @@ defineExpose({
       </button>
     </div>
 
-    <!-- 合計枚数表示 (モバイル最適化) -->
+    <!-- 合計枚数表示とデッキ状態 (モバイル最適化) -->
     <div class="text-center mb-1">
       <div
         class="inline-flex items-center gap-1 sm:gap-2 px-1 sm:px-2 py-0.5 sm:py-1 bg-slate-800/60 backdrop-blur-sm rounded border border-slate-600/50"
@@ -248,33 +282,27 @@ defineExpose({
         <span class="text-xs font-medium text-slate-300">合計枚数:</span>
         <span
           class="text-sm font-bold"
-          :class="[
-            props.totalDeckCards === 60
-              ? 'text-green-400'
-              : props.totalDeckCards > 60
-              ? 'text-red-400'
-              : props.totalDeckCards > 50
-              ? 'text-yellow-400'
-              : 'text-slate-100',
-          ]"
+          :class="getDeckCountColor(totalDeckCards)"
         >
-          {{ props.totalDeckCards }}
+          {{ totalDeckCards }}
         </span>
         <span class="text-xs text-slate-400">/ 60</span>
+
+        <!-- デッキ状態インジケーター -->
+        <div
+          v-if="!deckState.isValid"
+          class="ml-1 text-xs text-red-400"
+          :title="deckState.validationErrors.join(', ')"
+        >
+          ⚠️
+        </div>
+
         <div class="w-12 sm:w-16 h-1 bg-slate-700 rounded-full overflow-hidden">
           <div
             class="h-full transition-all duration-300 rounded-full"
-            :class="[
-              props.totalDeckCards === 60
-                ? 'bg-green-500'
-                : props.totalDeckCards > 60
-                ? 'bg-red-500'
-                : props.totalDeckCards > 50
-                ? 'bg-yellow-500'
-                : 'bg-blue-500',
-            ]"
+            :class="getDeckProgressColor(totalDeckCards)"
             :style="{
-              width: `${Math.min((props.totalDeckCards / 60) * 100, 100)}%`,
+              width: `${Math.min((totalDeckCards / 60) * 100, 100)}%`,
             }"
           ></div>
         </div>
@@ -287,7 +315,7 @@ defineExpose({
       class="flex-grow overflow-y-auto grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3 lg:gap-4 p-1 sm:p-2 bg-slate-800/40 backdrop-blur-sm rounded border border-slate-700/50 shadow-xl"
     >
       <div
-        v-for="item in props.sortedDeckCards"
+        v-for="item in sortedDeckCards"
         :key="item.card.id"
         class="group flex flex-col items-center relative h-fit transition-all duration-200"
       >
@@ -316,7 +344,7 @@ defineExpose({
           class="absolute bottom-2 w-full px-1 flex items-center justify-center gap-1"
         >
           <button
-            @click="handleDecrementCard(item.card.id)"
+            @click="decrementCard(item.card.id)"
             class="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-full flex items-center justify-center leading-none transition-all duration-200 shadow-lg hover:shadow-red-500/25"
           >
             <svg
@@ -339,7 +367,7 @@ defineExpose({
             {{ item.count }}
           </div>
           <button
-            @click="emit('incrementCardCount', item.card.id)"
+            @click="handleIncrementCard(item.card.id)"
             class="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-full flex items-center justify-center leading-none transition-all duration-200 shadow-lg hover:shadow-emerald-500/25 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed"
             :disabled="item.count >= 4"
           >
@@ -361,7 +389,7 @@ defineExpose({
       </div>
 
       <div
-        v-if="props.deckCards.length === 0"
+        v-if="deckCards.length === 0"
         class="col-span-full text-center mt-2 sm:mt-4"
       >
         <div class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-4">
@@ -395,9 +423,9 @@ defineExpose({
     <!-- エクスポート用の非表示コンテナ -->
     <DeckExportContainer
       ref="deckExportContainerRef"
-      :deck-name="props.deckName"
-      :deck-cards="props.deckCards"
-      :sorted-deck-cards="props.sortedDeckCards"
+      :deck-name="deckName"
+      :deck-cards="deckCards"
+      :sorted-deck-cards="sortedDeckCards"
       :is-saving="props.isSaving"
     />
   </div>

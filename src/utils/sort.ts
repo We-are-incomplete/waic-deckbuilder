@@ -1,10 +1,13 @@
 import type { Card, CardType } from "../types/card";
 import { CARD_KINDS, CARD_TYPES } from "../constants/game";
 
+// ソート用の型定義
+export type SortComparator<T> = (a: T, b: T) => number;
+
 /**
- * 自然順ソート関数を作成
+ * 自然順ソート関数を作成（純粋関数）
  */
-export const createNaturalSort = (): ((a: string, b: string) => number) => {
+export const createNaturalSort = (): SortComparator<string> => {
   return (a: string, b: string): number => {
     const regex = /(\d+)|(\D+)/g;
     const tokensA = a.match(regex);
@@ -38,35 +41,56 @@ export const createNaturalSort = (): ((a: string, b: string) => number) => {
 };
 
 /**
- * カード種類別ソート関数
+ * カード種類別ソート関数（CARD_KINDSの並び順に従う）
+ * Artist → Song → Magic → Direction の順序
  */
-export const createKindSort = (): ((
-  a: Pick<Card, "kind">,
-  b: Pick<Card, "kind">
-) => number) => {
+export const createKindSort = (): SortComparator<Pick<Card, "kind">> => {
   return (a: Pick<Card, "kind">, b: Pick<Card, "kind">): number => {
-    const indexA = CARD_KINDS.findIndex((kind) => kind === a.kind);
-    const indexB = CARD_KINDS.findIndex((kind) => kind === b.kind);
-    return indexA - indexB;
+    const kindA = a.kind.type;
+    const kindB = b.kind.type;
+
+    // CARD_KINDSは ["Artist", "Song", "Magic", "Direction"] の順序
+    const indexA = CARD_KINDS.indexOf(kindA);
+    const indexB = CARD_KINDS.indexOf(kindB);
+
+    // 見つからない場合は最後に配置
+    const finalIndexA = indexA === -1 ? CARD_KINDS.length : indexA;
+    const finalIndexB = indexB === -1 ? CARD_KINDS.length : indexB;
+
+    return finalIndexA - finalIndexB;
   };
 };
 
 /**
- * カードタイプ別ソート関数
+ * カードタイプ別ソート関数（CARD_TYPESの並び順に従う）
+ * 赤 → 青 → 黄 → 白 → 黒 → 全 → 即時 → 装備 → 設置 の順序
  */
-export const createTypeSort = (): ((
-  a: Pick<Card, "type">,
-  b: Pick<Card, "type">
-) => number) => {
+export const createTypeSort = (): SortComparator<Pick<Card, "type">> => {
   return (a: Pick<Card, "type">, b: Pick<Card, "type">): number => {
     const getEarliestTypeIndex = (
-      cardTypes: CardType | readonly CardType[]
+      cardTypes: CardType | readonly CardType[] | string | readonly string[]
     ): number => {
       if (!cardTypes) return CARD_TYPES.length;
-      const types = Array.isArray(cardTypes) ? cardTypes : [cardTypes];
+
+      let types: string[];
+
+      // 実際のカードデータでは文字列または文字列配列の場合がある
+      if (typeof cardTypes === "string") {
+        types = [cardTypes];
+      } else if (Array.isArray(cardTypes)) {
+        // 配列の場合は各要素が文字列かCardTypeかを判定
+        types = cardTypes.map((type) =>
+          typeof type === "string" ? type : getTypeString(type as CardType)
+        );
+      } else {
+        // CardTypeオブジェクトの場合
+        types = [getTypeString(cardTypes as CardType)];
+      }
+
       let minIndex = CARD_TYPES.length;
       for (const type of types) {
-        const index = CARD_TYPES.findIndex((t) => t === type);
+        // CARD_TYPESは ["赤", "青", "黄", "白", "黒", "全", "即時", "装備", "設置"] の順序
+        const index = CARD_TYPES.indexOf(type);
         if (index !== -1 && index < minIndex) {
           minIndex = index;
         }
@@ -78,4 +102,35 @@ export const createTypeSort = (): ((
     const indexB = getEarliestTypeIndex(b.type);
     return indexA - indexB;
   };
+};
+
+/**
+ * CardTypeから文字列表現を取得するヘルパー関数
+ */
+const getTypeString = (cardType: CardType): string => {
+  return cardType.value;
+};
+
+/**
+ * 複数のソート条件を組み合わせる高階関数
+ */
+export const createCombinedSort = <T>(
+  ...comparators: readonly SortComparator<T>[]
+): SortComparator<T> => {
+  return (a: T, b: T): number => {
+    for (const comparator of comparators) {
+      const result = comparator(a, b);
+      if (result !== 0) return result;
+    }
+    return 0;
+  };
+};
+
+/**
+ * ソート順を逆にする高階関数
+ */
+export const reverseSort = <T>(
+  comparator: SortComparator<T>
+): SortComparator<T> => {
+  return (a: T, b: T): number => -comparator(a, b);
 };

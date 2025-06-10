@@ -1,21 +1,11 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import type { Card, DeckCard } from "../types";
-import {
-  encodeDeckCode,
-  decodeDeckCode,
-  logger,
-  createNaturalSort,
-  createKindSort,
-  createTypeSort,
-} from "../utils";
+import { encodeDeckCode, decodeDeckCode, logger } from "../utils";
 import { useDeckStore } from "./deck";
-import { useToastStore } from "./toast";
 
-// ソート関数インスタンス
-const naturalSort = createNaturalSort();
-const kindSort = createKindSort();
-const typeSort = createTypeSort();
+import { fromAsyncThrowable } from "neverthrow";
+import { sortDeckCards } from "../domain/sort";
 
 export const useDeckCodeStore = defineStore("deckCode", () => {
   const deckCode = ref<string>("");
@@ -24,24 +14,6 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
   const showDeckCodeModal = ref<boolean>(false);
   const error = ref<string | null>(null);
   const deckStore = useDeckStore();
-  const toastStore = useToastStore();
-
-  /**
-   * デッキカードの比較関数
-   * カード種別、タイプ、IDの順で比較する
-   */
-  const compareDeckCards = (a: DeckCard, b: DeckCard): number => {
-    const cardA = a.card;
-    const cardB = b.card;
-
-    const kindComparison = kindSort({ kind: cardA.kind }, { kind: cardB.kind });
-    if (kindComparison !== 0) return kindComparison;
-
-    const typeComparison = typeSort({ type: cardA.type }, { type: cardB.type });
-    if (typeComparison !== 0) return typeComparison;
-
-    return naturalSort(cardA.id, cardB.id);
-  };
 
   /**
    * デッキコードを生成・表示
@@ -51,7 +23,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
     error.value = null;
     try {
       // デッキカードをソートしてからエンコード
-      const sortedDeck = [...deckStore.deckCards].sort(compareDeckCards);
+      const sortedDeck = sortDeckCards(deckStore.deckCards);
       deckCode.value = encodeDeckCode(sortedDeck);
       logger.debug("生成されたデッキコード:", deckCode.value);
       logger.debug("デッキカード数:", sortedDeck.length);
@@ -64,7 +36,6 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
       const errorMessage = "デッキコードの生成に失敗しました";
       logger.error(errorMessage + ":", e);
       error.value = errorMessage;
-      toastStore.showError(errorMessage);
     } finally {
       isGeneratingCode.value = false;
     }
@@ -74,42 +45,27 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
    * デッキコードをクリップボードにコピー
    */
   const copyDeckCode = async (): Promise<void> => {
-    const toastStore = useToastStore();
     error.value = null;
-    try {
-      // 最新のClipboard APIを使用
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(deckCode.value);
-        toastStore.showSuccess("デッキコードをコピーしました");
-      } else {
-        // フォールバック: document.execCommandを使用
-        throw new Error("Clipboard API not supported or failed");
-      }
-    } catch (e) {
-      logger.warn(
-        "Clipboard APIが利用できないか、失敗しました。フォールバックを試行します。",
-        e
-      );
-      try {
-        const textarea = document.createElement("textarea");
-        textarea.value = deckCode.value;
-        // 画面外に配置してユーザーに見えないようにする
-        textarea.style.position = "fixed";
-        textarea.style.left = "-9999px";
-        textarea.style.top = "-9999px";
-        document.body.appendChild(textarea);
-        textarea.focus();
-        textarea.select();
 
-        document.execCommand("copy");
-        document.body.removeChild(textarea);
-        toastStore.showSuccess("デッキコードをコピーしました");
-      } catch (fallbackError) {
-        const errorMessage = "デッキコードのコピーに失敗しました";
-        logger.error(errorMessage + ":", fallbackError);
-        error.value = errorMessage;
-        toastStore.showError(errorMessage);
-      }
+    // Clipboard APIを安全にラップ
+    const safeClipboardWrite = fromAsyncThrowable(
+      async (text: string) => {
+        if (!navigator.clipboard?.writeText) {
+          throw new Error("Clipboard API is not supported");
+        }
+        await navigator.clipboard.writeText(text);
+      },
+      (error: unknown) => error
+    );
+
+    const result = await safeClipboardWrite(deckCode.value);
+
+    if (result.isOk()) {
+      logger.info("デッキコードをコピーしました");
+    } else {
+      const errorMessage = "デッキコードのコピーに失敗しました";
+      logger.error(errorMessage + ":", result.error);
+      error.value = errorMessage;
     }
   };
 
@@ -118,7 +74,6 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
    */
   const importDeckFromCode = (availableCards: readonly Card[]): void => {
     const deckStore = useDeckStore();
-    const toastStore = useToastStore();
     error.value = null;
 
     // 入力検証：空文字列チェック
@@ -126,7 +81,6 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
       const warningMessage = "デッキコードが空です";
       logger.warn(warningMessage);
       error.value = warningMessage;
-      toastStore.showError(warningMessage);
       return;
     }
 
@@ -139,7 +93,6 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
       const warningMessage = `デッキコードが長すぎます（最大${MAX_DECK_CODE_LENGTH}文字）`;
       logger.warn(warningMessage);
       error.value = warningMessage;
-      toastStore.showError(warningMessage);
       return;
     }
 
@@ -152,7 +105,6 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
       const warningMessage = "無効なデッキコード形式です";
       logger.warn(warningMessage);
       error.value = warningMessage;
-      toastStore.showError(warningMessage);
       return;
     }
 
@@ -164,7 +116,6 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
         const warningMessage = `無効なカードID形式が含まれています: ${cardId}`;
         logger.warn(warningMessage);
         error.value = warningMessage;
-        toastStore.showError(warningMessage);
         return;
       }
     }
@@ -184,7 +135,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
         deckStore.setDeckCards(importedCards);
         importDeckCode.value = "";
         showDeckCodeModal.value = false;
-        toastStore.showSuccess(
+        logger.info(
           `デッキをインポートしました（${importedCards.length}種類のカード）`
         );
       } else {
@@ -193,14 +144,12 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
         logger.warn(warningMessage);
         logger.debug("入力されたデッキコード:", trimmedCode);
         error.value = warningMessage;
-        toastStore.showError(warningMessage);
       }
     } catch (e) {
       const errorMessage = "デッキコードの復元に失敗しました";
       logger.error(errorMessage + ":", e);
       logger.debug("入力されたデッキコード:", trimmedCode);
       error.value = errorMessage;
-      toastStore.showError(errorMessage);
     }
   };
 

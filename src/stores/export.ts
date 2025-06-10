@@ -3,7 +3,6 @@ import { ref, nextTick } from "vue";
 import html2canvas from "html2canvas-pro";
 import { EXPORT_CONFIG } from "../constants";
 import { generateFileName, downloadCanvas, logger } from "../utils";
-import { useToastStore } from "./toast";
 
 export const useExportStore = defineStore("export", () => {
   const isSaving = ref<boolean>(false);
@@ -75,7 +74,6 @@ export const useExportStore = defineStore("export", () => {
   ): Promise<void> => {
     if (!exportContainer) return;
 
-    const toastStore = useToastStore();
     isSaving.value = true;
 
     try {
@@ -100,11 +98,9 @@ export const useExportStore = defineStore("export", () => {
       const filename = generateFileName(deckName);
       downloadCanvas(canvas, filename);
 
-      toastStore.showSuccess(`デッキ画像を保存しました: ${filename}`);
       logger.info(`デッキ画像を保存しました: ${filename}`);
     } catch (e) {
       const errorMessage = "デッキ画像の保存に失敗しました";
-      toastStore.showError(errorMessage + "。");
       logger.error(errorMessage + ":", e);
     } finally {
       isSaving.value = false;

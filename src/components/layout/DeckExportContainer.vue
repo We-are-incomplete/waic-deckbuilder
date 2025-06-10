@@ -2,7 +2,8 @@
 import { ref } from "vue";
 import type { DeckCard } from "../../types";
 import { EXPORT_CONFIG } from "../../constants/export";
-import { getCardImageUrl, handleImageError } from "../../utils/image";
+import { handleImageError } from "../../utils/image";
+import { getCardImageUrlSafe } from "../../utils/imageHelpers";
 
 interface Props {
   deckName: string;
@@ -24,17 +25,6 @@ const CARDS_PER_ROW_LARGE = 15;
 const MARGIN_SMALL = 36;
 const MARGIN_MEDIUM = 44;
 const MARGIN_LARGE = 56;
-
-/**
- * カード画像URLを安全に取得
- */
-const getCardImageUrlSafe = (cardId: string): string => {
-  const result = getCardImageUrl(cardId);
-  if (result.isOk()) {
-    return result.value;
-  }
-  return ""; // エラー時は空文字を返す
-};
 
 /**
  * カード枚数に基づいてカード幅を計算
