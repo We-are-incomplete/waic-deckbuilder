@@ -8,7 +8,7 @@ export const EXPORT_CONFIG: ExportConfig = {
     padding: "0 40px 10px",
   },
   deckName: {
-    fontSize: "clamp(48px, 4.2vw, 80px)",
+    fontSize: "80px",
     fontWeight: "bold",
     color: "#f9fafb",
     fontFamily: "serif, sans-serif",
