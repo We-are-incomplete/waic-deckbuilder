@@ -1,5 +1,5 @@
 import type { Card } from "../types/card";
-import type { FilterCondition, FilterResult } from "../types/filter";
+import type { FilterCondition } from "../types/filter";
 import {
   searchCardsByName,
   filterCardsByKind,
@@ -34,52 +34,6 @@ export const applyFilter = (
   }
 };
 
-// フィルター結果を作成する純粋関数
-export const createFilterResult = <T>(
-  allItems: readonly T[],
-  filteredItems: readonly T[]
-): FilterResult<T> => ({
-  items: filteredItems,
-  totalCount: allItems.length,
-  filteredCount: filteredItems.length,
-});
-
-// 複数のフィルター条件を組み合わせる
-export const combineFilters = (
-  conditions: readonly FilterCondition[]
-): FilterCondition => ({
-  type: "combined",
-  conditions,
-});
-
-// テキストフィルター条件を作成
-export const createTextFilter = (text: string): FilterCondition => ({
-  type: "text",
-  value: text,
-});
-
-// 種別フィルター条件を作成
-export const createKindFilter = (
-  kinds: readonly import("../types/card").CardKind[]
-): FilterCondition => ({
-  type: "kind",
-  values: kinds,
-});
-
-// タイプフィルター条件を作成
-export const createTypeFilter = (
-  types: readonly import("../types/card").CardType[]
-): FilterCondition => ({
-  type: "cardType",
-  values: types,
-});
-
-// タグフィルター条件を作成
-export const createTagFilter = (tags: readonly string[]): FilterCondition => ({
-  type: "tags",
-  values: tags,
-});
-
 // フィルター条件が空かどうかをチェック
 export const isEmptyFilter = (condition: FilterCondition): boolean => {
   switch (condition.type) {
@@ -97,13 +51,4 @@ export const isEmptyFilter = (condition: FilterCondition): boolean => {
         condition.conditions.every(isEmptyFilter)
       );
   }
-};
-
-// カードにフィルター条件が適用できるかチェック
-export const canApplyFilter = (
-  cards: readonly Card[],
-  condition: FilterCondition
-): boolean => {
-  if (cards.length === 0) return false;
-  return !isEmptyFilter(condition);
 };

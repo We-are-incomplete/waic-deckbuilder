@@ -50,32 +50,6 @@ export const createCard = (
   });
 };
 
-// カード種別判定関数
-export const isArtist = (card: Card): boolean => card.kind.type === "Artist";
-export const isSong = (card: Card): boolean => card.kind.type === "Song";
-export const isMagic = (card: Card): boolean => card.kind.type === "Magic";
-export const isDirection = (card: Card): boolean =>
-  card.kind.type === "Direction";
-
-// カードタイプ判定関数
-export const isColorCard = (cardType: CardType): boolean =>
-  cardType.type === "color";
-export const isTimingCard = (cardType: CardType): boolean =>
-  cardType.type === "timing";
-export const isEquipmentCard = (cardType: CardType): boolean =>
-  cardType.type === "equipment";
-export const isInstallationCard = (cardType: CardType): boolean =>
-  cardType.type === "installation";
-
-// カードが特定の色を持つかチェック
-export const hasColor = (
-  card: Card,
-  color: "赤" | "青" | "黄" | "白" | "黒" | "全"
-): boolean => {
-  const types = Array.isArray(card.type) ? card.type : [card.type];
-  return types.some((type) => isColorCard(type) && type.value === color);
-};
-
 // カードが特定のタグを持つかチェック
 export const hasTag = (card: Card, tag: string): boolean => {
   return card.tags?.includes(tag) ?? false;

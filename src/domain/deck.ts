@@ -5,7 +5,6 @@ import type {
   DeckState,
   DeckOperation,
   DeckOperationError,
-  DeckDetails,
 } from "../types/deck";
 
 // ドメイン定数
@@ -230,20 +229,4 @@ export const executeDeckOperation = (
     case "clear":
       return ok([]);
   }
-};
-
-// デッキ詳細を作成
-export const createDeckDetails = (
-  name: string,
-  cards: readonly DeckCard[],
-  createdAt?: Date,
-  modifiedAt?: Date
-): DeckDetails => {
-  return {
-    name,
-    cards,
-    totalCount: calculateTotalCards(cards),
-    createdAt,
-    modifiedAt: modifiedAt ?? new Date(),
-  };
 };

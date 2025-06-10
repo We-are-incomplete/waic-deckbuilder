@@ -57,12 +57,3 @@ export type DeckOperation =
       readonly count: number;
     }
   | { readonly type: "clear" };
-
-// デッキ詳細情報
-export interface DeckDetails {
-  readonly name: string;
-  readonly cards: readonly DeckCard[];
-  readonly totalCount: number;
-  readonly createdAt?: Date;
-  readonly modifiedAt?: Date;
-}

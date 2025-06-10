@@ -18,10 +18,3 @@ export interface FilterCriteria {
   readonly type: readonly string[];
   readonly tags: readonly string[];
 }
-
-// フィルター適用結果
-export type FilterResult<T> = {
-  readonly items: readonly T[];
-  readonly totalCount: number;
-  readonly filteredCount: number;
-};

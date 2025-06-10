@@ -63,19 +63,3 @@ export const sortDeckCards = (
   sorted.sort(compareDeckCards);
   return sorted;
 };
-
-/**
- * カード配列の破壊的ソート（パフォーマンス重視の場合）
- */
-export const sortCardsMutating = (cards: Card[]): Card[] => {
-  cards.sort(compareCards);
-  return cards;
-};
-
-/**
- * デッキカード配列の破壊的ソート（パフォーマンス重視の場合）
- */
-export const sortDeckCardsMutating = (deckCards: DeckCard[]): DeckCard[] => {
-  deckCards.sort(compareDeckCards);
-  return deckCards;
-};
