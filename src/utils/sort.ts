@@ -46,8 +46,9 @@ export const createNaturalSort = (): SortComparator<string> => {
  */
 export const createKindSort = (): SortComparator<Pick<Card, "kind">> => {
   return (a: Pick<Card, "kind">, b: Pick<Card, "kind">): number => {
-    const kindA = a.kind.type;
-    const kindB = b.kind.type;
+    // kindプロパティの型に応じて文字列を取得
+    const kindA = typeof a.kind === "string" ? a.kind : a.kind.type;
+    const kindB = typeof b.kind === "string" ? b.kind : b.kind.type;
 
     // CARD_KINDSは ["Artist", "Song", "Magic", "Direction"] の順序
     const indexA = CARD_KINDS.indexOf(kindA);

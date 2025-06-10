@@ -70,27 +70,52 @@ const imageModalState = shallowRef({
 
 // キャッシュされた計算プロパティ（再計算を最小化）
 const cardListCache = new Map<string, readonly DeckCard[]>();
-const imageUrlCache = new Map<string, string>();
+// LRU Cache implementation
+class LRUCache<K, V> {
+  private cache = new Map<K, V>();
+  constructor(private maxSize: number) {}
+
+  get(key: K): V | undefined {
+    const value = this.cache.get(key);
+    if (value !== undefined) {
+      // Move to end (most recently used)
+      this.cache.delete(key);
+      this.cache.set(key, value);
+    }
+    return value;
+  }
+
+  set(key: K, value: V): void {
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    } else if (this.cache.size >= this.maxSize) {
+      // Remove least recently used
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey !== undefined) {
+        this.cache.delete(firstKey);
+      }
+    }
+    this.cache.set(key, value);
+  }
+}
+
+const imageUrlCache = new LRUCache<string, string>(500);
 
 // 画像URLを高速取得（キャッシュ利用）
 const getCachedImageUrl = (cardId: string): string => {
-  if (imageUrlCache.has(cardId)) {
-    return imageUrlCache.get(cardId)!;
+  const cached = imageUrlCache.get(cardId);
+  if (cached) {
+    return cached;
   }
 
-  const url = getCardImageUrlSafe(cardId);
-
-  // キャッシュサイズ制限
-  if (imageUrlCache.size >= 500) {
-    // 古いエントリをクリア
-    const firstKey = imageUrlCache.keys().next().value;
-    if (firstKey) {
-      imageUrlCache.delete(firstKey);
-    }
+  try {
+    const url = getCardImageUrlSafe(cardId);
+    imageUrlCache.set(cardId, url);
+    return url;
+  } catch (error) {
+    console.error(`Failed to get image URL for card ${cardId}:`, error);
+    return ""; // フォールバック
   }
-
-  imageUrlCache.set(cardId, url);
-  return url;
 };
 
 // 計算プロパティを使用した最適化（Vue 3.5の改善されたreactivity）
@@ -106,9 +131,12 @@ const memoizedDeckCards = computed<readonly DeckCard[]>(() => {
     return cardListCache.get(key)!;
   }
 
-  // キャッシュサイズ制限
+  // LRU戦略でキャッシュサイズ制限
   if (cardListCache.size >= 10) {
-    cardListCache.clear();
+    const firstKey = cardListCache.keys().next().value;
+    if (firstKey) {
+      cardListCache.delete(firstKey);
+    }
   }
 
   cardListCache.set(key, cards);
@@ -192,9 +220,12 @@ const handleCardNavigation = async (direction: "previous" | "next") => {
 
 // Vue 3.5の新機能: watchEffect を使用した副作用の管理
 watchEffect(() => {
-  // appStore.deckSectionRef を useTemplateRef の値で更新
-  if (deckSectionRef.value) {
-    appStore.deckSectionRef = deckSectionRef.value.$el || deckSectionRef.value;
+  const element = deckSectionRef.value;
+  if (element) {
+    const domElement = (element as any).$el || element;
+    if (appStore.deckSectionRef !== domElement) {
+      appStore.deckSectionRef = domElement;
+    }
   }
 });
 
