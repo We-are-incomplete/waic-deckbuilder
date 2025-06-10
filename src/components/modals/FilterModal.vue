@@ -71,7 +71,7 @@ const isTagSelected = (tag: string) => {
       <div class="flex justify-between items-center mb-4">
         <div>
           <h3 class="text-lg font-bold">検索・絞り込み</h3>
-          <div v-if="filterStats.hasFilter" class="text-sm text-gray-400 mt-1">
+          <div class="text-sm text-gray-400 mt-1">
             {{ filterStats.filteredCount }} /
             {{ filterStats.totalCount }} 件表示
             <span class="text-blue-400">
@@ -151,7 +151,7 @@ const isTagSelected = (tag: string) => {
           <label
             v-for="kind in allKinds"
             :key="kind"
-            class="flex items-center cursor-pointer hover:bg-gray-700 p-2 rounded transition-colors"
+            class="flex items-center cursor-pointer hover:bg-gray-700 p-1 rounded transition-colors"
           >
             <input
               type="checkbox"
@@ -181,7 +181,7 @@ const isTagSelected = (tag: string) => {
           <label
             v-for="type in allTypes"
             :key="type"
-            class="flex items-center cursor-pointer hover:bg-gray-700 p-2 rounded transition-colors"
+            class="flex items-center cursor-pointer hover:bg-gray-700 p-1 rounded transition-colors"
           >
             <input
               type="checkbox"
@@ -221,27 +221,6 @@ const isTagSelected = (tag: string) => {
             />
             <span class="ml-2 text-xs">{{ tag }}</span>
           </label>
-        </div>
-      </div>
-
-      <!-- フィルター状況のサマリー -->
-      <div v-if="filterStats.hasFilter" class="mt-4 p-3 bg-gray-700 rounded">
-        <div class="text-sm">
-          <div class="font-medium mb-2">現在のフィルター:</div>
-          <div class="space-y-1 text-xs">
-            <div v-if="filterCriteria.text" class="text-blue-300">
-              テキスト: "{{ filterCriteria.text }}"
-            </div>
-            <div v-if="filterCriteria.kind.length > 0" class="text-green-300">
-              種類: {{ filterCriteria.kind.join(", ") }}
-            </div>
-            <div v-if="filterCriteria.type.length > 0" class="text-yellow-300">
-              タイプ: {{ filterCriteria.type.join(", ") }}
-            </div>
-            <div v-if="filterCriteria.tags.length > 0" class="text-purple-300">
-              タグ: {{ filterCriteria.tags.join(", ") }}
-            </div>
-          </div>
         </div>
       </div>
     </div>
