@@ -46,7 +46,7 @@ const emit = defineEmits<Emits>();
           />
           <button
             @click="emit('copyCode')"
-            class="px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition duration-200 whitespace-nowrap"
+            class="px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition duration-200 whitespace-nowrap min-w-24"
           >
             コピー
           </button>
@@ -73,7 +73,7 @@ const emit = defineEmits<Emits>();
           />
           <button
             @click="emit('importCode')"
-            class="px-3 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition duration-200 whitespace-nowrap"
+            class="px-3 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition duration-200 whitespace-nowrap min-w-24"
           >
             インポート
           </button>
