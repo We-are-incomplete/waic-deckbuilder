@@ -6,6 +6,7 @@ import { getCardImageUrlSafe } from "../../utils/imageHelpers";
 import { useLongPress } from "../../composables/useLongPress";
 import { useDeckOperations } from "../../composables/useDeckOperations";
 import { useDeckStore } from "../../stores/deck";
+import { useExportStore } from "../../stores/export";
 
 // Props（必要最小限に削減）
 interface Props {
@@ -16,7 +17,6 @@ interface Props {
 // Emits（ビジネスロジック以外のUIイベントのみ）
 interface Emits {
   (e: "generateDeckCode"): void;
-  (e: "saveDeckAsPng"): void;
   (e: "resetDeck"): void;
   (e: "openImageModal", cardId: string): void;
 }
@@ -26,6 +26,7 @@ const emit = defineEmits<Emits>();
 
 // ストアとコンポーザブルの初期化
 const deckStore = useDeckStore();
+const exportStore = useExportStore();
 
 // デッキ操作のコンポーザブル
 const {
@@ -124,6 +125,18 @@ const getDeckProgressColor = (count: number) => {
   return "bg-blue-500";
 };
 
+// デッキ画像保存処理
+const saveDeckAsPng = async () => {
+  const container = exportContainer.value;
+  if (container) {
+    try {
+      await exportStore.saveDeckAsPng(deckName.value, container);
+    } catch (error) {
+      console.error("デッキ画像の保存中にエラーが発生しました:", error);
+    }
+  }
+};
+
 // エクスポート用
 defineExpose({
   exportContainer,
@@ -203,7 +216,7 @@ defineExpose({
       </button>
 
       <button
-        @click="emit('saveDeckAsPng')"
+        @click="saveDeckAsPng"
         :disabled="deckCards.length === 0 || props.isSaving"
         class="group relative flex-1 min-w-0 px-1 sm:px-2 py-0.5 sm:py-1 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded text-xs font-medium hover:from-emerald-700 hover:to-emerald-800 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-emerald-500/25"
         title="デッキ画像を保存"

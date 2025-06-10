@@ -179,7 +179,6 @@ const cardImageModalProps = computed(() => ({
         ref="deckSectionRef"
         v-bind="deckSectionProps"
         @generate-deck-code="deckCodeStore.generateAndShowDeckCode"
-        @save-deck-as-png="appStore.saveDeckAsPng"
         @reset-deck="appStore.resetDeck"
         @open-image-modal="openImageModal"
         class="lg:w-1/2 lg:h-full overflow-y-auto"
