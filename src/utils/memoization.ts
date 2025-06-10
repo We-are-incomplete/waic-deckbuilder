@@ -20,46 +20,106 @@ interface CacheEntry<T> {
   readonly accessCount: number;
 }
 
-// 効率的なハッシュ関数
+// 効率的なハッシュ関数（FNV-1a アルゴリズム使用）
 const fastHash = (str: string): string => {
-  let hash = 0;
-  if (str.length === 0) return hash.toString();
+  let hash = 2166136261; // FNV offset basis
 
   for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash; // 32bit整数に変換
+    hash ^= str.charCodeAt(i);
+    hash +=
+      (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
   }
 
-  return hash.toString();
+  return (hash >>> 0).toString(36); // 32bit符号なし整数として変換し、base36で文字列化
 };
 
-// デフォルトのキーシリアライザー（改善版）
-const defaultKeySerializer = (args: readonly unknown[]): string => {
-  if (args.length === 0) return "empty";
-  if (args.length === 1) {
-    const arg = args[0];
-    if (typeof arg === "string") return fastHash(arg);
-    if (typeof arg === "number") return arg.toString();
-    if (typeof arg === "boolean") return arg.toString();
+// 配列のハッシュ化（より効率的）
+const hashArray = <T>(arr: readonly T[]): string => {
+  if (arr.length === 0) return "[]";
+  if (arr.length === 1) return `[${String(arr[0])}]`;
+
+  // 小さい配列は直接文字列化、大きい配列は要素数とサンプルを使用
+  if (arr.length <= 10) {
+    return `[${arr.map(String).join(",")}]`;
   }
 
-  try {
-    return fastHash(JSON.stringify(args));
-  } catch {
-    // JSONシリアライズできない場合は効率的な文字列化
-    return fastHash(
-      args
-        .map((arg) => {
-          if (arg === null) return "null";
-          if (arg === undefined) return "undefined";
-          if (typeof arg === "object")
-            return `[object ${arg.constructor?.name || "Object"}]`;
-          return String(arg);
-        })
-        .join(",")
-    );
+  // 大きい配列の場合、長さと最初/最後の要素を使用
+  return `[${arr.length}:${String(arr[0])},${String(arr[arr.length - 1])}]`;
+};
+
+// デフォルトのキーシリアライザー（大幅改善版）
+const defaultKeySerializer = (args: readonly unknown[]): string => {
+  if (args.length === 0) return "empty";
+
+  if (args.length === 1) {
+    const arg = args[0];
+    const type = typeof arg;
+
+    switch (type) {
+      case "string":
+        return (arg as string).length <= 50
+          ? `s:${arg}`
+          : `s:${fastHash(arg as string)}`;
+      case "number":
+        return `n:${arg}`;
+      case "boolean":
+        return `b:${arg}`;
+      case "undefined":
+        return "u";
+      case "object":
+        if (arg === null) return "null";
+        if (Array.isArray(arg))
+          return `a:${hashArray(arg as readonly unknown[])}`;
+        try {
+          return `o:${fastHash(JSON.stringify(arg))}`;
+        } catch {
+          return `o:${fastHash(String(arg))}`;
+        }
+      default:
+        return `${type}:${String(arg)}`;
+    }
   }
+
+  // 複数引数の場合
+  const parts: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    const type = typeof arg;
+
+    switch (type) {
+      case "string":
+        parts.push(
+          (arg as string).length <= 20
+            ? (arg as string)
+            : fastHash(arg as string)
+        );
+        break;
+      case "number":
+      case "boolean":
+        parts.push(String(arg));
+        break;
+      case "undefined":
+        parts.push("u");
+        break;
+      case "object":
+        if (arg === null) {
+          parts.push("null");
+        } else if (Array.isArray(arg)) {
+          parts.push(hashArray(arg as readonly unknown[]));
+        } else {
+          try {
+            parts.push(fastHash(JSON.stringify(arg)));
+          } catch {
+            parts.push(fastHash(String(arg)));
+          }
+        }
+        break;
+      default:
+        parts.push(String(arg));
+    }
+  }
+
+  return fastHash(parts.join("|"));
 };
 
 /**

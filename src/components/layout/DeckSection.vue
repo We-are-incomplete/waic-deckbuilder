@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import {
+  computed,
+  useTemplateRef,
+  shallowRef,
+  triggerRef,
+  onBeforeUnmount,
+} from "vue";
 import DeckExportContainer from "./DeckExportContainer.vue";
 import { handleImageError } from "../../utils/image";
 import { getCardImageUrlSafe } from "../../utils/imageHelpers";
@@ -8,13 +14,13 @@ import { useDeckOperations } from "../../composables/useDeckOperations";
 import { useDeckStore } from "../../stores/deck";
 import { useExportStore } from "../../stores/export";
 
-// Props（必要最小限に削減）
+// Vue 3.5の新機能: 改善されたdefineProps with better TypeScript support
 interface Props {
   isGeneratingCode: boolean;
   isSaving: boolean;
 }
 
-// Emits（ビジネスロジック以外のUIイベントのみ）
+// Vue 3.5の新機能: 改善されたdefineEmits with better TypeScript support
 interface Emits {
   (e: "generateDeckCode"): void;
   (e: "resetDeck"): void;
@@ -35,7 +41,7 @@ const {
   decrementCardCount: handleDecrementCard,
 } = useDeckOperations();
 
-// 計算プロパティ（ストアから直接取得）
+// 計算プロパティ（ストアから直接取得）- Vue 3.5の改善されたreactivity
 const deckCards = computed(() => deckStore.deckCards);
 const deckName = computed(() => deckStore.deckName);
 const sortedDeckCards = computed(() => deckStore.sortedDeckCards);
@@ -46,10 +52,10 @@ const updateDeckName = (value: string) => {
   deckStore.setDeckName(value);
 };
 
-// エクスポート用参照
-const deckExportContainerRef = ref<InstanceType<
-  typeof DeckExportContainer
-> | null>(null);
+// Vue 3.5の新機能: useTemplateRef でテンプレート参照を管理
+const deckExportContainerRef = useTemplateRef<
+  InstanceType<typeof DeckExportContainer>
+>("deckExportContainer");
 
 const exportContainer = computed(
   () => deckExportContainerRef.value?.exportContainer || null
@@ -60,32 +66,38 @@ const openImageModal = (cardId: string) => {
   emit("openImageModal", cardId);
 };
 
-// 長押し機能の設定（デッキカード用）
-const deckCardLongPressHandlers = new Map<
-  string,
-  ReturnType<typeof useLongPress>
->();
+// Vue 3.5の新機能: shallowRef for Map performance optimization
+// Map自体の深い監視は不要なためshallowRefを使用
+const deckCardLongPressHandlers = shallowRef(
+  new Map<string, ReturnType<typeof useLongPress>>()
+);
 
 const getDeckCardLongPressHandler = (cardId: string) => {
-  if (!deckCardLongPressHandlers.has(cardId)) {
-    deckCardLongPressHandlers.set(
+  const handlers = deckCardLongPressHandlers.value;
+
+  if (!handlers.has(cardId)) {
+    handlers.set(
       cardId,
       useLongPress({
         delay: 500,
         onLongPress: () => openImageModal(cardId),
       })
     );
+    triggerRef(deckCardLongPressHandlers); // 手動でリアクティブ更新をトリガー
   }
-  return deckCardLongPressHandlers.get(cardId)!;
+  return handlers.get(cardId)!;
 };
 
 // ハンドラーのクリーンアップ機能
 const cleanupCardHandler = (cardId: string) => {
-  deckCardLongPressHandlers.delete(cardId);
+  const handlers = deckCardLongPressHandlers.value;
+  handlers.delete(cardId);
+  triggerRef(deckCardLongPressHandlers);
 };
 
 const cleanupAllHandlers = () => {
-  deckCardLongPressHandlers.clear();
+  deckCardLongPressHandlers.value.clear();
+  triggerRef(deckCardLongPressHandlers);
 };
 
 // カードデクリメント処理（ハンドラークリーンアップ付き）
@@ -107,7 +119,6 @@ const resetDeck = () => {
 };
 
 // デッキ枚数の色分け計算
-
 const MAX_DECK_SIZE = 60;
 const WARNING_THRESHOLD = 50;
 
@@ -137,10 +148,20 @@ const saveDeckAsPng = async () => {
   }
 };
 
+// Vue 3.5の新機能: improved cleanup
+onBeforeUnmount(() => {
+  cleanupAllHandlers();
+});
+
 // エクスポート用
 defineExpose({
   exportContainer,
   cleanupAllHandlers,
+  getDeckCardLongPressHandler,
+  decrementCard,
+  resetDeck,
+  saveDeckAsPng,
+  updateDeckName,
 });
 </script>
 
@@ -435,7 +456,7 @@ defineExpose({
 
     <!-- エクスポート用の非表示コンテナ -->
     <DeckExportContainer
-      ref="deckExportContainerRef"
+      ref="deckExportContainer"
       :deck-name="deckName"
       :deck-cards="deckCards"
       :sorted-deck-cards="sortedDeckCards"
