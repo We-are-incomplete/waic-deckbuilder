@@ -75,7 +75,7 @@ export const useDeckStore = defineStore("deck", () => {
   });
 
   /**
-   * カードをデッキに追加（従来版）
+   * カードをデッキに追加
    */
   const addCardToDeck = (card: Card): void => {
     const existingCardIndex = deckCards.value.findIndex(
@@ -84,24 +84,26 @@ export const useDeckStore = defineStore("deck", () => {
 
     if (existingCardIndex > -1) {
       if (
-        deckCards.value[existingCardIndex].count <
+        deckCards.value[existingCardIndex].count >=
         GAME_CONSTANTS.MAX_CARD_COPIES
       ) {
-        // 配列を新しいものに置き換える
-        const newDeckCards = [...deckCards.value];
-        newDeckCards[existingCardIndex] = {
-          ...newDeckCards[existingCardIndex],
-          count: newDeckCards[existingCardIndex].count + 1,
-        };
-        deckCards.value = newDeckCards;
-      } else {
         errorHandler.value.handleValidationError(
           `カード「${card.name}」は既に最大枚数です`
         );
+        return;
       }
-    } else {
-      deckCards.value = [...deckCards.value, { card: card, count: 1 }];
+
+      // 配列を新しいものに置き換える
+      const newDeckCards = [...deckCards.value];
+      newDeckCards[existingCardIndex] = {
+        ...newDeckCards[existingCardIndex],
+        count: newDeckCards[existingCardIndex].count + 1,
+      };
+      deckCards.value = newDeckCards;
+      return;
     }
+
+    deckCards.value = [...deckCards.value, { card: card, count: 1 }];
   };
 
   /**
@@ -112,21 +114,24 @@ export const useDeckStore = defineStore("deck", () => {
       (item: DeckCard) => item.card.id === cardId
     );
 
-    if (existingCardIndex > -1) {
-      const item = deckCards.value[existingCardIndex];
-      if (item.count < GAME_CONSTANTS.MAX_CARD_COPIES) {
-        const newDeckCards = [...deckCards.value];
-        newDeckCards[existingCardIndex] = {
-          ...item,
-          count: item.count + 1,
-        };
-        deckCards.value = newDeckCards;
-      } else {
-        errorHandler.value.handleValidationError(
-          "カード枚数が上限に達しています"
-        );
-      }
+    if (existingCardIndex === -1) {
+      return;
     }
+
+    const item = deckCards.value[existingCardIndex];
+    if (item.count >= GAME_CONSTANTS.MAX_CARD_COPIES) {
+      errorHandler.value.handleValidationError(
+        "カード枚数が上限に達しています"
+      );
+      return;
+    }
+
+    const newDeckCards = [...deckCards.value];
+    newDeckCards[existingCardIndex] = {
+      ...item,
+      count: item.count + 1,
+    };
+    deckCards.value = newDeckCards;
   };
 
   /**
@@ -137,19 +142,26 @@ export const useDeckStore = defineStore("deck", () => {
       (item: DeckCard) => item.card.id === cardId
     );
 
-    if (existingCardIndex > -1) {
-      const item = deckCards.value[existingCardIndex];
-      if (item.count > 1) {
-        const newDeckCards = [...deckCards.value];
-        newDeckCards[existingCardIndex] = {
-          ...item,
-          count: item.count - 1,
-        };
-        deckCards.value = newDeckCards;
-      } else if (item.count === 1) {
-        removeCardFromDeck(cardId);
-      }
+    if (existingCardIndex === -1) {
+      return;
     }
+
+    const item = deckCards.value[existingCardIndex];
+    if (item.count === 1) {
+      removeCardFromDeck(cardId);
+      return;
+    }
+
+    if (item.count <= 1) {
+      return;
+    }
+
+    const newDeckCards = [...deckCards.value];
+    newDeckCards[existingCardIndex] = {
+      ...item,
+      count: item.count - 1,
+    };
+    deckCards.value = newDeckCards;
   };
 
   /**
@@ -166,25 +178,25 @@ export const useDeckStore = defineStore("deck", () => {
    */
   const initializeDeck = (availableCards: readonly Card[]): void => {
     const loadDeckResult = loadDeckFromLocalStorage(availableCards);
-    if (loadDeckResult.isOk()) {
-      deckCards.value = loadDeckResult.value;
-    } else {
+    if (loadDeckResult.isErr()) {
       deckCards.value = [];
       errorHandler.value.handleRuntimeError(
         "デッキの読み込みに失敗しました",
         loadDeckResult.error
       );
+    } else {
+      deckCards.value = loadDeckResult.value;
     }
 
     const loadNameResult = loadDeckName();
-    if (loadNameResult.isOk()) {
-      deckName.value = loadNameResult.value;
-    } else {
+    if (loadNameResult.isErr()) {
       deckName.value = "新しいデッキ";
       errorHandler.value.handleRuntimeError(
         "デッキ名の読み込みに失敗しました",
         loadNameResult.error
       );
+    } else {
+      deckName.value = loadNameResult.value;
     }
   };
 

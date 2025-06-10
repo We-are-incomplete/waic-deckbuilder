@@ -1,6 +1,5 @@
 import { computed, type ComputedRef } from "vue";
-import type { Card, DeckCard } from "../types";
-import type { DeckCard as NewDeckCard } from "../types/deck";
+import type { Card, DeckCard, CardType } from "../types";
 import * as DeckDomain from "../domain/deck";
 import { useDeckStore } from "../stores/deck";
 import { useCardsStore } from "../stores/cards";
@@ -12,51 +11,17 @@ interface ErrorHandler {
 }
 
 // CardTypeから文字列表現を取得するヘルパー関数
-const getSingleTypeString = (cardType: any): string => {
-  if (typeof cardType === "object" && cardType && "type" in cardType) {
-    switch (cardType.type) {
-      case "color":
-        return cardType.value;
-      case "timing":
-        return cardType.value;
-      case "equipment":
-        return cardType.value;
-      case "installation":
-        return cardType.value;
-    }
+const getSingleTypeString = (cardType: CardType): string => {
+  switch (cardType.type) {
+    case "color":
+      return cardType.value;
+    case "timing":
+      return cardType.value;
+    case "equipment":
+      return cardType.value;
+    case "installation":
+      return cardType.value;
   }
-  return String(cardType);
-};
-
-const getTypeString = (cardType: Card["type"]): string => {
-  if (Array.isArray(cardType)) {
-    return cardType.map((t) => getSingleTypeString(t)).join(", ");
-  }
-  return getSingleTypeString(cardType);
-};
-
-/**
- * NewDeckCard配列をレガシーDeckCard配列に変換
- */
-const convertToLegacyDeckCards = (
-  deckCards: readonly NewDeckCard[]
-): DeckCard[] => {
-  return deckCards.map((deckCard) => ({
-    card: deckCard.card,
-    count: deckCard.count,
-  }));
-};
-
-/**
- * レガシーDeckCard配列をNewDeckCard配列に変換
- */
-const convertToNewDeckCards = (
-  deckCards: readonly DeckCard[]
-): NewDeckCard[] => {
-  return deckCards.map((deckCard) => ({
-    card: deckCard.card,
-    count: deckCard.count,
-  }));
 };
 
 export const useDeckOperations = (showToast?: ShowToastFunction) => {
@@ -78,10 +43,7 @@ export const useDeckOperations = (showToast?: ShowToastFunction) => {
     isValid: boolean;
     validationErrors: readonly string[];
   }> = computed(() => {
-    // 新しい型システムのDeckCardに変換
-    const newDeckCards = convertToNewDeckCards(deckStore.deckCards);
-
-    const state = DeckDomain.calculateDeckState(newDeckCards);
+    const state = DeckDomain.calculateDeckState(deckStore.deckCards);
 
     switch (state.type) {
       case "empty":
@@ -109,117 +71,100 @@ export const useDeckOperations = (showToast?: ShowToastFunction) => {
    * カードをデッキに安全に追加
    */
   const addCardToDeck = (card: Card): boolean => {
-    // 新しい型システムのDeckCardに変換
-    const newDeckCards = convertToNewDeckCards(deckStore.deckCards);
-
-    const result = DeckDomain.executeDeckOperation(newDeckCards, {
+    const result = DeckDomain.executeDeckOperation(deckStore.deckCards, {
       type: "addCard",
       card: card,
     });
 
     if (result.isOk()) {
-      // レガシー型に戻して設定
-      const legacyDeckCards = convertToLegacyDeckCards(result.value);
-      deckStore.setDeckCards(legacyDeckCards);
+      deckStore.setDeckCards([...result.value]);
       return true;
-    } else {
-      switch (result.error.type) {
-        case "maxCountExceeded":
-          errorHandler.handleValidationError(
-            `カード「${card.name}」は既に最大枚数です`
-          );
-          break;
-        case "deckSizeExceeded":
-          errorHandler.handleValidationError("デッキサイズの上限を超えます");
-          break;
-        default:
-          errorHandler.handleValidationError("カードの追加に失敗しました");
-      }
-      return false;
     }
+
+    switch (result.error.type) {
+      case "maxCountExceeded":
+        errorHandler.handleValidationError(
+          `カード「${card.name}」は既に最大枚数です`
+        );
+        break;
+      case "deckSizeExceeded":
+        errorHandler.handleValidationError("デッキサイズの上限を超えます");
+        break;
+      default:
+        errorHandler.handleValidationError("カードの追加に失敗しました");
+    }
+    return false;
   };
 
   /**
    * カード枚数を安全に増加
    */
   const incrementCardCount = (cardId: string): boolean => {
-    const newDeckCards = convertToNewDeckCards(deckStore.deckCards);
-
-    const result = DeckDomain.executeDeckOperation(newDeckCards, {
+    const result = DeckDomain.executeDeckOperation(deckStore.deckCards, {
       type: "incrementCount",
       cardId,
     });
 
     if (result.isOk()) {
-      const legacyDeckCards = convertToLegacyDeckCards(result.value);
-      deckStore.setDeckCards(legacyDeckCards);
+      deckStore.setDeckCards([...result.value]);
       return true;
-    } else {
-      errorHandler.handleValidationError("カード枚数の増加に失敗しました");
-      return false;
     }
+
+    errorHandler.handleValidationError("カード枚数の増加に失敗しました");
+    return false;
   };
 
   /**
    * カード枚数を安全に減少
    */
   const decrementCardCount = (cardId: string): boolean => {
-    const newDeckCards = convertToNewDeckCards(deckStore.deckCards);
-
-    const result = DeckDomain.executeDeckOperation(newDeckCards, {
+    const result = DeckDomain.executeDeckOperation(deckStore.deckCards, {
       type: "decrementCount",
       cardId,
     });
 
     if (result.isOk()) {
-      const legacyDeckCards = convertToLegacyDeckCards(result.value);
-      deckStore.setDeckCards(legacyDeckCards);
+      deckStore.setDeckCards([...result.value]);
       return true;
-    } else {
-      errorHandler.handleValidationError("カード枚数の減少に失敗しました");
-      return false;
     }
+
+    errorHandler.handleValidationError("カード枚数の減少に失敗しました");
+    return false;
   };
 
   /**
    * カードをデッキから安全に削除
    */
   const removeCardFromDeck = (cardId: string): boolean => {
-    const newDeckCards = convertToNewDeckCards(deckStore.deckCards);
-
-    const result = DeckDomain.executeDeckOperation(newDeckCards, {
+    const result = DeckDomain.executeDeckOperation(deckStore.deckCards, {
       type: "removeCard",
       cardId,
     });
 
     if (result.isOk()) {
-      const legacyDeckCards = convertToLegacyDeckCards(result.value);
-      deckStore.setDeckCards(legacyDeckCards);
+      deckStore.setDeckCards([...result.value]);
       return true;
-    } else {
-      errorHandler.handleValidationError("カードの削除に失敗しました");
-      return false;
     }
+
+    errorHandler.handleValidationError("カードの削除に失敗しました");
+    return false;
   };
 
   /**
    * デッキを安全にクリア
    */
   const clearDeck = (): boolean => {
-    const newDeckCards = convertToNewDeckCards(deckStore.deckCards);
-
-    const result = DeckDomain.executeDeckOperation(newDeckCards, {
+    const result = DeckDomain.executeDeckOperation(deckStore.deckCards, {
       type: "clear",
     });
 
     if (result.isOk()) {
-      const legacyDeckCards = convertToLegacyDeckCards(result.value);
-      deckStore.setDeckCards(legacyDeckCards);
+      deckStore.setDeckCards([...result.value]);
       return true;
-    } else {
-      errorHandler.handleValidationError("デッキのクリアに失敗しました");
-      return false;
     }
+
+    errorHandler.handleValidationError("デッキのクリアに失敗しました");
+    return false;
   };
 
   /**
@@ -230,77 +175,69 @@ export const useDeckOperations = (showToast?: ShowToastFunction) => {
   };
 
   /**
-   * デッキ内のカード検索
+   * デッキ内のカードを検索
    */
   const searchDeckCards = (searchText: string): readonly DeckCard[] => {
-    if (!searchText.trim()) {
+    if (!searchText || searchText.trim().length === 0) {
       return deckStore.sortedDeckCards;
     }
 
     return deckStore.sortedDeckCards.filter((deckCard) => {
-      const card = deckCard.card;
-      const lowerSearchText = searchText.toLowerCase();
-
-      // カード名で検索
-      if (card.name.toLowerCase().includes(lowerSearchText)) {
-        return true;
-      }
-
-      // IDで検索
-      if (card.id.toLowerCase().includes(lowerSearchText)) {
-        return true;
-      }
-
-      // タグで検索
-      if (card.tags) {
-        const tags = Array.isArray(card.tags) ? card.tags : [card.tags];
-        return tags.some((tag) => tag.toLowerCase().includes(lowerSearchText));
-      }
-
-      return false;
+      const normalizedSearchText = searchText.trim().toLowerCase();
+      return (
+        deckCard.card.name.toLowerCase().includes(normalizedSearchText) ||
+        deckCard.card.id.toLowerCase().includes(normalizedSearchText)
+      );
     });
   };
 
   /**
-   * デッキ統計情報を計算
+   * デッキ統計を取得
    */
-  const deckStatistics = computed(() => {
-    const cards = deckStore.deckCards;
-    const totalCount = deckStore.totalDeckCards;
-
-    // 種別ごとの統計
+  const getDeckStatistics = () => {
+    const cards = deckStore.sortedDeckCards;
     const kindStats = new Map<string, number>();
-    // タイプごとの統計
     const typeStats = new Map<string, number>();
+    let totalCost = 0;
 
     for (const deckCard of cards) {
       const { card, count } = deckCard;
 
       // 種別統計
-      const kind = card.kind.type;
-      kindStats.set(kind, (kindStats.get(kind) || 0) + count);
+      const kindString =
+        typeof card.kind === "string" ? card.kind : card.kind.type;
+      kindStats.set(kindString, (kindStats.get(kindString) || 0) + count);
 
       // タイプ統計
-      const typeString = getTypeString(card.type);
+      const typeString = Array.isArray(card.type)
+        ? card.type.map((t) => getSingleTypeString(t)).join(", ")
+        : getSingleTypeString(card.type as CardType);
       typeStats.set(typeString, (typeStats.get(typeString) || 0) + count);
     }
 
     return {
-      totalCount,
+      totalCards: DeckDomain.calculateTotalCards(cards),
+      uniqueCards: cards.length,
       kindStats: Object.fromEntries(kindStats),
       typeStats: Object.fromEntries(typeStats),
+      totalCost,
     };
-  });
+  };
 
   return {
+    // 計算プロパティ
     deckState,
-    deckStatistics,
+
+    // デッキ操作
     addCardToDeck,
     incrementCardCount,
     decrementCardCount,
     removeCardFromDeck,
     clearDeck,
+
+    // ユーティリティ
     getCardDetails,
     searchDeckCards,
+    getDeckStatistics,
   };
 };
