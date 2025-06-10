@@ -68,16 +68,29 @@ export const createKindSort = (): SortComparator<Pick<Card, "kind">> => {
 export const createTypeSort = (): SortComparator<Pick<Card, "type">> => {
   return (a: Pick<Card, "type">, b: Pick<Card, "type">): number => {
     const getEarliestTypeIndex = (
-      cardTypes: CardType | readonly CardType[]
+      cardTypes: CardType | readonly CardType[] | string | readonly string[]
     ): number => {
       if (!cardTypes) return CARD_TYPES.length;
-      const types = Array.isArray(cardTypes) ? cardTypes : [cardTypes];
-      let minIndex = CARD_TYPES.length;
 
+      let types: string[];
+
+      // 実際のカードデータでは文字列または文字列配列の場合がある
+      if (typeof cardTypes === "string") {
+        types = [cardTypes];
+      } else if (Array.isArray(cardTypes)) {
+        // 配列の場合は各要素が文字列かCardTypeかを判定
+        types = cardTypes.map((type) =>
+          typeof type === "string" ? type : getTypeString(type as CardType)
+        );
+      } else {
+        // CardTypeオブジェクトの場合
+        types = [getTypeString(cardTypes as CardType)];
+      }
+
+      let minIndex = CARD_TYPES.length;
       for (const type of types) {
-        const typeString = getTypeString(type);
         // CARD_TYPESは ["赤", "青", "黄", "白", "黒", "全", "即時", "装備", "設置"] の順序
-        const index = CARD_TYPES.indexOf(typeString);
+        const index = CARD_TYPES.indexOf(type);
         if (index !== -1 && index < minIndex) {
           minIndex = index;
         }
