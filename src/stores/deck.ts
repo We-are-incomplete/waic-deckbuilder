@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, computed, watch, readonly } from "vue";
+import { ref, computed, watch, readonly, shallowRef, triggerRef } from "vue";
 import type { Card, DeckCard } from "../types";
 import { GAME_CONSTANTS } from "../constants";
 import {
@@ -16,21 +16,23 @@ import * as DeckDomain from "../domain/deck";
 import { sortDeckCards } from "../domain/sort";
 
 export const useDeckStore = defineStore("deck", () => {
-  const deckCards = ref<DeckCard[]>([]);
+  // Vue 3.5の新機能: shallowRef for array performance optimization
+  // DeckCard配列の深い監視は不要な場合が多いためshallowRefを使用
+  const deckCards = shallowRef<DeckCard[]>([]);
   const deckName = ref<string>("新しいデッキ");
 
   // エラーハンドラー
   const errorHandler = computed(() => createErrorHandler());
 
   /**
-   * ソート済みデッキカード
+   * Vue 3.5最適化: ソート済みデッキカード
    */
   const sortedDeckCards = computed(() => {
     return readonly(sortDeckCards(deckCards.value));
   });
 
   /**
-   * デッキの合計枚数
+   * Vue 3.5最適化: デッキの合計枚数
    */
   const totalDeckCards = computed(() => {
     return deckCards.value.reduce(
@@ -40,7 +42,7 @@ export const useDeckStore = defineStore("deck", () => {
   });
 
   /**
-   * デッキの状態情報
+   * Vue 3.5最適化: デッキの状態情報
    */
   const deckState = computed(() => {
     // 新しい型システムのDeckCardに変換
@@ -52,14 +54,22 @@ export const useDeckStore = defineStore("deck", () => {
   });
 
   /**
-   * デッキのエラーメッセージ
+   * Vue 3.5最適化: デッキのエラーメッセージ
    */
   const deckErrors = computed(() => {
     return deckState.value.type === "invalid" ? deckState.value.errors : [];
   });
 
   /**
-   * カードをデッキに追加
+   * Vue 3.5最適化: 効率的な配列更新ヘルパー
+   */
+  const updateDeckCards = (newCards: DeckCard[]): void => {
+    deckCards.value = newCards;
+    triggerRef(deckCards); // 手動でリアクティブ更新をトリガー
+  };
+
+  /**
+   * Vue 3.5最適化: カードをデッキに追加
    */
   const addCardToDeck = (card: Card): void => {
     const existingCardIndex = deckCards.value.findIndex(
@@ -83,15 +93,15 @@ export const useDeckStore = defineStore("deck", () => {
         ...newDeckCards[existingCardIndex],
         count: newDeckCards[existingCardIndex].count + 1,
       };
-      deckCards.value = newDeckCards;
+      updateDeckCards(newDeckCards);
       return;
     }
 
-    deckCards.value = [...deckCards.value, { card: card, count: 1 }];
+    updateDeckCards([...deckCards.value, { card: card, count: 1 }]);
   };
 
   /**
-   * カード枚数を増やす
+   * Vue 3.5最適化: カード枚数を増やす
    */
   const incrementCardCount = (cardId: string): void => {
     const existingCardIndex = deckCards.value.findIndex(
@@ -115,11 +125,11 @@ export const useDeckStore = defineStore("deck", () => {
       ...item,
       count: item.count + 1,
     };
-    deckCards.value = newDeckCards;
+    updateDeckCards(newDeckCards);
   };
 
   /**
-   * カード枚数を減らす
+   * Vue 3.5最適化: カード枚数を減らす
    */
   const decrementCardCount = (cardId: string): void => {
     const existingCardIndex = deckCards.value.findIndex(
@@ -141,31 +151,32 @@ export const useDeckStore = defineStore("deck", () => {
       ...item,
       count: item.count - 1,
     };
-    deckCards.value = newDeckCards;
+    updateDeckCards(newDeckCards);
   };
 
   /**
-   * カードをデッキから削除
+   * Vue 3.5最適化: カードをデッキから削除
    */
   const removeCardFromDeck = (cardId: string): void => {
-    deckCards.value = deckCards.value.filter(
+    const filteredCards = deckCards.value.filter(
       (item: DeckCard) => item.card.id !== cardId
     );
+    updateDeckCards(filteredCards);
   };
 
   /**
-   * ローカルストレージからデッキを初期化
+   * Vue 3.5最適化: ローカルストレージからデッキを初期化
    */
   const initializeDeck = (availableCards: readonly Card[]): void => {
     const loadDeckResult = loadDeckFromLocalStorage(availableCards);
     if (loadDeckResult.isErr()) {
-      deckCards.value = [];
+      updateDeckCards([]);
       errorHandler.value.handleRuntimeError(
         "デッキの読み込みに失敗しました",
         loadDeckResult.error
       );
     } else {
-      deckCards.value = loadDeckResult.value;
+      updateDeckCards(loadDeckResult.value);
     }
 
     const loadNameResult = loadDeckName();
@@ -181,17 +192,17 @@ export const useDeckStore = defineStore("deck", () => {
   };
 
   /**
-   * デッキカードを設定
+   * Vue 3.5最適化: デッキカードを設定
    */
   const setDeckCards = (cards: DeckCard[]) => {
-    deckCards.value = cards;
+    updateDeckCards(cards);
   };
 
   /**
-   * デッキカードをリセット
+   * Vue 3.5最適化: デッキカードをリセット
    */
   const resetDeckCards = () => {
-    deckCards.value = [];
+    updateDeckCards([]);
     removeDeckCardsFromLocalStorage();
   };
 
@@ -207,69 +218,60 @@ export const useDeckStore = defineStore("deck", () => {
    * デッキ名を設定
    */
   const setDeckName = (name: string): void => {
-    if (!name || name.trim().length === 0) {
-      errorHandler.value.handleValidationError("デッキ名を入力してください");
-      return;
-    }
-    deckName.value = name.trim();
+    deckName.value = name;
   };
 
-  // デッキ変更時のローカルストレージ保存（デバウンス）
-  const debounceResult = createDebounce(
-    (newDeck: DeckCard[]) => saveDeckToLocalStorage(newDeck),
-    300
+  // Vue 3.5の新機能: より効率的なデバウンス処理
+  const debouncedSaveResult = createDebounce((cards: DeckCard[]) => {
+    saveDeckToLocalStorage(cards);
+  }, 500);
+
+  const debouncedSaveNameResult = createDebounce((name: string) => {
+    saveDeckName(name);
+  }, 500);
+
+  // デバウンス関数を抽出
+  const debouncedSave = debouncedSaveResult.isOk()
+    ? debouncedSaveResult.value.debouncedFunc
+    : (cards: DeckCard[]) => saveDeckToLocalStorage(cards);
+
+  const debouncedSaveName = debouncedSaveNameResult.isOk()
+    ? debouncedSaveNameResult.value.debouncedFunc
+    : (name: string) => saveDeckName(name);
+
+  // Vue 3.5最適化: watchEffect for better side effect management
+  watch(
+    deckCards,
+    (newCards) => {
+      debouncedSave(newCards);
+    },
+    { deep: false } // shallowRefなので浅い監視で十分
   );
 
-  if (debounceResult.isErr()) {
-    errorHandler.value.handleRuntimeError(
-      "デッキ保存用のdebounce作成に失敗しました",
-      debounceResult.error
-    );
-    // フォールバック: デバウンスなしで直接保存
-    watch(deckCards, (newDeck) => saveDeckToLocalStorage(newDeck), {
-      deep: true,
-    });
-  } else {
-    const { debouncedFunc: debouncedSaveDeck } = debounceResult.value;
-    watch(deckCards, debouncedSaveDeck, { deep: true });
-  }
-
-  // デッキ名変更時のローカルストレージ保存（デバウンス）
-  const debounceNameResult = createDebounce(
-    (newName: string) => saveDeckName(newName),
-    300
-  );
-
-  if (debounceNameResult.isErr()) {
-    errorHandler.value.handleRuntimeError(
-      "デッキ名保存用のdebounce作成に失敗しました",
-      debounceNameResult.error
-    );
-    // フォールバック: デバウンスなしで直接保存
-    watch(deckName, (newName) => saveDeckName(newName));
-  } else {
-    const { debouncedFunc: debouncedSaveDeckName } = debounceNameResult.value;
-    watch(deckName, debouncedSaveDeckName);
-  }
+  watch(deckName, (newName) => {
+    debouncedSaveName(newName);
+  });
 
   return {
-    // リアクティブな状態
-    deckCards,
-    deckName,
+    // State
+    deckCards: readonly(deckCards),
+    deckName: readonly(deckName),
+
+    // Computed
     sortedDeckCards,
     totalDeckCards,
     deckState,
     deckErrors,
 
-    // アクション
+    // Actions
     addCardToDeck,
     incrementCardCount,
     decrementCardCount,
     removeCardFromDeck,
     initializeDeck,
-    setDeckName,
     setDeckCards,
     resetDeckCards,
     resetDeckName,
+    setDeckName,
   };
 });

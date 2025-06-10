@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { onMounted, defineAsyncComponent, ref, computed, nextTick } from "vue";
+import {
+  onMounted,
+  defineAsyncComponent,
+  computed,
+  nextTick,
+  useTemplateRef,
+  watchEffect,
+  shallowRef,
+  triggerRef,
+} from "vue";
 
 import { useAppStore } from "./stores";
 import { CardListSection, DeckSection } from "./components";
@@ -43,22 +52,35 @@ const CardImageModal = defineAsyncComponent({
 const appStore = useAppStore();
 const { cardsStore, deckStore, filterStore, deckCodeStore } = appStore;
 
+// Vue 3.5の新機能: useTemplateRef でテンプレート参照を管理
+const deckSectionRef =
+  useTemplateRef<InstanceType<typeof DeckSection>>("deckSection");
+
 // アプリケーションの初期化
 onMounted(appStore.initializeApp);
 
-// モーダルの状態（最適化版）
-const imageModalState = ref({
+// Vue 3.5の新機能: shallowRef を使用したパフォーマンス最適化
+// 深い監視が不要なオブジェクトには shallowRef を使用
+const imageModalState = shallowRef({
   isVisible: false,
   selectedCard: null as Card | null,
   selectedImage: null as string | null,
   selectedIndex: null as number | null,
 });
 
-// 計算プロパティを使用した最適化
+// 計算プロパティを使用した最適化（Vue 3.5の改善されたreactivity）
 const sortedDeckCards = computed(() => deckStore.sortedDeckCards);
 const sortedDeckCardsLength = computed(() => sortedDeckCards.value.length);
 
-// カード画像を拡大表示（最適化版）
+// Vue 3.5の新機能: より効率的な状態更新
+const updateImageModalState = (
+  updates: Partial<typeof imageModalState.value>
+) => {
+  Object.assign(imageModalState.value, updates);
+  triggerRef(imageModalState); // 手動でリアクティブ更新をトリガー
+};
+
+// カード画像を拡大表示（Vue 3.5最適化版）
 const openImageModal = async (cardId: string) => {
   const cards = sortedDeckCards.value;
 
@@ -71,8 +93,8 @@ const openImageModal = async (cardId: string) => {
     // 次の更新まで待つ
     await nextTick();
 
-    // 状態を一括更新
-    Object.assign(imageModalState.value, {
+    // Vue 3.5の新機能を使用した状態更新
+    updateImageModalState({
       selectedCard: deckCard.card,
       selectedIndex: cardIndex,
       selectedImage: getCardImageUrlSafe(cardId),
@@ -83,10 +105,9 @@ const openImageModal = async (cardId: string) => {
   }
 };
 
-// モーダルを閉じる（最適化版）
+// モーダルを閉じる（Vue 3.5最適化版）
 const closeImageModal = () => {
-  // 状態を一括でリセット
-  Object.assign(imageModalState.value, {
+  updateImageModalState({
     isVisible: false,
     selectedImage: null,
     selectedCard: null,
@@ -94,7 +115,7 @@ const closeImageModal = () => {
   });
 };
 
-// カードナビゲーション（最適化版）
+// カードナビゲーション（Vue 3.5最適化版）
 const handleCardNavigation = async (direction: "previous" | "next") => {
   const currentIndex = imageModalState.value.selectedIndex;
   if (currentIndex === null) return;
@@ -118,15 +139,23 @@ const handleCardNavigation = async (direction: "previous" | "next") => {
   // 次の更新まで待つ
   await nextTick();
 
-  // 状態を一括更新
-  Object.assign(imageModalState.value, {
+  // Vue 3.5の新機能を使用した状態更新
+  updateImageModalState({
     selectedCard: newDeckCard.card,
     selectedIndex: newIndex,
     selectedImage: getCardImageUrlSafe(newDeckCard.card.id),
   });
 };
 
-// 条件付きレンダリングのための計算プロパティ
+// Vue 3.5の新機能: watchEffect を使用した副作用の管理
+watchEffect(() => {
+  // appStore.deckSectionRef を useTemplateRef の値で更新
+  if (deckSectionRef.value) {
+    appStore.deckSectionRef = deckSectionRef.value.$el || deckSectionRef.value;
+  }
+});
+
+// 条件付きレンダリングのための計算プロパティ（Vue 3.5の改善されたreactivity）
 const shouldShowFilterModal = computed(() => filterStore.isFilterModalOpen);
 const shouldShowDeckCodeModal = computed(() => deckCodeStore.showDeckCodeModal);
 const shouldShowResetConfirmModal = computed(
@@ -134,13 +163,13 @@ const shouldShowResetConfirmModal = computed(
 );
 const shouldShowImageModal = computed(() => imageModalState.value.isVisible);
 
-// デッキセクションのプロパティを計算
+// デッキセクションのプロパティを計算（Vue 3.5の最適化されたcomputed）
 const deckSectionProps = computed(() => ({
   isGeneratingCode: deckCodeStore.isGeneratingCode,
   isSaving: appStore.exportStore.isSaving,
 }));
 
-// カード一覧セクションのプロパティを計算
+// カード一覧セクションのプロパティを計算（Vue 3.5の最適化されたcomputed）
 const cardListSectionProps = computed(() => ({
   availableCards: cardsStore.availableCards,
   sortedAndFilteredCards: filterStore.sortedAndFilteredCards,
@@ -148,7 +177,7 @@ const cardListSectionProps = computed(() => ({
   error: cardsStore.error?.message || null,
 }));
 
-// デッキコードモーダルのプロパティを計算
+// デッキコードモーダルのプロパティを計算（Vue 3.5の最適化されたcomputed）
 const deckCodeModalProps = computed(() => ({
   isVisible: deckCodeStore.showDeckCodeModal,
   deckCode: deckCodeStore.deckCode,
@@ -156,7 +185,7 @@ const deckCodeModalProps = computed(() => ({
   error: deckCodeStore.error,
 }));
 
-// カード画像モーダルのプロパティを計算
+// カード画像モーダルのプロパティを計算（Vue 3.5の最適化されたcomputed）
 const cardImageModalProps = computed(() => ({
   isVisible: imageModalState.value.isVisible,
   imageSrc: imageModalState.value.selectedImage,
@@ -176,7 +205,7 @@ const cardImageModalProps = computed(() => ({
     <div class="flex flex-col lg:flex-row flex-1 overflow-hidden">
       <!-- デッキセクション -->
       <DeckSection
-        ref="deckSectionRef"
+        ref="deckSection"
         v-bind="deckSectionProps"
         @generate-deck-code="deckCodeStore.generateAndShowDeckCode"
         @reset-deck="appStore.resetDeck"

@@ -1,4 +1,10 @@
-import { ref, onBeforeUnmount, readonly, computed } from "vue";
+import {
+  onBeforeUnmount,
+  readonly,
+  computed,
+  shallowRef,
+  triggerRef,
+} from "vue";
 import { ok, err, type Result } from "neverthrow";
 
 // 長押しの状態を表現する代数的データ型
@@ -85,7 +91,7 @@ const createPressResult = (
 };
 
 /**
- * 長押し機能を提供するコンポーザブル関数
+ * Vue 3.5最適化: 長押し機能を提供するコンポーザブル関数
  */
 export const useLongPress = (options: LongPressOptions = {}) => {
   const { delay: inputDelay, onLongPress, onPress, onCancel } = options;
@@ -95,10 +101,21 @@ export const useLongPress = (options: LongPressOptions = {}) => {
   const delayResult = validateDelay(inputDelay ?? defaultDelay);
   const delay = delayResult.isOk() ? delayResult.value : defaultDelay;
 
-  // 状態管理
-  const pressState = ref<PressState>({ type: "idle" });
+  // Vue 3.5の新機能: shallowRef for performance optimization
+  // 状態オブジェクトの深い監視は不要なためshallowRefを使用
+  const pressState = shallowRef<PressState>({ type: "idle" });
   let pressTimer: ReturnType<typeof setTimeout> | null = null;
-  let lastResult: LongPressResult | null = null;
+
+  // Vue 3.5の新機能: shallowRef for result state
+  const lastResult = shallowRef<LongPressResult | null>(null);
+
+  /**
+   * Vue 3.5最適化: 効率的な状態更新
+   */
+  const updatePressState = (newState: PressState): void => {
+    pressState.value = newState;
+    triggerRef(pressState); // 手動でリアクティブ更新をトリガー
+  };
 
   /**
    * タイマーをクリアする純粋でない関数
@@ -119,7 +136,7 @@ export const useLongPress = (options: LongPressOptions = {}) => {
     try {
       pressTimer = setTimeout(() => {
         const pressTime = getCurrentTime() - startTime;
-        pressState.value = { type: "longPressed", pressTime };
+        updatePressState({ type: "longPressed", pressTime });
         onLongPress?.();
       }, delay);
       return ok(undefined);
@@ -144,13 +161,13 @@ export const useLongPress = (options: LongPressOptions = {}) => {
     clearTimer();
 
     const startTime = getCurrentTime();
-    pressState.value = { type: "pressing", startTime };
+    updatePressState({ type: "pressing", startTime });
 
     // 長押しタイマーを開始
     const timerResult = startLongPressTimer(startTime);
     if (timerResult.isErr()) {
       console.warn("長押しタイマーの開始に失敗しました:", timerResult.error);
-      pressState.value = { type: "cancelled" };
+      updatePressState({ type: "cancelled" });
       onCancel?.();
     }
   };
@@ -165,10 +182,12 @@ export const useLongPress = (options: LongPressOptions = {}) => {
     clearTimer();
 
     // 結果を作成
-    lastResult = createPressResult(currentState, endTime);
+    const result = createPressResult(currentState, endTime);
+    lastResult.value = result;
+    triggerRef(lastResult);
 
     // コールバック実行
-    switch (lastResult.type) {
+    switch (result.type) {
       case "press":
         onPress?.();
         break;
@@ -181,7 +200,7 @@ export const useLongPress = (options: LongPressOptions = {}) => {
     }
 
     // 状態をリセット
-    pressState.value = { type: "idle" };
+    updatePressState({ type: "idle" });
   };
 
   /**
@@ -189,73 +208,73 @@ export const useLongPress = (options: LongPressOptions = {}) => {
    */
   const cancelPress = (): void => {
     clearTimer();
-    pressState.value = { type: "cancelled" };
-    lastResult = { type: "cancelled", duration: 0 };
+    updatePressState({ type: "cancelled" });
+    lastResult.value = { type: "cancelled", duration: 0 };
+    triggerRef(lastResult);
     onCancel?.();
   };
 
   /**
-   * 現在の状態情報を取得
+   * Vue 3.5最適化: 現在の状態情報を取得
    */
-  const getStateInfo = () => {
-    const state = pressState.value;
-    const currentTime = getCurrentTime();
-
-    switch (state.type) {
-      case "pressing":
-        return {
-          isPressing: true,
-          isLongPressed: false,
-          currentDuration: currentTime - state.startTime,
-          progress: Math.min((currentTime - state.startTime) / delay, 1),
-        };
-      case "longPressed":
-        return {
-          isPressing: false,
-          isLongPressed: true,
-          currentDuration: state.pressTime,
-          progress: 1,
-        };
-      default:
-        return {
-          isPressing: false,
-          isLongPressed: false,
-          currentDuration: 0,
-          progress: 0,
-        };
-    }
-  };
+  const getStateInfo = () => ({
+    state: pressState.value.type,
+    isIdle: pressState.value.type === "idle",
+    isPressing: pressState.value.type === "pressing",
+    isLongPressed: pressState.value.type === "longPressed",
+    isCancelled: pressState.value.type === "cancelled",
+    delay,
+  });
 
   /**
-   * 最後の操作結果を取得
+   * Vue 3.5最適化: 最後の結果を取得
    */
-  const getLastResult = () => lastResult;
+  const getLastResult = () => lastResult.value;
 
-  // クリーンアップ
+  // Vue 3.5最適化: readonly computed for reactive state access
+  const isActive = computed(() => pressState.value.type !== "idle");
+  const isPressing = computed(() => pressState.value.type === "pressing");
+  const isLongPressed = computed(() => pressState.value.type === "longPressed");
+
+  // Vue 3.5の新機能: improved cleanup
   onBeforeUnmount(() => {
     clearTimer();
   });
 
-  return {
-    // リアクティブな状態
-    pressState: readonly(pressState),
+  // イベントハンドラー群
+  const eventHandlers = {
+    // マウス/タッチイベント
+    onMouseDown: startPress,
+    onTouchStart: startPress,
+    onMouseUp: endPress,
+    onTouchEnd: endPress,
+    onMouseLeave: cancelPress,
+    onTouchCancel: cancelPress,
 
-    // アクション
+    // コンテキストメニュー無効化
+    onContextMenu: (event: Event) => {
+      event.preventDefault();
+      return false;
+    },
+  } as const;
+
+  return {
+    // Vue 3.5最適化: readonly reactive state
+    state: readonly(pressState),
+    isActive: readonly(isActive),
+    isPressing: readonly(isPressing),
+    isLongPressed: readonly(isLongPressed),
+
+    // Actions
     startPress,
     endPress,
     cancelPress,
 
-    // ユーティリティ
+    // Getters
     getStateInfo,
     getLastResult,
 
-    // 設定値
-    delay: readonly(ref(delay)),
-
-    // 計算プロパティ
-    isPressing: readonly(computed(() => pressState.value.type === "pressing")),
-    isLongPressed: readonly(
-      computed(() => pressState.value.type === "longPressed")
-    ),
+    // Event handlers for easy binding
+    ...eventHandlers,
   };
 };

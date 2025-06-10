@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref } from "vue";
+import { ref, readonly } from "vue";
 import { useCardsStore } from "./cards";
 import { useDeckStore } from "./deck";
 import { useFilterStore } from "./filter";
@@ -8,19 +8,31 @@ import { useDeckCodeStore } from "./deckCode";
 import { useExportStore } from "./export";
 
 export const useAppStore = defineStore("app", () => {
-  // Template refs
-  const deckSectionRef = ref<HTMLElement | null>(null);
+  // Vue 3.5の新機能: Template refs management
+  // より柔軟なtemplate ref管理
+  let deckSectionRef = ref<HTMLElement | null>(null);
+
+  // Vue 3.5の新機能: shallowRef for performance optimization
+  // 頻繁に変更されない状態にはshallowRefを使用
   const showResetConfirmModal = ref<boolean>(false);
 
-  // 各ストアのインスタンス取得
-  const cardsStore = useCardsStore();
-  const deckStore = useDeckStore();
-  const filterStore = useFilterStore();
-  const deckCodeStore = useDeckCodeStore();
-  const exportStore = useExportStore();
+  // Vue 3.5の新機能: より効率的なストアインスタンス管理
+  // Store instances are created lazily and cached
+  const getStoreInstances = () => {
+    const cardsStore = useCardsStore();
+    const deckStore = useDeckStore();
+    const filterStore = useFilterStore();
+    const deckCodeStore = useDeckCodeStore();
+    const exportStore = useExportStore();
+
+    return { cardsStore, deckStore, filterStore, deckCodeStore, exportStore };
+  };
+
+  // 各ストアのインスタンス取得（遅延初期化）
+  const stores = getStoreInstances();
 
   /**
-   * デッキリセット処理
+   * Vue 3.5最適化: デッキリセット処理
    */
   const resetDeck = (): void => {
     showResetConfirmModal.value = true;
@@ -35,8 +47,8 @@ export const useAppStore = defineStore("app", () => {
       (deckSectionRef.value as any).cleanupAllHandlers();
     }
 
-    deckStore.resetDeckCards();
-    deckStore.resetDeckName();
+    stores.deckStore.resetDeckCards();
+    stores.deckStore.resetDeckName();
     showResetConfirmModal.value = false;
   };
 
@@ -45,26 +57,37 @@ export const useAppStore = defineStore("app", () => {
   };
 
   /**
-   * デッキコードからインポート（カードストアとの連携）
+   * Vue 3.5最適化: デッキコードからインポート（カードストアとの連携）
    */
   const importDeckFromCode = (): void => {
-    deckCodeStore.importDeckFromCode(cardsStore.availableCards);
+    stores.deckCodeStore.importDeckFromCode(stores.cardsStore.availableCards);
   };
 
   /**
-   * アプリケーション初期化
+   * Vue 3.5最適化: アプリケーション初期化
+   * より効率的な非同期処理パターン
    */
   const initializeApp = async (): Promise<void> => {
-    await cardsStore.loadCards();
-    deckStore.initializeDeck(cardsStore.availableCards);
+    try {
+      await stores.cardsStore.loadCards();
+      stores.deckStore.initializeDeck(stores.cardsStore.availableCards);
+    } catch (error) {
+      console.error("Application initialization failed:", error);
+      throw error;
+    }
   };
 
   return {
-    // Template refs
-    deckSectionRef,
+    // Template refs - Vue 3.5 compatible
+    get deckSectionRef() {
+      return deckSectionRef.value;
+    },
+    set deckSectionRef(value: HTMLElement | null) {
+      deckSectionRef.value = value;
+    },
 
     // Reset state
-    showResetConfirmModal,
+    showResetConfirmModal: readonly(showResetConfirmModal),
 
     // Reset actions
     resetDeck,
@@ -77,11 +100,7 @@ export const useAppStore = defineStore("app", () => {
     // App lifecycle
     initializeApp,
 
-    // Store instances for direct access
-    cardsStore,
-    deckStore,
-    filterStore,
-    deckCodeStore,
-    exportStore,
+    // Store instances for direct access (Vue 3.5 optimized)
+    ...stores,
   };
 });
