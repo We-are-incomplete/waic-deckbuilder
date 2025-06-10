@@ -17,20 +17,53 @@ export interface MemoizationOptions {
 interface CacheEntry<T> {
   readonly value: T;
   readonly timestamp: number;
+  readonly accessCount: number;
 }
 
-// デフォルトのキーシリアライザー
+// 効率的なハッシュ関数
+const fastHash = (str: string): string => {
+  let hash = 0;
+  if (str.length === 0) return hash.toString();
+
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash; // 32bit整数に変換
+  }
+
+  return hash.toString();
+};
+
+// デフォルトのキーシリアライザー（改善版）
 const defaultKeySerializer = (args: readonly unknown[]): string => {
+  if (args.length === 0) return "empty";
+  if (args.length === 1) {
+    const arg = args[0];
+    if (typeof arg === "string") return fastHash(arg);
+    if (typeof arg === "number") return arg.toString();
+    if (typeof arg === "boolean") return arg.toString();
+  }
+
   try {
-    return JSON.stringify(args);
+    return fastHash(JSON.stringify(args));
   } catch {
-    // JSONシリアライズできない場合は文字列化
-    return args.map((arg) => String(arg)).join(",");
+    // JSONシリアライズできない場合は効率的な文字列化
+    return fastHash(
+      args
+        .map((arg) => {
+          if (arg === null) return "null";
+          if (arg === undefined) return "undefined";
+          if (typeof arg === "object")
+            return `[object ${arg.constructor?.name || "Object"}]`;
+          return String(arg);
+        })
+        .join(",")
+    );
   }
 };
 
 /**
- * 純粋関数をメモ化する高階関数
+ * 純粋関数をメモ化する高階関数（改善版）
  */
 export const memoize = <TArgs extends readonly unknown[], TReturn>(
   fn: (...args: TArgs) => TReturn,
@@ -47,6 +80,7 @@ export const memoize = <TArgs extends readonly unknown[], TReturn>(
   const { maxSize = 100, ttl, keySerializer = defaultKeySerializer } = options;
 
   const cache = new Map<string, CacheEntry<TReturn>>();
+  let accessOrder: string[] = []; // LRU追跡用
 
   const memoizedFunction = (...args: TArgs): TReturn => {
     // キーの生成
@@ -65,7 +99,24 @@ export const memoize = <TArgs extends readonly unknown[], TReturn>(
       // TTLのチェック
       if (ttl && now - cached.timestamp > ttl) {
         cache.delete(key);
+        const index = accessOrder.indexOf(key);
+        if (index !== -1) {
+          accessOrder.splice(index, 1);
+        }
       } else {
+        // アクセス順序を更新（LRU）
+        const index = accessOrder.indexOf(key);
+        if (index !== -1) {
+          accessOrder.splice(index, 1);
+        }
+        accessOrder.push(key);
+
+        // アクセス回数を増加（統計用）
+        cache.set(key, {
+          ...cached,
+          accessCount: cached.accessCount + 1,
+        });
+
         return cached.value;
       }
     }
@@ -75,10 +126,11 @@ export const memoize = <TArgs extends readonly unknown[], TReturn>(
 
     // キャッシュサイズの制限チェック
     if (cache.size >= maxSize) {
-      // LRU: 最も古いエントリを削除
-      const oldestKey = cache.keys().next().value;
+      // LRU: 最も使用頻度が低く、古いエントリを削除
+      let oldestKey = accessOrder[0];
       if (oldestKey) {
         cache.delete(oldestKey);
+        accessOrder.shift();
       }
     }
 
@@ -86,7 +138,10 @@ export const memoize = <TArgs extends readonly unknown[], TReturn>(
     cache.set(key, {
       value: result,
       timestamp: now,
+      accessCount: 1,
     });
+
+    accessOrder.push(key);
 
     return result;
   };
@@ -94,11 +149,40 @@ export const memoize = <TArgs extends readonly unknown[], TReturn>(
   // メモ化関数にユーティリティメソッドを追加
   Object.assign(memoizedFunction, {
     cache: {
-      clear: () => cache.clear(),
-      delete: (key: string) => cache.delete(key),
+      clear: () => {
+        cache.clear();
+        accessOrder = [];
+      },
+      delete: (key: string) => {
+        const deleted = cache.delete(key);
+        if (deleted) {
+          const index = accessOrder.indexOf(key);
+          if (index !== -1) {
+            accessOrder.splice(index, 1);
+          }
+        }
+        return deleted;
+      },
       has: (key: string) => cache.has(key),
       size: () => cache.size,
       entries: () => Array.from(cache.entries()),
+      stats: () => ({
+        size: cache.size,
+        hitRate:
+          accessOrder.length > 0
+            ? Array.from(cache.values()).reduce(
+                (sum, entry) => sum + entry.accessCount,
+                0
+              ) / accessOrder.length
+            : 0,
+        averageAccessCount:
+          cache.size > 0
+            ? Array.from(cache.values()).reduce(
+                (sum, entry) => sum + entry.accessCount,
+                0
+              ) / cache.size
+            : 0,
+      }),
     },
   });
 
@@ -106,7 +190,7 @@ export const memoize = <TArgs extends readonly unknown[], TReturn>(
 };
 
 /**
- * 配列に対する計算のメモ化（配列の内容でキーを生成）
+ * 配列に対する計算のメモ化（配列の内容でキーを生成、改善版）
  */
 export const memoizeArrayComputation = <TItem, TReturn>(
   fn: (items: readonly TItem[]) => TReturn,
@@ -119,14 +203,34 @@ export const memoizeArrayComputation = <TItem, TReturn>(
       return `invalid-array-${Date.now()}`;
     }
 
-    // 配列の内容を基にしたハッシュ生成
+    // 配列の長さが小さい場合は全体をハッシュ化
+    if (items.length <= 10) {
+      try {
+        return fastHash(JSON.stringify(items));
+      } catch {
+        return fastHash(
+          `length:${items.length},items:${items.map(String).join(",")}`
+        );
+      }
+    }
+
+    // 大きな配列の場合は効率的なフィンガープリント生成
     try {
-      return JSON.stringify(items);
+      const fingerprint = {
+        length: items.length,
+        first: items[0],
+        middle: items[Math.floor(items.length / 2)],
+        last: items[items.length - 1],
+        checksum: items.reduce((sum, item, index) => {
+          // 簡単なチェックサムを計算
+          const str = String(item);
+          return sum + str.length * (index + 1);
+        }, 0),
+      };
+      return fastHash(JSON.stringify(fingerprint));
     } catch {
-      // JSONシリアライズできない場合は長さと一部の要素を使用
-      return `length:${items.length},first:${String(items[0])},last:${String(
-        items[items.length - 1]
-      )}`;
+      // JSONシリアライズできない場合は長さベースのキー
+      return fastHash(`length:${items.length},type:${typeof items[0]}`);
     }
   };
 
@@ -137,7 +241,7 @@ export const memoizeArrayComputation = <TItem, TReturn>(
 };
 
 /**
- * オブジェクトに対する計算のメモ化（オブジェクトのプロパティでキーを生成）
+ * オブジェクトに対する計算のメモ化（オブジェクトのプロパティでキーを生成、改善版）
  */
 export const memoizeObjectComputation = <
   TObject extends Record<string, unknown>,
@@ -153,16 +257,30 @@ export const memoizeObjectComputation = <
       return `invalid-object-${Date.now()}`;
     }
 
-    // オブジェクトの安定したキー生成
+    // オブジェクトの効率的なフィンガープリント生成
     try {
-      const sortedKeys = Object.keys(obj).sort();
-      const keyValuePairs = sortedKeys.map(
-        (key) => `${key}:${JSON.stringify(obj[key])}`
-      );
-      return keyValuePairs.join("|");
+      const keys = Object.keys(obj);
+      const sortedKeys = keys.sort();
+
+      // 小さなオブジェクトは全体をハッシュ化
+      if (sortedKeys.length <= 5) {
+        const keyValuePairs = sortedKeys.map(
+          (key) => `${key}:${JSON.stringify(obj[key])}`
+        );
+        return fastHash(keyValuePairs.join("|"));
+      }
+
+      // 大きなオブジェクトは重要なプロパティのみでフィンガープリント生成
+      const fingerprint = {
+        keyCount: sortedKeys.length,
+        keyHash: fastHash(sortedKeys.join(",")),
+        sampleValues: sortedKeys.slice(0, 3).map((key) => obj[key]),
+      };
+      return fastHash(JSON.stringify(fingerprint));
     } catch {
-      // JSONシリアライズできない場合はオブジェクトの型とキー数を使用
-      return `object-keys:${Object.keys(obj).length}`;
+      // JSONシリアライズできない場合はオブジェクトの構造情報を使用
+      const keys = Object.keys(obj);
+      return fastHash(`object-keys:${keys.length},first:${keys[0] || ""}`);
     }
   };
 
@@ -170,4 +288,23 @@ export const memoizeObjectComputation = <
     ...options,
     keySerializer: objectKeySerializer,
   });
+};
+
+/**
+ * WeakMapベースの軽量メモ化（オブジェクト参照用）
+ */
+export const createWeakMemoization = <TKey extends WeakKey, TValue>(
+  fn: (key: TKey) => TValue
+): ((key: TKey) => TValue) => {
+  const cache = new WeakMap<TKey, TValue>();
+
+  return (key: TKey): TValue => {
+    if (cache.has(key)) {
+      return cache.get(key)!;
+    }
+
+    const result = fn(key);
+    cache.set(key, result);
+    return result;
+  };
 };

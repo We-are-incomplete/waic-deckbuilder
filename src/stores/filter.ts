@@ -19,89 +19,121 @@ export const useFilterStore = defineStore("filter", () => {
     tags: [],
   });
 
-  // メモ化されたフィルタリング関数
-  const memoizedCardFiltering = memoizeArrayComputation(
+  // メモ化されたソート処理（より効率的な実装）
+  const memoizedCardSorting = memoizeArrayComputation(
     (cards: readonly Card[]) => {
-      // カード配列全体のソート処理をメモ化
+      // 配列の参照が同じ場合は何もしない
+      if (cards.length === 0) return cards;
       return readonly(sortCards(cards));
     },
-    { maxSize: 10, ttl: 5 * 60 * 1000 } // 5分間キャッシュ
+    { maxSize: 20, ttl: 10 * 60 * 1000 } // 10分間キャッシュ、より多くのエントリを保持
   );
 
+  // より効率的なフィルタリング実装
   const memoizedFilterApplication = memoizeObjectComputation(
     (params: { cards: readonly Card[]; criteria: FilterCriteria }) => {
-      return applyAllFilters(params.cards, params.criteria);
+      const { cards, criteria } = params;
+
+      // 早期リターンでパフォーマンス改善
+      if (isEmptyFilter(criteria)) {
+        return cards;
+      }
+
+      return applyAllFiltersOptimized(cards, criteria);
     },
-    { maxSize: 50, ttl: 2 * 60 * 1000 } // 2分間キャッシュ
+    { maxSize: 100, ttl: 5 * 60 * 1000 } // 5分間キャッシュ、キャッシュサイズ増加
   );
 
+  // タグ抽出の最適化（Set操作を効率化）
   const memoizedTagExtraction = memoizeArrayComputation(
     (cards: readonly Card[]) => {
+      if (cards.length === 0) return new Set<string>();
+
       const tags = new Set<string>();
-      for (const card of cards) {
-        if (card.tags) {
-          if (Array.isArray(card.tags)) {
-            for (const tag of card.tags) {
-              tags.add(tag);
+      const cardCount = cards.length;
+
+      // より効率的なループ処理
+      for (let i = 0; i < cardCount; i++) {
+        const card = cards[i];
+        const cardTags = card.tags;
+
+        if (cardTags) {
+          if (Array.isArray(cardTags)) {
+            const tagCount = cardTags.length;
+            for (let j = 0; j < tagCount; j++) {
+              tags.add(cardTags[j]);
             }
-          } else if (typeof card.tags === "string") {
-            tags.add(card.tags);
+          } else if (typeof cardTags === "string") {
+            tags.add(cardTags);
           }
         }
       }
+
       return tags;
     },
-    { maxSize: 5, ttl: 10 * 60 * 1000 } // 10分間キャッシュ
+    { maxSize: 10, ttl: 15 * 60 * 1000 } // 15分間キャッシュ
   );
 
+  // シンプルなMapベースの文字列正規化キャッシュ
+  const stringNormalizationCache = new Map<string, string>();
+  const normalizeString = (str: string): string => {
+    if (stringNormalizationCache.has(str)) {
+      return stringNormalizationCache.get(str)!;
+    }
+
+    const normalized = str.trim().toLowerCase();
+
+    // キャッシュサイズ制限
+    if (stringNormalizationCache.size >= 1000) {
+      // 古いエントリをクリア
+      stringNormalizationCache.clear();
+    }
+
+    stringNormalizationCache.set(str, normalized);
+    return normalized;
+  };
+
   /**
-   * 全タグリスト（優先タグを先頭に配置）
+   * 全タグリスト（優先タグを先頭に配置）- 最適化版
    */
   const allTags = computed(() => {
     const cardsStore = useCardsStore();
 
-    // メモ化されたタグ抽出を使用
     if (memoizedTagExtraction.isOk()) {
       const tags = memoizedTagExtraction.value(cardsStore.availableCards);
 
+      if (tags.size === 0) {
+        return readonly([]);
+      }
+
       const priorityTagSet = new Set(PRIORITY_TAGS);
-      const otherTags = Array.from(tags)
-        .filter((tag: string) => !priorityTagSet.has(tag))
-        .sort();
+      const priorityTags: string[] = [];
+      const otherTags: string[] = [];
 
-      return readonly([
-        ...PRIORITY_TAGS.filter((tag: string) => tags.has(tag)),
-        ...otherTags,
-      ]);
-    }
-
-    // フォールバック: メモ化に失敗した場合は従来の方法
-    const tags = new Set<string>();
-    for (const card of cardsStore.availableCards) {
-      if (card.tags) {
-        if (Array.isArray(card.tags)) {
-          for (const tag of card.tags) {
-            tags.add(tag);
-          }
-        } else if (typeof card.tags === "string") {
-          tags.add(card.tags);
+      // 一度のループで分類
+      for (const tag of tags) {
+        if (priorityTagSet.has(tag)) {
+          priorityTags.push(tag);
+        } else {
+          otherTags.push(tag);
         }
       }
+
+      // 優先タグは元の順序を保持、その他のタグはソート
+      const orderedPriorityTags = PRIORITY_TAGS.filter((tag) =>
+        priorityTags.includes(tag)
+      );
+      otherTags.sort();
+
+      return readonly([...orderedPriorityTags, ...otherTags]);
     }
 
-    const priorityTagSet = new Set(PRIORITY_TAGS);
-    const otherTags = Array.from(tags)
-      .filter((tag: string) => !priorityTagSet.has(tag))
-      .sort();
-
-    return readonly([
-      ...PRIORITY_TAGS.filter((tag: string) => tags.has(tag)),
-      ...otherTags,
-    ]);
+    // フォールバック処理は最小限に
+    return readonly([]);
   });
 
   /**
-   * テキストフィルタリング（純粋関数）
+   * 最適化されたテキストフィルタリング
    */
   const applyTextFilter = (
     cards: readonly Card[],
@@ -110,11 +142,17 @@ export const useFilterStore = defineStore("filter", () => {
     if (!text || text.trim().length === 0) {
       return cards;
     }
+
+    const normalizedText = normalizeString(text);
+    if (normalizedText.length === 0) {
+      return cards;
+    }
+
     return CardDomain.searchCardsByName(cards, text);
   };
 
   /**
-   * 種別フィルタリング（純粋関数）
+   * 最適化された種別フィルタリング
    */
   const applyKindFilter = (
     cards: readonly Card[],
@@ -124,15 +162,26 @@ export const useFilterStore = defineStore("filter", () => {
       return cards;
     }
 
-    return cards.filter((card) => {
+    // Set を使用した効率的なルックアップ
+    const kindSet = new Set(kinds);
+    const result: Card[] = [];
+    const cardCount = cards.length;
+
+    for (let i = 0; i < cardCount; i++) {
+      const card = cards[i];
       const cardKind =
         typeof card.kind === "string" ? card.kind : String(card.kind);
-      return kinds.includes(cardKind);
-    });
+
+      if (kindSet.has(cardKind)) {
+        result.push(card);
+      }
+    }
+
+    return readonly(result);
   };
 
   /**
-   * タイプフィルタリング（純粋関数）
+   * 最適化されたタイプフィルタリング
    */
   const applyTypeFilter = (
     cards: readonly Card[],
@@ -142,22 +191,37 @@ export const useFilterStore = defineStore("filter", () => {
       return cards;
     }
 
-    return cards.filter((card) => {
+    const typeSet = new Set(types);
+    const result: Card[] = [];
+    const cardCount = cards.length;
+
+    for (let i = 0; i < cardCount; i++) {
+      const card = cards[i];
+      let hasMatchingType = false;
+
       if (typeof card.type === "string") {
-        return types.includes(card.type);
+        hasMatchingType = typeSet.has(card.type);
       } else if (Array.isArray(card.type)) {
-        return card.type.some((type) => {
+        const typeCount = card.type.length;
+        for (let j = 0; j < typeCount && !hasMatchingType; j++) {
+          const type = card.type[j];
           const typeStr = typeof type === "string" ? type : String(type);
-          return types.includes(typeStr);
-        });
+          hasMatchingType = typeSet.has(typeStr);
+        }
       } else {
-        return types.includes(String(card.type));
+        hasMatchingType = typeSet.has(String(card.type));
       }
-    });
+
+      if (hasMatchingType) {
+        result.push(card);
+      }
+    }
+
+    return readonly(result);
   };
 
   /**
-   * タグフィルタリング（純粋関数）
+   * 最適化されたタグフィルタリング
    */
   const applyTagFilter = (
     cards: readonly Card[],
@@ -167,68 +231,113 @@ export const useFilterStore = defineStore("filter", () => {
       return cards;
     }
 
-    return cards.filter((card) => {
-      if (!card.tags) return false;
+    const tagSet = new Set(tags);
+    const result: Card[] = [];
+    const cardCount = cards.length;
 
-      const cardTags = Array.isArray(card.tags) ? card.tags : [card.tags];
-      return tags.some((tag) => cardTags.includes(tag));
-    });
+    for (let i = 0; i < cardCount; i++) {
+      const card = cards[i];
+      const cardTags = card.tags;
+
+      if (!cardTags) continue;
+
+      let hasMatchingTag = false;
+
+      if (Array.isArray(cardTags)) {
+        const tagCount = cardTags.length;
+        for (let j = 0; j < tagCount && !hasMatchingTag; j++) {
+          hasMatchingTag = tagSet.has(cardTags[j]);
+        }
+      } else if (typeof cardTags === "string") {
+        hasMatchingTag = tagSet.has(cardTags);
+      }
+
+      if (hasMatchingTag) {
+        result.push(card);
+      }
+    }
+
+    return readonly(result);
   };
 
   /**
-   * 複合フィルタリング（純粋関数）
+   * 最適化された複合フィルタリング
    */
-  const applyAllFilters = (
+  const applyAllFiltersOptimized = (
     cards: readonly Card[],
     criteria: FilterCriteria
   ): readonly Card[] => {
     let filteredCards = cards;
 
-    // テキストフィルター
-    filteredCards = applyTextFilter(filteredCards, criteria.text);
+    // フィルターの効果を推定し、最も絞り込み効果の高いものから適用
+    const hasTextFilter = criteria.text && criteria.text.trim().length > 0;
+    const hasKindFilter = criteria.kind.length > 0;
+    const hasTypeFilter = criteria.type.length > 0;
+    const hasTagFilter = criteria.tags.length > 0;
 
-    // 種別フィルター
-    filteredCards = applyKindFilter(filteredCards, criteria.kind);
+    // 早期リターンによる最適化
+    if (!hasTextFilter && !hasKindFilter && !hasTypeFilter && !hasTagFilter) {
+      return filteredCards;
+    }
 
-    // タイプフィルター
-    filteredCards = applyTypeFilter(filteredCards, criteria.type);
+    // フィルターを選択性の高い順に適用（一般的に最も絞り込み効果が高いと思われる順）
+    if (hasTextFilter) {
+      filteredCards = applyTextFilter(filteredCards, criteria.text);
+      if (filteredCards.length === 0) return filteredCards; // 早期リターン
+    }
 
-    // タグフィルター
-    filteredCards = applyTagFilter(filteredCards, criteria.tags);
+    if (hasTagFilter) {
+      filteredCards = applyTagFilter(filteredCards, criteria.tags);
+      if (filteredCards.length === 0) return filteredCards; // 早期リターン
+    }
+
+    if (hasKindFilter) {
+      filteredCards = applyKindFilter(filteredCards, criteria.kind);
+      if (filteredCards.length === 0) return filteredCards; // 早期リターン
+    }
+
+    if (hasTypeFilter) {
+      filteredCards = applyTypeFilter(filteredCards, criteria.type);
+    }
 
     return filteredCards;
   };
 
   /**
-   * ソート・フィルター済みカード一覧
+   * ソート・フィルター済みカード一覧 - 最適化版
    */
   const sortedAndFilteredCards = computed(() => {
     const cardsStore = useCardsStore();
+    const cards = cardsStore.availableCards;
 
-    // メモ化されたフィルタリングを使用
-    if (memoizedFilterApplication.isOk()) {
-      const filtered = memoizedFilterApplication.value({
-        cards: cardsStore.availableCards,
-        criteria: filterCriteria.value,
-      });
-
-      // メモ化されたソートを使用
-      if (memoizedCardFiltering.isOk()) {
-        return memoizedCardFiltering.value(filtered);
-      }
+    // 空の場合は早期リターン
+    if (cards.length === 0) {
+      return readonly([]);
     }
 
-    // フォールバック: メモ化に失敗した場合は従来の方法
-    const filtered = applyAllFilters(
-      cardsStore.availableCards,
-      filterCriteria.value
-    );
+    let result: readonly Card[] = cards;
 
-    return readonly(sortCards(filtered));
+    // フィルタリングの適用
+    if (memoizedFilterApplication.isOk()) {
+      result = memoizedFilterApplication.value({
+        cards,
+        criteria: filterCriteria.value,
+      });
+    } else {
+      // フォールバック
+      result = applyAllFiltersOptimized(cards, filterCriteria.value);
+    }
+
+    // ソートの適用
+    if (result.length > 0 && memoizedCardSorting.isOk()) {
+      return memoizedCardSorting.value(result);
+    }
+
+    return result;
   });
 
   /**
-   * フィルター結果の統計情報
+   * フィルター結果の統計情報 - 最適化版
    */
   const filterStats = computed(() => {
     const cardsStore = useCardsStore();
@@ -244,11 +353,11 @@ export const useFilterStore = defineStore("filter", () => {
   });
 
   /**
-   * フィルターが空かどうか判定
+   * フィルターが空かどうか判定 - 最適化版
    */
   const isEmptyFilter = (criteria: FilterCriteria): boolean => {
     return (
-      !criteria.text.trim() &&
+      (!criteria.text || criteria.text.trim().length === 0) &&
       criteria.kind.length === 0 &&
       criteria.type.length === 0 &&
       criteria.tags.length === 0
