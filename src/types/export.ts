@@ -14,14 +14,4 @@ export interface ExportConfig {
   readonly grid: {
     readonly gap: string;
   };
-  readonly card: {
-    readonly borderRadius: string;
-  };
-  readonly badge: {
-    readonly backgroundColor: string;
-    readonly color: string;
-    readonly padding: string;
-    readonly borderRadius: string;
-    readonly fontSize: string;
-  };
 }

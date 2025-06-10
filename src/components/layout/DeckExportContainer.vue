@@ -48,8 +48,7 @@ defineExpose({ exportContainer });
   <div
     ref="exportContainer"
     v-show="isSaving"
-    class="fixed pointer-events-none"
-    style="left: -9999px; top: 0; z-index: -1"
+    class="fixed pointer-events-none -left-[9999px] top-0 -z-10"
     :style="{
       width: `${EXPORT_CONFIG.canvas.width}px`,
       height: `${EXPORT_CONFIG.canvas.height}px`,
@@ -59,7 +58,7 @@ defineExpose({ exportContainer });
   >
     <!-- デッキ名 -->
     <div
-      class="absolute left-1/2 -translate-x-1/2 w-full text-center"
+      class="absolute top-5 left-1/2 -translate-x-1/2 z-10 w-full px-4 text-center leading-tight"
       :style="{
         fontSize: EXPORT_CONFIG.deckName.fontSize,
         fontWeight: EXPORT_CONFIG.deckName.fontWeight,
@@ -89,24 +88,14 @@ defineExpose({ exportContainer });
         <img
           :src="getCardImageUrlSafe(item.card.id)"
           :alt="item.card.name"
-          class="w-full h-full object-cover"
-          :style="{
-            borderRadius: EXPORT_CONFIG.card.borderRadius,
-          }"
+          class="w-full h-full object-cover rounded-lg"
           crossorigin="anonymous"
           @error="handleImageError"
         />
 
         <!-- カウントバッジ -->
         <div
-          class="absolute bottom-[5px] right-[5px] font-bold"
-          :style="{
-            backgroundColor: EXPORT_CONFIG.badge.backgroundColor,
-            color: EXPORT_CONFIG.badge.color,
-            padding: EXPORT_CONFIG.badge.padding,
-            borderRadius: EXPORT_CONFIG.badge.borderRadius,
-            fontSize: EXPORT_CONFIG.badge.fontSize,
-          }"
+          class="absolute bottom-[5px] right-[5px] font-bold text-white bg-black/70 py-0.5 px-3 rounded-xl text-[32px]"
         >
           ×{{ item.count }}
         </div>

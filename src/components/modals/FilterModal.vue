@@ -66,9 +66,9 @@ const isTagSelected = (tag: string) => {
     class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
     @click.self="emit('close')"
   >
-    <div class="bg-gray-800 p-4 w-full h-full overflow-y-auto">
+    <div class="bg-gray-800 p-4 w-full h-full flex flex-col overflow-hidden">
       <!-- ヘッダー -->
-      <div class="flex justify-between items-center mb-4">
+      <div class="flex justify-between items-center mb-4 flex-shrink-0">
         <div>
           <h3 class="text-lg font-bold">検索・絞り込み</h3>
           <div class="text-sm text-gray-400 mt-1">
@@ -99,104 +99,107 @@ const isTagSelected = (tag: string) => {
         </div>
       </div>
 
-      <!-- テキスト検索 -->
-      <div class="mb-4">
-        <label for="searchText" class="block text-sm font-medium mb-1">
-          テキスト検索 (名前, ID, タグ)
-        </label>
-        <div class="relative">
-          <input
-            id="searchText"
-            type="text"
-            :value="filterCriteria.text"
-            @input="updateText(($event.target as HTMLInputElement).value)"
-            class="w-full px-3 py-2 pr-10 text-sm sm:text-base rounded bg-gray-700 border border-gray-600 focus:outline-none focus:ring focus:border-blue-500"
-            placeholder="カード名、ID、タグを入力"
-          />
-          <!-- 検索クリアボタン -->
-          <button
-            v-if="filterCriteria.text"
-            @click="updateText('')"
-            class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-          >
-            <svg
-              class="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+      <!-- 上部フィルター -->
+      <div class="flex-shrink-0">
+        <!-- テキスト検索 -->
+        <div class="mb-4">
+          <label for="searchText" class="block text-sm font-medium mb-1">
+            テキスト検索 (名前, ID, タグ)
+          </label>
+          <div class="relative">
+            <input
+              id="searchText"
+              type="text"
+              :value="filterCriteria.text"
+              @input="updateText(($event.target as HTMLInputElement).value)"
+              class="w-full px-3 py-2 pr-10 text-sm sm:text-base rounded bg-gray-700 border border-gray-600 focus:outline-none focus:ring focus:border-blue-500"
+              placeholder="カード名、ID、タグを入力"
+            />
+            <!-- 検索クリアボタン -->
+            <button
+              v-if="filterCriteria.text"
+              @click="updateText('')"
+              class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
             >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M6 18L18 6M6 6l12 12"
-              ></path>
-            </svg>
-          </button>
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                ></path>
+              </svg>
+            </button>
+          </div>
         </div>
-      </div>
 
-      <!-- 種類フィルター -->
-      <div class="mb-4">
-        <label class="block text-sm font-medium mb-2">
-          種類で絞り込み
-          <span
-            v-if="filterCriteria.kind.length > 0"
-            class="text-blue-400 ml-1"
-          >
-            ({{ filterCriteria.kind.length }} 選択中)
-          </span>
-        </label>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
-          <label
-            v-for="kind in allKinds"
-            :key="kind"
-            class="flex items-center cursor-pointer hover:bg-gray-700 p-1 rounded transition-colors"
-          >
-            <input
-              type="checkbox"
-              :checked="isKindSelected(kind)"
-              @change="toggleKind(kind)"
-              class="form-checkbox h-4 w-4 min-h-5 min-w-5 text-blue-600 bg-gray-700 border-gray-600 rounded"
-            />
-            <span class="ml-2">{{ kind }}</span>
+        <!-- 種類フィルター -->
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-2">
+            種類で絞り込み
+            <span
+              v-if="filterCriteria.kind.length > 0"
+              class="text-blue-400 ml-1"
+            >
+              ({{ filterCriteria.kind.length }} 選択中)
+            </span>
           </label>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+            <label
+              v-for="kind in allKinds"
+              :key="kind"
+              class="flex items-center cursor-pointer hover:bg-gray-700 p-1 rounded transition-colors"
+            >
+              <input
+                type="checkbox"
+                :checked="isKindSelected(kind)"
+                @change="toggleKind(kind)"
+                class="form-checkbox h-4 w-4 min-h-5 min-w-5 text-blue-600 bg-gray-700 border-gray-600 rounded"
+              />
+              <span class="ml-2">{{ kind }}</span>
+            </label>
+          </div>
         </div>
-      </div>
 
-      <!-- タイプフィルター -->
-      <div class="mb-4">
-        <label class="block text-sm font-medium mb-2">
-          タイプで絞り込み
-          <span
-            v-if="filterCriteria.type.length > 0"
-            class="text-blue-400 ml-1"
-          >
-            ({{ filterCriteria.type.length }} 選択中)
-          </span>
-        </label>
-        <div
-          class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 text-sm"
-        >
-          <label
-            v-for="type in allTypes"
-            :key="type"
-            class="flex items-center cursor-pointer hover:bg-gray-700 p-1 rounded transition-colors"
-          >
-            <input
-              type="checkbox"
-              :checked="isTypeSelected(type)"
-              @change="toggleType(type)"
-              class="form-checkbox h-4 w-4 min-h-5 min-w-5 text-blue-600 bg-gray-700 border-gray-600 rounded"
-            />
-            <span class="ml-2">{{ type }}</span>
+        <!-- タイプフィルター -->
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-2">
+            タイプで絞り込み
+            <span
+              v-if="filterCriteria.type.length > 0"
+              class="text-blue-400 ml-1"
+            >
+              ({{ filterCriteria.type.length }} 選択中)
+            </span>
           </label>
+          <div
+            class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 text-sm"
+          >
+            <label
+              v-for="type in allTypes"
+              :key="type"
+              class="flex items-center cursor-pointer hover:bg-gray-700 p-1 rounded transition-colors"
+            >
+              <input
+                type="checkbox"
+                :checked="isTypeSelected(type)"
+                @change="toggleType(type)"
+                class="form-checkbox h-4 w-4 min-h-5 min-w-5 text-blue-600 bg-gray-700 border-gray-600 rounded"
+              />
+              <span class="ml-2">{{ type }}</span>
+            </label>
+          </div>
         </div>
       </div>
 
-      <!-- タグフィルター -->
-      <div class="mb-4">
-        <label class="block text-sm font-medium mb-2">
+      <!-- タグフィルター（残りの領域を全て使用） -->
+      <div class="min-h-0 flex-1 flex flex-col">
+        <label class="block text-sm font-medium mb-2 flex-shrink-0">
           タグで絞り込み
           <span
             v-if="filterCriteria.tags.length > 0"
@@ -206,12 +209,12 @@ const isTagSelected = (tag: string) => {
           </span>
         </label>
         <div
-          class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 text-sm max-h-[40vh] overflow-y-auto pr-2"
+          class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 text-sm overflow-y-auto pr-2 flex-1"
         >
           <label
             v-for="tag in allTags"
             :key="tag"
-            class="flex items-center cursor-pointer hover:bg-gray-700 p-1 rounded transition-colors"
+            class="flex items-center cursor-pointer hover:bg-gray-700 p-1 rounded transition-colors h-fit"
           >
             <input
               type="checkbox"

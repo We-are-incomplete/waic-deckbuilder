@@ -8,22 +8,12 @@ export const EXPORT_CONFIG: ExportConfig = {
     padding: "0 40px 10px",
   },
   deckName: {
-    fontSize: "80px",
+    fontSize: "clamp(48px, 4.2vw, 80px)",
     fontWeight: "bold",
     color: "#f9fafb",
-    fontFamily: "serif",
+    fontFamily: "serif, sans-serif",
   },
   grid: {
     gap: "4px",
-  },
-  card: {
-    borderRadius: "8px",
-  },
-  badge: {
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    color: "white",
-    padding: "2px 12px",
-    borderRadius: "12px",
-    fontSize: "32px",
   },
 } as const;

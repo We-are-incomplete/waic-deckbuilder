@@ -6,12 +6,10 @@ import { useFilterStore } from "./filter";
 
 import { useDeckCodeStore } from "./deckCode";
 import { useExportStore } from "./export";
-import { handleError } from "../utils";
 
 export const useAppStore = defineStore("app", () => {
   // Template refs
   const deckSectionRef = ref<HTMLElement | null>(null);
-  const exportContainerRef = ref<HTMLElement | null>(null);
   const showResetConfirmModal = ref<boolean>(false);
 
   // 各ストアのインスタンス取得
@@ -47,20 +45,6 @@ export const useAppStore = defineStore("app", () => {
   };
 
   /**
-   * PNG保存処理
-   */
-  const saveDeckAsPng = async (): Promise<void> => {
-    const exportContainer = exportContainerRef.value;
-    if (exportContainer) {
-      try {
-        await exportStore.saveDeckAsPng(deckStore.deckName, exportContainer);
-      } catch (error) {
-        handleError("デッキ画像の保存中にエラーが発生しました", error);
-      }
-    }
-  };
-
-  /**
    * デッキコードからインポート（カードストアとの連携）
    */
   const importDeckFromCode = (): void => {
@@ -78,7 +62,6 @@ export const useAppStore = defineStore("app", () => {
   return {
     // Template refs
     deckSectionRef,
-    exportContainerRef,
 
     // Reset state
     showResetConfirmModal,
@@ -87,9 +70,6 @@ export const useAppStore = defineStore("app", () => {
     resetDeck,
     confirmResetDeck,
     cancelResetDeck,
-
-    // Export actions
-    saveDeckAsPng,
 
     // Deck code actions
     importDeckFromCode,
