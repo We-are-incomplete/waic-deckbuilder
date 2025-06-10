@@ -55,7 +55,7 @@ export const useArrayMemoization = <T>(
   const memoizedArray = computed(() => {
     const currentArray = accessor();
     const currentKeys = currentArray.map(keyExtractor);
-    const currentHash = currentKeys.join(",");
+    const currentHash = JSON.stringify(currentKeys);
 
     // キーが変わっていない場合は既存の配列を返す
     if (currentHash === lastKeysHash.value) {
@@ -99,7 +99,7 @@ export const useMinimalComputed = <T>(
       currentDepsValues.length === lastDepsValues.value.length &&
       currentDepsValues.every((val, idx) => val === lastDepsValues.value[idx])
     ) {
-      return cachedValue.value!;
+      return cachedValue.value as T;
     }
 
     // 新しい値を計算
@@ -121,7 +121,8 @@ export const useMinimalComputed = <T>(
  */
 export const useLazyComputed = <T>(
   getter: () => T,
-  immediate: boolean = false
+  immediate: boolean = false,
+  useNextTick: boolean = false
 ) => {
   const value = shallowRef<T>();
   const isComputed = ref(false);
@@ -131,7 +132,9 @@ export const useLazyComputed = <T>(
     if (isComputed.value) return value.value!;
 
     isLoading.value = true;
-    await nextTick();
+    if (useNextTick) {
+      await nextTick();
+    }
 
     try {
       value.value = getter();
@@ -282,7 +285,10 @@ export const useOptimizedList = <T>(
 /**
  * メモリ効率的な文字列インターン
  */
-export const useStringIntern = () => {
+export const useStringIntern = (
+  maxSize: number = 1000,
+  evictSize: number = 100
+) => {
   const internPool = markRaw(new Map<string, string>());
 
   const intern = (str: string): string => {
@@ -291,9 +297,9 @@ export const useStringIntern = () => {
     }
 
     // メモリリーク防止のためサイズ制限
-    if (internPool.size >= 1000) {
-      // 最初の100エントリを削除
-      const keysToDelete = Array.from(internPool.keys()).slice(0, 100);
+    if (internPool.size >= maxSize) {
+      // 最初のevictSizeエントリを削除
+      const keysToDelete = Array.from(internPool.keys()).slice(0, evictSize);
       for (const key of keysToDelete) {
         internPool.delete(key);
       }

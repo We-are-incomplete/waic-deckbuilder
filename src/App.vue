@@ -100,7 +100,7 @@ const sortedDeckCardsLength = computed(() => sortedDeckCards.value.length);
 // メモ化された計算プロパティ（不要な再レンダリングを防止）
 const memoizedDeckCards = computed<readonly DeckCard[]>(() => {
   const cards = sortedDeckCards.value;
-  const key = cards.map((item) => item.card.id).join(",");
+  const key = cards.map((item) => `${item.card.id}:${item.count}`).join(",");
 
   if (cardListCache.has(key)) {
     return cardListCache.get(key)!;
