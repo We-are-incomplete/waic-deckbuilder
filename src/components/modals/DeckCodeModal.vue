@@ -67,6 +67,7 @@ const emit = defineEmits<Emits>();
                 ($event.target as HTMLInputElement).value
               )
             "
+            @contextmenu="$event.stopPropagation()"
             class="flex-grow px-3 py-2 text-sm sm:text-base rounded bg-gray-700 border border-gray-600 focus:outline-none focus:ring focus:border-blue-500"
             placeholder="デッキコードを入力"
           />
