@@ -26,8 +26,8 @@ alwaysApply: true
 
 ## 使用コマンド
 
-Windows PowerShell で実行します。
+Windows PowerShell で実行します。`&&`は使えません。
 
 - Linter: `pnpm oxlint`
-- 開発サーバー起動: `pnpm dev`
 - ビルド: `pnpm build`
+- プレビュー: `pnpm preview`

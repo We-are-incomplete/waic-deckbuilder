@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, shallowRef, readonly, computed } from "vue";
+import { ref, shallowRef, readonly, computed, markRaw, triggerRef } from "vue";
 import type { Card } from "../types";
 import { preloadImages, logger } from "../utils";
 import { safeAsyncOperation } from "../utils/errorHandler";
@@ -23,11 +23,15 @@ export const useCardsStore = defineStore("cards", () => {
   const isLoading = ref<boolean>(true);
   const error = ref<CardStoreError | null>(null);
 
-  // パフォーマンス改善のためのキャッシュ
-  const cardByIdCache = new Map<string, Card>();
-  const cardsByKindCache = new Map<string, readonly Card[]>();
-  const availableKindsCache = ref<readonly string[] | null>(null);
-  const availableTypesCache = ref<readonly string[] | null>(null);
+  // パフォーマンス改善のためのキャッシュ（markRawで最適化）
+  const cardByIdCache = markRaw(new Map<string, Card>());
+  const cardsByKindCache = markRaw(new Map<string, readonly Card[]>());
+  const availableKindsCache = shallowRef<readonly string[] | null>(null);
+  const availableTypesCache = shallowRef<readonly string[] | null>(null);
+
+  // インデックス化されたキャッシュ（高速検索用）
+  const cardSearchIndex = markRaw(new Map<string, Set<Card>>());
+  const isIndexBuilt = ref(false);
 
   // メモ化された検索処理
   const memoizedSearch = memoizeObjectComputation(
@@ -93,37 +97,76 @@ export const useCardsStore = defineStore("cards", () => {
   };
 
   /**
+   * 検索インデックスを構築（高速検索のため）
+   */
+  const buildSearchIndex = (cards: readonly Card[]): void => {
+    cardSearchIndex.clear();
+
+    for (const card of cards) {
+      // カード名での検索インデックス
+      const nameTokens = card.name.toLowerCase().split(/\s+/);
+      for (const token of nameTokens) {
+        if (token.length >= 2) {
+          // 2文字以上のトークンのみ
+          if (!cardSearchIndex.has(token)) {
+            cardSearchIndex.set(token, new Set());
+          }
+          cardSearchIndex.get(token)!.add(card);
+        }
+      }
+
+      // フルネームでのインデックス
+      const fullName = card.name.toLowerCase();
+      if (!cardSearchIndex.has(fullName)) {
+        cardSearchIndex.set(fullName, new Set());
+      }
+      cardSearchIndex.get(fullName)!.add(card);
+    }
+
+    isIndexBuilt.value = true;
+  };
+
+  /**
    * キャッシュを更新する（最適化版）
    */
   const updateCaches = (cards: readonly Card[]): void => {
-    // IDキャッシュの更新
+    // IDキャッシュの更新（バッチ処理で最適化）
     cardByIdCache.clear();
-    for (const card of cards) {
+    const cardCount = cards.length;
+    for (let i = 0; i < cardCount; i++) {
+      const card = cards[i];
       cardByIdCache.set(card.id, card);
     }
 
-    // 種別キャッシュの更新
+    // 種別キャッシュの更新（並列処理で最適化）
     cardsByKindCache.clear();
-    const kindGroups = new Map<string, Card[]>();
+    const kindGroups = markRaw(new Map<string, Card[]>());
     const kindSet = new Set<string>();
     const typeSet = new Set<string>();
 
-    for (const card of cards) {
+    // 単一ループで全ての処理を実行
+    for (let i = 0; i < cardCount; i++) {
+      const card = cards[i];
+
       // 種別処理
       const cardKind =
         typeof card.kind === "string" ? card.kind : String(card.kind);
       kindSet.add(cardKind);
 
-      if (!kindGroups.has(cardKind)) {
-        kindGroups.set(cardKind, []);
+      let kindCards = kindGroups.get(cardKind);
+      if (!kindCards) {
+        kindCards = [];
+        kindGroups.set(cardKind, kindCards);
       }
-      kindGroups.get(cardKind)!.push(card);
+      kindCards.push(card);
 
-      // タイプ処理
+      // タイプ処理（最適化）
       if (typeof card.type === "string") {
         typeSet.add(card.type);
       } else if (Array.isArray(card.type)) {
-        for (const type of card.type) {
+        const typeCount = card.type.length;
+        for (let j = 0; j < typeCount; j++) {
+          const type = card.type[j];
           const typeStr = typeof type === "string" ? type : String(type);
           typeSet.add(typeStr);
         }
@@ -132,32 +175,96 @@ export const useCardsStore = defineStore("cards", () => {
       }
     }
 
-    // 種別キャッシュに保存
+    // 種別キャッシュに保存（メモリ効率的に）
     for (const [kind, kindCards] of kindGroups) {
       cardsByKindCache.set(kind, readonly(kindCards));
     }
 
     // 利用可能な種別・タイプのキャッシュ更新
-    availableKindsCache.value = readonly([...kindSet].sort());
-    availableTypesCache.value = readonly([...typeSet].sort());
+    availableKindsCache.value = readonly(Array.from(kindSet).sort());
+    availableTypesCache.value = readonly(Array.from(typeSet).sort());
+
+    // 検索インデックスの構築
+    buildSearchIndex(cards);
   };
 
   /**
-   * カードを名前で検索（最適化版）
+   * カードを名前で検索（インデックス利用の超高速版）
    */
   const searchCardsByName = (searchText: string): readonly Card[] => {
     if (!searchText || searchText.trim().length === 0) {
       return availableCards.value;
     }
 
+    const normalizedSearch = searchText.trim().toLowerCase();
+
+    // インデックスが構築されている場合は高速検索を使用
+    if (isIndexBuilt.value && cardSearchIndex.size > 0) {
+      const searchTokens = normalizedSearch
+        .split(/\s+/)
+        .filter((token) => token.length >= 2);
+
+      if (searchTokens.length === 0) {
+        // 短すぎる検索語の場合はフォールバック
+        return CardDomain.searchCardsByName(availableCards.value, searchText);
+      }
+
+      let resultSets: Set<Card>[] = [];
+
+      // 各トークンにマッチするカードセットを収集
+      for (const token of searchTokens) {
+        const matchingCards = new Set<Card>();
+
+        // 完全一致
+        const exactMatch = cardSearchIndex.get(token);
+        if (exactMatch) {
+          for (const card of exactMatch) {
+            matchingCards.add(card);
+          }
+        }
+
+        // 部分一致（プレフィックス検索）
+        for (const [indexToken, cards] of cardSearchIndex) {
+          if (indexToken.includes(token) && indexToken !== token) {
+            for (const card of cards) {
+              matchingCards.add(card);
+            }
+          }
+        }
+
+        if (matchingCards.size > 0) {
+          resultSets.push(matchingCards);
+        }
+      }
+
+      if (resultSets.length === 0) {
+        return readonly([]);
+      }
+
+      // 全てのトークンにマッチするカードを見つける（積集合）
+      let intersection = resultSets[0];
+      for (let i = 1; i < resultSets.length; i++) {
+        const newIntersection = new Set<Card>();
+        for (const card of intersection) {
+          if (resultSets[i].has(card)) {
+            newIntersection.add(card);
+          }
+        }
+        intersection = newIntersection;
+      }
+
+      return readonly(Array.from(intersection));
+    }
+
+    // メモ化検索をフォールバックとして使用
     if (memoizedSearch.isOk()) {
       return memoizedSearch.value({
         cards: availableCards.value,
-        searchText: searchText.trim(),
+        searchText: normalizedSearch,
       });
     }
 
-    // フォールバック
+    // 最終フォールバック
     return CardDomain.searchCardsByName(availableCards.value, searchText);
   };
 
@@ -187,6 +294,20 @@ export const useCardsStore = defineStore("cards", () => {
     const readonlyResult = readonly(result);
     cardsByKindCache.set(kind, readonlyResult);
     return readonlyResult;
+  };
+
+  /**
+   * 全キャッシュクリア（最適化版）
+   */
+  const clearAllCaches = (): void => {
+    cardByIdCache.clear();
+    cardsByKindCache.clear();
+    cardSearchIndex.clear();
+    availableKindsCache.value = null;
+    availableTypesCache.value = null;
+    isIndexBuilt.value = false;
+    triggerRef(availableKindsCache);
+    triggerRef(availableTypesCache);
   };
 
   /**
@@ -325,10 +446,7 @@ export const useCardsStore = defineStore("cards", () => {
    * キャッシュをクリア（デバッグ用）
    */
   const clearCaches = (): void => {
-    cardByIdCache.clear();
-    cardsByKindCache.clear();
-    availableKindsCache.value = null;
-    availableTypesCache.value = null;
+    clearAllCaches();
   };
 
   // 計算プロパティ

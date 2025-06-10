@@ -12,7 +12,7 @@ import {
 
 import { useAppStore } from "./stores";
 import { CardListSection, DeckSection } from "./components";
-import type { Card } from "./types";
+import type { Card, DeckCard } from "./types";
 import { getCardImageUrlSafe } from "./utils/imageHelpers";
 
 // 遅延ロードコンポーネント（プリフェッチ設定付き）
@@ -68,9 +68,52 @@ const imageModalState = shallowRef({
   selectedIndex: null as number | null,
 });
 
+// キャッシュされた計算プロパティ（再計算を最小化）
+const cardListCache = new Map<string, readonly DeckCard[]>();
+const imageUrlCache = new Map<string, string>();
+
+// 画像URLを高速取得（キャッシュ利用）
+const getCachedImageUrl = (cardId: string): string => {
+  if (imageUrlCache.has(cardId)) {
+    return imageUrlCache.get(cardId)!;
+  }
+
+  const url = getCardImageUrlSafe(cardId);
+
+  // キャッシュサイズ制限
+  if (imageUrlCache.size >= 500) {
+    // 古いエントリをクリア
+    const firstKey = imageUrlCache.keys().next().value;
+    if (firstKey) {
+      imageUrlCache.delete(firstKey);
+    }
+  }
+
+  imageUrlCache.set(cardId, url);
+  return url;
+};
+
 // 計算プロパティを使用した最適化（Vue 3.5の改善されたreactivity）
 const sortedDeckCards = computed(() => deckStore.sortedDeckCards);
 const sortedDeckCardsLength = computed(() => sortedDeckCards.value.length);
+
+// メモ化された計算プロパティ（不要な再レンダリングを防止）
+const memoizedDeckCards = computed<readonly DeckCard[]>(() => {
+  const cards = sortedDeckCards.value;
+  const key = cards.map((item) => item.card.id).join(",");
+
+  if (cardListCache.has(key)) {
+    return cardListCache.get(key)!;
+  }
+
+  // キャッシュサイズ制限
+  if (cardListCache.size >= 10) {
+    cardListCache.clear();
+  }
+
+  cardListCache.set(key, cards);
+  return cards;
+});
 
 // Vue 3.5の新機能: より効率的な状態更新
 const updateImageModalState = (
@@ -82,7 +125,7 @@ const updateImageModalState = (
 
 // カード画像を拡大表示（Vue 3.5最適化版）
 const openImageModal = async (cardId: string) => {
-  const cards = sortedDeckCards.value;
+  const cards = memoizedDeckCards.value;
 
   // より効率的な検索
   const cardIndex = cards.findIndex((item) => item.card.id === cardId);
@@ -97,7 +140,7 @@ const openImageModal = async (cardId: string) => {
     updateImageModalState({
       selectedCard: deckCard.card,
       selectedIndex: cardIndex,
-      selectedImage: getCardImageUrlSafe(cardId),
+      selectedImage: getCachedImageUrl(cardId),
       isVisible: true,
     });
   } else {
@@ -120,7 +163,7 @@ const handleCardNavigation = async (direction: "previous" | "next") => {
   const currentIndex = imageModalState.value.selectedIndex;
   if (currentIndex === null) return;
 
-  const cards = sortedDeckCards.value;
+  const cards = memoizedDeckCards.value;
   let newIndex: number;
 
   if (direction === "previous") {
@@ -143,7 +186,7 @@ const handleCardNavigation = async (direction: "previous" | "next") => {
   updateImageModalState({
     selectedCard: newDeckCard.card,
     selectedIndex: newIndex,
-    selectedImage: getCardImageUrlSafe(newDeckCard.card.id),
+    selectedImage: getCachedImageUrl(newDeckCard.card.id),
   });
 };
 

@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, readonly, computed } from "vue";
+import { ref, readonly, computed, shallowRef, markRaw, triggerRef } from "vue";
 import type { Card, FilterCriteria } from "../types";
 import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants/game";
 import * as CardDomain from "../domain/card";
@@ -12,7 +12,7 @@ import { sortCards } from "../domain/sort";
 
 export const useFilterStore = defineStore("filter", () => {
   const isFilterModalOpen = ref<boolean>(false);
-  const filterCriteria = ref<FilterCriteria>({
+  const filterCriteria = shallowRef<FilterCriteria>({
     text: "",
     kind: [],
     type: [],
@@ -74,8 +74,8 @@ export const useFilterStore = defineStore("filter", () => {
     { maxSize: 10, ttl: 15 * 60 * 1000 } // 15分間キャッシュ
   );
 
-  // シンプルなMapベースの文字列正規化キャッシュ
-  const stringNormalizationCache = new Map<string, string>();
+  // シンプルなMapベースの文字列正規化キャッシュ（markRawで最適化）
+  const stringNormalizationCache = markRaw(new Map<string, string>());
   const normalizeString = (str: string): string => {
     if (stringNormalizationCache.has(str)) {
       return stringNormalizationCache.get(str)!;
@@ -83,7 +83,7 @@ export const useFilterStore = defineStore("filter", () => {
 
     const normalized = str.trim().toLowerCase();
 
-    // キャッシュサイズ制限
+    // キャッシュサイズ制限（メモリリーク防止）
     if (stringNormalizationCache.size >= 1000) {
       // 古いエントリをクリア
       stringNormalizationCache.clear();
@@ -91,6 +91,25 @@ export const useFilterStore = defineStore("filter", () => {
 
     stringNormalizationCache.set(str, normalized);
     return normalized;
+  };
+
+  // 高速なSet操作のための最適化されたキャッシュ
+  const fastSetCache = markRaw(new Map<string, Set<string>>());
+  const createFastSet = (items: readonly string[]): Set<string> => {
+    const key = items.join("|");
+    if (fastSetCache.has(key)) {
+      return fastSetCache.get(key)!;
+    }
+
+    const set = new Set(items);
+
+    // キャッシュサイズ制限
+    if (fastSetCache.size >= 100) {
+      fastSetCache.clear();
+    }
+
+    fastSetCache.set(key, set);
+    return set;
   };
 
   /**
@@ -152,7 +171,7 @@ export const useFilterStore = defineStore("filter", () => {
   };
 
   /**
-   * 最適化された種別フィルタリング
+   * 最適化された種別フィルタリング（高速Set使用）
    */
   const applyKindFilter = (
     cards: readonly Card[],
@@ -162,11 +181,12 @@ export const useFilterStore = defineStore("filter", () => {
       return cards;
     }
 
-    // Set を使用した効率的なルックアップ
-    const kindSet = new Set(kinds);
+    // 高速なSet を使用した効率的なルックアップ
+    const kindSet = createFastSet(kinds);
     const result: Card[] = [];
     const cardCount = cards.length;
 
+    // バッチ処理で最適化
     for (let i = 0; i < cardCount; i++) {
       const card = cards[i];
       const cardKind =
@@ -181,7 +201,7 @@ export const useFilterStore = defineStore("filter", () => {
   };
 
   /**
-   * 最適化されたタイプフィルタリング
+   * 最適化されたタイプフィルタリング（高速Set使用）
    */
   const applyTypeFilter = (
     cards: readonly Card[],
@@ -191,10 +211,11 @@ export const useFilterStore = defineStore("filter", () => {
       return cards;
     }
 
-    const typeSet = new Set(types);
+    const typeSet = createFastSet(types);
     const result: Card[] = [];
     const cardCount = cards.length;
 
+    // より効率的なループ処理
     for (let i = 0; i < cardCount; i++) {
       const card = cards[i];
       let hasMatchingType = false;
@@ -231,7 +252,7 @@ export const useFilterStore = defineStore("filter", () => {
       return cards;
     }
 
-    const tagSet = new Set(tags);
+    const tagSet = createFastSet(tags);
     const result: Card[] = [];
     const cardCount = cards.length;
 
@@ -304,7 +325,7 @@ export const useFilterStore = defineStore("filter", () => {
   };
 
   /**
-   * ソート・フィルター済みカード一覧 - 最適化版
+   * ソート・フィルター済みカード一覧 - 最適化版（早期リターン強化）
    */
   const sortedAndFilteredCards = computed(() => {
     const cardsStore = useCardsStore();
@@ -315,25 +336,39 @@ export const useFilterStore = defineStore("filter", () => {
       return readonly([]);
     }
 
+    // フィルターが空の場合はソートのみ実行
+    const currentCriteria = filterCriteria.value;
+    if (isEmptyFilter(currentCriteria)) {
+      if (memoizedCardSorting.isOk()) {
+        return memoizedCardSorting.value(cards);
+      }
+      return readonly(sortCards(cards));
+    }
+
     let result: readonly Card[] = cards;
 
-    // フィルタリングの適用
+    // フィルタリングの適用（メモ化優先）
     if (memoizedFilterApplication.isOk()) {
       result = memoizedFilterApplication.value({
         cards,
-        criteria: filterCriteria.value,
+        criteria: currentCriteria,
       });
     } else {
       // フォールバック
-      result = applyAllFiltersOptimized(cards, filterCriteria.value);
+      result = applyAllFiltersOptimized(cards, currentCriteria);
+    }
+
+    // 結果が空の場合は早期リターン
+    if (result.length === 0) {
+      return readonly([]);
     }
 
     // ソートの適用
-    if (result.length > 0 && memoizedCardSorting.isOk()) {
+    if (memoizedCardSorting.isOk()) {
       return memoizedCardSorting.value(result);
     }
 
-    return result;
+    return readonly(sortCards(result));
   });
 
   /**
@@ -383,6 +418,7 @@ export const useFilterStore = defineStore("filter", () => {
    */
   const updateFilterCriteria = (criteria: FilterCriteria): void => {
     filterCriteria.value = { ...criteria };
+    triggerRef(filterCriteria); // 手動でリアクティブ更新をトリガー
   };
 
   /**

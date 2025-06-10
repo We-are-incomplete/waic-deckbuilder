@@ -31,3 +31,4 @@
 - Vite
 - TypeScript
 - Tailwind CSS
+- Pinia
