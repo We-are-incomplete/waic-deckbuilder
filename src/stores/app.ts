@@ -30,6 +30,11 @@ export const useAppStore = defineStore("app", () => {
   };
 
   const confirmResetDeck = (): void => {
+    // 長押しハンドラーをクリーンアップ
+    if (deckSectionRef.value && "cleanupAllHandlers" in deckSectionRef.value) {
+      (deckSectionRef.value as any).cleanupAllHandlers();
+    }
+
     deckStore.resetDeckCards();
     deckStore.resetDeckName();
     showResetConfirmModal.value = false;

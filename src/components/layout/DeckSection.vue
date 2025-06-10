@@ -36,7 +36,6 @@ const {
   deckState,
   incrementCardCount: handleIncrementCard,
   decrementCardCount: handleDecrementCard,
-  clearDeck,
 } = useDeckOperations(showToast);
 
 // 計算プロパティ（ストアから直接取得）
@@ -107,10 +106,7 @@ const decrementCard = (cardId: string) => {
 
 // デッキリセット処理（ハンドラークリーンアップ付き）
 const resetDeck = () => {
-  if (clearDeck()) {
-    cleanupAllHandlers();
-    emit("resetDeck");
-  }
+  emit("resetDeck");
 };
 
 // デッキ枚数の色分け計算
@@ -131,6 +127,7 @@ const getDeckProgressColor = (count: number) => {
 // エクスポート用
 defineExpose({
   exportContainer,
+  cleanupAllHandlers,
 });
 </script>
 
