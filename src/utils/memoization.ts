@@ -81,8 +81,11 @@ export const memoize = <TArgs extends readonly unknown[], TReturn>(
 
   const cache = new Map<string, CacheEntry<TReturn>>();
   let accessOrder: string[] = []; // LRU追跡用
+  let totalCalls = 0; // 総呼び出し数
+  let cacheHits = 0; // キャッシュヒット数
 
   const memoizedFunction = (...args: TArgs): TReturn => {
+    totalCalls++;
     // キーの生成
     let key: string;
     try {
@@ -104,6 +107,9 @@ export const memoize = <TArgs extends readonly unknown[], TReturn>(
           accessOrder.splice(index, 1);
         }
       } else {
+        // キャッシュヒット
+        cacheHits++;
+
         // アクセス順序を更新（LRU）
         const index = accessOrder.indexOf(key);
         if (index !== -1) {
@@ -152,6 +158,8 @@ export const memoize = <TArgs extends readonly unknown[], TReturn>(
       clear: () => {
         cache.clear();
         accessOrder = [];
+        totalCalls = 0;
+        cacheHits = 0;
       },
       delete: (key: string) => {
         const deleted = cache.delete(key);
@@ -168,13 +176,9 @@ export const memoize = <TArgs extends readonly unknown[], TReturn>(
       entries: () => Array.from(cache.entries()),
       stats: () => ({
         size: cache.size,
-        hitRate:
-          accessOrder.length > 0
-            ? Array.from(cache.values()).reduce(
-                (sum, entry) => sum + entry.accessCount,
-                0
-              ) / accessOrder.length
-            : 0,
+        hitRate: totalCalls > 0 ? cacheHits / totalCalls : 0,
+        totalCalls,
+        cacheHits,
         averageAccessCount:
           cache.size > 0
             ? Array.from(cache.values()).reduce(
@@ -199,8 +203,8 @@ export const memoizeArrayComputation = <TItem, TReturn>(
   const arrayKeySerializer = (args: readonly unknown[]): string => {
     const items = args[0] as readonly TItem[];
     if (!Array.isArray(items)) {
-      // エラーをthrowする代わりに、デフォルトキーを返す
-      return `invalid-array-${Date.now()}`;
+      // エラーをthrowする代わりに、安定したデフォルトキーを返す
+      return "invalid-array-input";
     }
 
     // 配列の長さが小さい場合は全体をハッシュ化
@@ -253,8 +257,8 @@ export const memoizeObjectComputation = <
   const objectKeySerializer = (args: readonly unknown[]): string => {
     const obj = args[0] as TObject;
     if (typeof obj !== "object" || obj === null) {
-      // エラーをthrowする代わりに、デフォルトキーを返す
-      return `invalid-object-${Date.now()}`;
+      // エラーをthrowする代わりに、安定したデフォルトキーを返す
+      return "invalid-object-input";
     }
 
     // オブジェクトの効率的なフィンガープリント生成

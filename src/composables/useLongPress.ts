@@ -1,4 +1,4 @@
-import { ref, onBeforeUnmount, readonly } from "vue";
+import { ref, onBeforeUnmount, readonly, computed } from "vue";
 import { ok, err, type Result } from "neverthrow";
 
 // 長押しの状態を表現する代数的データ型
@@ -42,11 +42,11 @@ const validateDelay = (delay: number): Result<number, LongPressError> => {
  * ユーザーエージェントからデフォルト遅延を決定する純粋関数
  */
 const getDefaultDelay = (): number => {
-  if (
-    typeof window !== "undefined" &&
-    window.navigator?.userAgent?.includes("Mobile")
-  ) {
-    return 400;
+  if (typeof window !== "undefined") {
+    // タッチデバイスの検出
+    const isTouchDevice =
+      "ontouchstart" in window || navigator.maxTouchPoints > 0;
+    return isTouchDevice ? 400 : 500;
   }
   return 500;
 };
@@ -79,7 +79,6 @@ const createPressResult = (
         type: "cancelled",
         duration: 0,
       };
-    case "idle":
     default:
       return { type: "timeout" };
   }
@@ -254,7 +253,9 @@ export const useLongPress = (options: LongPressOptions = {}) => {
     delay: readonly(ref(delay)),
 
     // 計算プロパティ
-    isPressing: readonly(ref(() => pressState.value.type === "pressing")),
-    isLongPressed: readonly(ref(() => pressState.value.type === "longPressed")),
+    isPressing: readonly(computed(() => pressState.value.type === "pressing")),
+    isLongPressed: readonly(
+      computed(() => pressState.value.type === "longPressed")
+    ),
   };
 };

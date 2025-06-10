@@ -52,18 +52,6 @@ export const useDeckStore = defineStore("deck", () => {
   });
 
   /**
-   * デッキが有効かどうか（簡易版）
-   */
-  const isDeckValid = computed(() => {
-    return (
-      totalDeckCards.value <= 60 && // 仮の上限
-      deckCards.value.every(
-        (item) => item.count <= GAME_CONSTANTS.MAX_CARD_COPIES
-      )
-    );
-  });
-
-  /**
    * デッキのエラーメッセージ
    */
   const deckErrors = computed(() => {
@@ -145,10 +133,6 @@ export const useDeckStore = defineStore("deck", () => {
     const item = deckCards.value[existingCardIndex];
     if (item.count === 1) {
       removeCardFromDeck(cardId);
-      return;
-    }
-
-    if (item.count <= 1) {
       return;
     }
 
@@ -275,7 +259,6 @@ export const useDeckStore = defineStore("deck", () => {
     sortedDeckCards,
     totalDeckCards,
     deckState,
-    isDeckValid,
     deckErrors,
 
     // アクション

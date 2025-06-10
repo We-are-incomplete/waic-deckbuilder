@@ -78,6 +78,8 @@ const openImageModal = async (cardId: string) => {
       selectedImage: getCardImageUrlSafe(cardId),
       isVisible: true,
     });
+  } else {
+    console.warn(`Card with ID ${cardId} not found in deck`);
   }
 };
 

@@ -108,16 +108,7 @@ export const createTypeSort = (): SortComparator<Pick<Card, "type">> => {
  * CardTypeから文字列表現を取得するヘルパー関数
  */
 const getTypeString = (cardType: CardType): string => {
-  switch (cardType.type) {
-    case "color":
-      return cardType.value;
-    case "timing":
-      return cardType.value;
-    case "equipment":
-      return cardType.value;
-    case "installation":
-      return cardType.value;
-  }
+  return cardType.value;
 };
 
 /**

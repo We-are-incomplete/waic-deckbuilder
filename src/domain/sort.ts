@@ -21,12 +21,7 @@ const typeSort = createTypeSort();
 export const compareCards = (a: Card, b: Card): number => {
   // 実際のカードデータ形式に対応した比較
   // 種別で比較（CARD_KINDSの順序：Artist → Song → Magic → Direction）
-  const kindA = typeof a.kind === "string" ? a.kind : a.kind.type;
-  const kindB = typeof b.kind === "string" ? b.kind : b.kind.type;
-  const kindComparison = kindSort(
-    { kind: { type: kindA } },
-    { kind: { type: kindB } }
-  );
+  const kindComparison = kindSort({ kind: a.kind }, { kind: b.kind });
   if (kindComparison !== 0) return kindComparison;
 
   // タイプで比較（CARD_TYPESの順序：赤 → 青 → 黄 → 白 → 黒 → 全 → 即時 → 装備 → 設置）

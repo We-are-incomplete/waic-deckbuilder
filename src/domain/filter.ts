@@ -26,11 +26,13 @@ export const applyFilter = (
       return filterCardsByTags(cards, condition.values);
 
     case "combined":
-      return condition.conditions.reduce(
-        (filteredCards, subCondition) =>
-          applyFilter(filteredCards, subCondition),
-        cards
-      );
+      return condition.conditions.reduce((filteredCards, subCondition) => {
+        // 空のフィルターをスキップして不要な処理を避ける
+        if (isEmptyFilter(subCondition)) {
+          return filteredCards;
+        }
+        return applyFilter(filteredCards, subCondition);
+      }, cards);
   }
 };
 

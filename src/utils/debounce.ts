@@ -1,4 +1,5 @@
 import { ok, err, type Result } from "neverthrow";
+import { logger } from "./logger";
 
 /**
  * デバウンス関数を作成する（改善版）
@@ -42,7 +43,7 @@ export function createDebounce<T extends (...args: any[]) => void>(
           func(...lastArgs);
         }
       } catch (error) {
-        console.error("デバウンス関数の実行中にエラーが発生しました:", error);
+        logger.error("デバウンス関数の実行中にエラーが発生しました:", error);
       } finally {
         timer = null;
         lastArgs = null;
@@ -64,7 +65,7 @@ export function createDebounce<T extends (...args: any[]) => void>(
       try {
         func(...lastArgs);
       } catch (error) {
-        console.error(
+        logger.error(
           "デバウンス関数のフラッシュ実行中にエラーが発生しました:",
           error
         );

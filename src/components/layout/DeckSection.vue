@@ -106,17 +106,21 @@ const resetDeck = () => {
 };
 
 // デッキ枚数の色分け計算
+
+const MAX_DECK_SIZE = 60;
+const WARNING_THRESHOLD = 50;
+
 const getDeckCountColor = (count: number) => {
-  if (count === 60) return "text-green-400";
-  if (count > 60) return "text-red-400";
-  if (count > 50) return "text-yellow-400";
+  if (count === MAX_DECK_SIZE) return "text-green-400";
+  if (count > MAX_DECK_SIZE) return "text-red-400";
+  if (count > WARNING_THRESHOLD) return "text-yellow-400";
   return "text-slate-100";
 };
 
 const getDeckProgressColor = (count: number) => {
-  if (count === 60) return "bg-green-500";
-  if (count > 60) return "bg-red-500";
-  if (count > 50) return "bg-yellow-500";
+  if (count === MAX_DECK_SIZE) return "bg-green-500";
+  if (count > MAX_DECK_SIZE) return "bg-red-500";
+  if (count > WARNING_THRESHOLD) return "bg-yellow-500";
   return "bg-blue-500";
 };
 

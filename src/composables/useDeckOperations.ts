@@ -7,24 +7,11 @@ import {
   memoizeArrayComputation,
   memoizeObjectComputation,
 } from "../utils/memoization";
-
-// エラーハンドリング用
-interface ErrorHandler {
-  handleValidationError: (message: string) => void;
-}
+import type { ErrorHandler } from "../utils/errorHandler";
 
 // CardTypeから文字列表現を取得するヘルパー関数（最適化版）
 const getSingleTypeString = (cardType: CardType): string => {
-  switch (cardType.type) {
-    case "color":
-      return cardType.value;
-    case "timing":
-      return cardType.value;
-    case "equipment":
-      return cardType.value;
-    case "installation":
-      return cardType.value;
-  }
+  return cardType.value;
 };
 
 export const useDeckOperations = () => {

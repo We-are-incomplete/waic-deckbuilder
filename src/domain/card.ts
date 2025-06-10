@@ -27,14 +27,6 @@ export const createCard = (
     return err({ type: "invalidName", name });
   }
 
-  // タグの重複チェック
-  if (tags && tags.length > 0) {
-    const uniqueTags = [...new Set(tags)];
-    if (uniqueTags.length !== tags.length) {
-      return err({ type: "duplicateTags", tags });
-    }
-  }
-
   return ok({
     id: id.trim(),
     name: name.trim(),

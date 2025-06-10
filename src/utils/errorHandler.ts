@@ -1,4 +1,5 @@
 import { err, ok, Result, fromThrowable, fromAsyncThrowable } from "neverthrow";
+import { logger } from "./logger";
 
 // エラーの種類を定義
 export type AppError = {
@@ -24,9 +25,9 @@ export interface ErrorHandler {
 // ログ出力関数
 const logError = (message: string, error?: unknown): void => {
   if (error) {
-    console.error(message, error);
+    logger.error(message, error);
   } else {
-    console.error(message);
+    logger.error(message);
   }
 };
 
