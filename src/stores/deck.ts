@@ -11,10 +11,7 @@ import {
   removeDeckNameFromLocalStorage,
   createDebounce,
 } from "../utils";
-import {
-  createErrorHandler,
-  type ShowToastFunction,
-} from "../utils/errorHandler";
+import { createErrorHandler } from "../utils/errorHandler";
 import * as DeckDomain from "../domain/deck";
 import { sortDeckCards } from "../domain/sort";
 
@@ -22,9 +19,8 @@ export const useDeckStore = defineStore("deck", () => {
   const deckCards = ref<DeckCard[]>([]);
   const deckName = ref<string>("新しいデッキ");
 
-  // エラーハンドラー（トースト関数は後でセットアップ時に設定）
-  let showToast: ShowToastFunction | undefined;
-  const errorHandler = computed(() => createErrorHandler(showToast));
+  // エラーハンドラー
+  const errorHandler = computed(() => createErrorHandler());
 
   /**
    * ソート済みデッキカード
@@ -234,13 +230,6 @@ export const useDeckStore = defineStore("deck", () => {
     deckName.value = name.trim();
   };
 
-  /**
-   * トースト表示関数を設定
-   */
-  const setToastFunction = (toastFunc: ShowToastFunction): void => {
-    showToast = toastFunc;
-  };
-
   // デッキ変更時のローカルストレージ保存（デバウンス）
   const debounceResult = createDebounce(
     (newDeck: DeckCard[]) => saveDeckToLocalStorage(newDeck),
@@ -299,6 +288,5 @@ export const useDeckStore = defineStore("deck", () => {
     setDeckCards,
     resetDeckCards,
     resetDeckName,
-    setToastFunction,
   };
 });

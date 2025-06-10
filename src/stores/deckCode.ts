@@ -3,7 +3,7 @@ import { ref } from "vue";
 import type { Card, DeckCard } from "../types";
 import { encodeDeckCode, decodeDeckCode, logger } from "../utils";
 import { useDeckStore } from "./deck";
-import { useToastStore } from "./toast";
+
 import { fromAsyncThrowable } from "neverthrow";
 import { sortDeckCards } from "../domain/sort";
 
@@ -14,7 +14,6 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
   const showDeckCodeModal = ref<boolean>(false);
   const error = ref<string | null>(null);
   const deckStore = useDeckStore();
-  const toastStore = useToastStore();
 
   /**
    * デッキコードを生成・表示
@@ -37,7 +36,6 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
       const errorMessage = "デッキコードの生成に失敗しました";
       logger.error(errorMessage + ":", e);
       error.value = errorMessage;
-      toastStore.showError(errorMessage);
     } finally {
       isGeneratingCode.value = false;
     }
@@ -47,7 +45,6 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
    * デッキコードをクリップボードにコピー
    */
   const copyDeckCode = async (): Promise<void> => {
-    const toastStore = useToastStore();
     error.value = null;
 
     // Clipboard APIを安全にラップ
@@ -81,12 +78,11 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
     const result = await safeClipboardWrite(deckCode.value);
 
     if (result.isOk()) {
-      toastStore.showSuccess("デッキコードをコピーしました");
+      logger.info("デッキコードをコピーしました");
     } else {
       const errorMessage = "デッキコードのコピーに失敗しました";
       logger.error(errorMessage + ":", result.error);
       error.value = errorMessage;
-      toastStore.showError(errorMessage);
     }
   };
 
@@ -95,7 +91,6 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
    */
   const importDeckFromCode = (availableCards: readonly Card[]): void => {
     const deckStore = useDeckStore();
-    const toastStore = useToastStore();
     error.value = null;
 
     // 入力検証：空文字列チェック
@@ -103,7 +98,6 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
       const warningMessage = "デッキコードが空です";
       logger.warn(warningMessage);
       error.value = warningMessage;
-      toastStore.showError(warningMessage);
       return;
     }
 
@@ -116,7 +110,6 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
       const warningMessage = `デッキコードが長すぎます（最大${MAX_DECK_CODE_LENGTH}文字）`;
       logger.warn(warningMessage);
       error.value = warningMessage;
-      toastStore.showError(warningMessage);
       return;
     }
 
@@ -129,7 +122,6 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
       const warningMessage = "無効なデッキコード形式です";
       logger.warn(warningMessage);
       error.value = warningMessage;
-      toastStore.showError(warningMessage);
       return;
     }
 
@@ -141,7 +133,6 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
         const warningMessage = `無効なカードID形式が含まれています: ${cardId}`;
         logger.warn(warningMessage);
         error.value = warningMessage;
-        toastStore.showError(warningMessage);
         return;
       }
     }
@@ -161,7 +152,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
         deckStore.setDeckCards(importedCards);
         importDeckCode.value = "";
         showDeckCodeModal.value = false;
-        toastStore.showSuccess(
+        logger.info(
           `デッキをインポートしました（${importedCards.length}種類のカード）`
         );
       } else {
@@ -170,14 +161,12 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
         logger.warn(warningMessage);
         logger.debug("入力されたデッキコード:", trimmedCode);
         error.value = warningMessage;
-        toastStore.showError(warningMessage);
       }
     } catch (e) {
       const errorMessage = "デッキコードの復元に失敗しました";
       logger.error(errorMessage + ":", e);
       logger.debug("入力されたデッキコード:", trimmedCode);
       error.value = errorMessage;
-      toastStore.showError(errorMessage);
     }
   };
 

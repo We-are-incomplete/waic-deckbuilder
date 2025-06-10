@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { computed, ref, inject } from "vue";
+import { computed, ref } from "vue";
 import DeckExportContainer from "./DeckExportContainer.vue";
 import { handleImageError } from "../../utils/image";
 import { getCardImageUrlSafe } from "../../utils/imageHelpers";
 import { useLongPress } from "../../composables/useLongPress";
 import { useDeckOperations } from "../../composables/useDeckOperations";
 import { useDeckStore } from "../../stores/deck";
-import type { ShowToastFunction } from "../../utils/errorHandler";
 
 // Props（必要最小限に削減）
 interface Props {
@@ -28,15 +27,12 @@ const emit = defineEmits<Emits>();
 // ストアとコンポーザブルの初期化
 const deckStore = useDeckStore();
 
-// トースト関数を注入（アプリケーション全体で利用）
-const showToast = inject<ShowToastFunction>("showToast");
-
 // デッキ操作のコンポーザブル
 const {
   deckState,
   incrementCardCount: handleIncrementCard,
   decrementCardCount: handleDecrementCard,
-} = useDeckOperations(showToast);
+} = useDeckOperations();
 
 // 計算プロパティ（ストアから直接取得）
 const deckCards = computed(() => deckStore.deckCards);

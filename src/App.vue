@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { onMounted, defineAsyncComponent, ref, provide } from "vue";
+import { onMounted, defineAsyncComponent, ref } from "vue";
 
 import { useAppStore } from "./stores";
-import { CardListSection, DeckSection, ToastContainer } from "./components";
+import { CardListSection, DeckSection } from "./components";
 import type { Card } from "./types";
 import { getCardImageUrlSafe } from "./utils/imageHelpers";
-import type { ShowToastFunction } from "./utils/errorHandler";
 
 const ConfirmModal = defineAsyncComponent(
   () => import("./components/modals/ConfirmModal.vue")
@@ -22,19 +21,7 @@ const CardImageModal = defineAsyncComponent(
 
 // ストア初期化
 const appStore = useAppStore();
-const { cardsStore, deckStore, filterStore, toastStore, deckCodeStore } =
-  appStore;
-
-// トースト関数をアプリケーション全体で利用可能にする
-const showToast: ShowToastFunction = (
-  message: string,
-  type: "success" | "error" | "warning" | "info" = "info"
-) => {
-  toastStore.showToast(message, type);
-};
-
-// 依存性注入でトースト関数を提供
-provide("showToast", showToast);
+const { cardsStore, deckStore, filterStore, deckCodeStore } = appStore;
 
 // アプリケーションの初期化
 onMounted(appStore.initializeApp);
@@ -162,12 +149,6 @@ const handleCardNavigation = (direction: "previous" | "next") => {
       :total-cards="deckStore.sortedDeckCards.length"
       @close="closeImageModal"
       @navigate="handleCardNavigation"
-    />
-
-    <!-- トーストコンテナ -->
-    <ToastContainer
-      :toasts="toastStore.toasts"
-      @remove-toast="toastStore.removeToast"
     />
   </div>
 </template>

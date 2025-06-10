@@ -3,7 +3,6 @@ import type { Card, DeckCard, CardType } from "../types";
 import * as DeckDomain from "../domain/deck";
 import { useDeckStore } from "../stores/deck";
 import { useCardsStore } from "../stores/cards";
-import type { ShowToastFunction } from "../utils/errorHandler";
 
 // エラーハンドリング用
 interface ErrorHandler {
@@ -24,14 +23,14 @@ const getSingleTypeString = (cardType: CardType): string => {
   }
 };
 
-export const useDeckOperations = (showToast?: ShowToastFunction) => {
+export const useDeckOperations = () => {
   const deckStore = useDeckStore();
   const cardsStore = useCardsStore();
 
   // エラーハンドリング設定
   const errorHandler: ErrorHandler = {
     handleValidationError: (message: string) => {
-      showToast?.(message);
+      console.warn(message);
     },
   };
 

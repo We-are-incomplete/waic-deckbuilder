@@ -2,10 +2,7 @@ import { defineStore } from "pinia";
 import { ref, shallowRef, readonly, computed } from "vue";
 import type { Card } from "../types";
 import { preloadImages, logger } from "../utils";
-import {
-  safeAsyncOperation,
-  type ShowToastFunction,
-} from "../utils/errorHandler";
+import { safeAsyncOperation } from "../utils/errorHandler";
 import * as CardDomain from "../domain/card";
 import { fromAsyncThrowable, ok, err, type Result } from "neverthrow";
 
@@ -24,9 +21,6 @@ export const useCardsStore = defineStore("cards", () => {
   const availableCards = shallowRef<readonly Card[]>([]);
   const isLoading = ref<boolean>(true);
   const error = ref<CardStoreError | null>(null);
-
-  // エラーハンドラー
-  let showToast: ShowToastFunction | undefined;
 
   /**
    * カードデータを取得する純粋関数
@@ -148,40 +142,36 @@ export const useCardsStore = defineStore("cards", () => {
     isLoading.value = true;
     error.value = null;
 
-    const result = await safeAsyncOperation(
-      async () => {
-        // データ取得
-        const fetchResult = await fetchCardData();
-        if (fetchResult.isErr()) {
-          throw fetchResult.error;
-        }
-        const rawCards = fetchResult.value;
+    const result = await safeAsyncOperation(async () => {
+      // データ取得
+      const fetchResult = await fetchCardData();
+      if (fetchResult.isErr()) {
+        throw fetchResult.error;
+      }
+      const rawCards = fetchResult.value;
 
-        // データ検証
-        const validCards = validateCards(rawCards);
+      // データ検証
+      const validCards = validateCards(rawCards);
 
-        // 有効なカードの存在を確認
-        const checkedCardsResult = ensureValidCards(validCards);
-        if (checkedCardsResult.isErr()) {
-          throw new Error(checkedCardsResult.error);
-        }
-        const checkedCards = checkedCardsResult.value;
+      // 有効なカードの存在を確認
+      const checkedCardsResult = ensureValidCards(validCards);
+      if (checkedCardsResult.isErr()) {
+        throw new Error(checkedCardsResult.error);
+      }
+      const checkedCards = checkedCardsResult.value;
 
-        // ストアに設定
-        availableCards.value = readonly(checkedCards);
+      // ストアに設定
+      availableCards.value = readonly(checkedCards);
 
-        // 画像プリロード（非同期、エラーでも続行）
-        const preloadResult = preloadImages(checkedCards);
-        if (preloadResult.isErr()) {
-          logger.warn("画像のプリロードに失敗しました:", preloadResult.error);
-          // プリロードの失敗は致命的ではないので続行
-        }
+      // 画像プリロード（非同期、エラーでも続行）
+      const preloadResult = preloadImages(checkedCards);
+      if (preloadResult.isErr()) {
+        logger.warn("画像のプリロードに失敗しました:", preloadResult.error);
+        // プリロードの失敗は致命的ではないので続行
+      }
 
-        logger.info(`${checkedCards.length}枚のカードを読み込みました`);
-      },
-      "カードデータの読み込み",
-      showToast
-    );
+      logger.info(`${checkedCards.length}枚のカードを読み込みました`);
+    }, "カードデータの読み込み");
 
     if (result.isErr()) {
       const errorMessage = result.error.message;
@@ -225,13 +215,6 @@ export const useCardsStore = defineStore("cards", () => {
     error.value = null;
   };
 
-  /**
-   * トースト表示関数を設定
-   */
-  const setToastFunction = (toastFunc: ShowToastFunction): void => {
-    showToast = toastFunc;
-  };
-
   // 計算プロパティ
   const cardCount = computed(() => availableCards.value.length);
   const hasCards = computed(() => cardCount.value > 0);
@@ -251,7 +234,6 @@ export const useCardsStore = defineStore("cards", () => {
     // アクション
     loadCards,
     clearError,
-    setToastFunction,
 
     // ユーティリティ関数
     searchCardsByName,

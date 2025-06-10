@@ -3,7 +3,7 @@ import { ref } from "vue";
 import { useCardsStore } from "./cards";
 import { useDeckStore } from "./deck";
 import { useFilterStore } from "./filter";
-import { useToastStore } from "./toast";
+
 import { useDeckCodeStore } from "./deckCode";
 import { useExportStore } from "./export";
 import { handleError } from "../utils";
@@ -18,7 +18,6 @@ export const useAppStore = defineStore("app", () => {
   const cardsStore = useCardsStore();
   const deckStore = useDeckStore();
   const filterStore = useFilterStore();
-  const toastStore = useToastStore();
   const deckCodeStore = useDeckCodeStore();
   const exportStore = useExportStore();
 
@@ -52,13 +51,8 @@ export const useAppStore = defineStore("app", () => {
     if (exportContainer) {
       try {
         await exportStore.saveDeckAsPng(deckStore.deckName, exportContainer);
-        toastStore.showSuccess("デッキ画像を保存しました！");
       } catch (error) {
-        handleError(
-          "デッキ画像の保存中にエラーが発生しました",
-          error,
-          toastStore.showError
-        );
+        handleError("デッキ画像の保存中にエラーが発生しました", error);
       }
     }
   };
@@ -104,7 +98,6 @@ export const useAppStore = defineStore("app", () => {
     cardsStore,
     deckStore,
     filterStore,
-    toastStore,
     deckCodeStore,
     exportStore,
   };
