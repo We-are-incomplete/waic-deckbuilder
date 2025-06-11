@@ -9,7 +9,6 @@ import type {
 
 // ドメイン定数
 const MAX_CARD_COPIES = 4;
-const MAX_DECK_SIZE = 60;
 
 // =============================================================================
 // Map ベースのパフォーマンス最適化関数
@@ -43,20 +42,6 @@ const calculateTotalCardsFromMap = (map: Map<string, DeckCard>): number => {
 // =============================================================================
 // ヘルパー関数
 // =============================================================================
-
-// デッキサイズ超過チェック
-const checkDeckSizeExceeded = (
-  totalCount: number
-): Result<void, DeckOperationError> => {
-  if (totalCount > MAX_DECK_SIZE) {
-    return err({
-      type: "deckSizeExceeded",
-      currentSize: totalCount,
-      maxSize: MAX_DECK_SIZE,
-    });
-  }
-  return ok(undefined);
-};
 
 // =============================================================================
 // 公開API関数（既存APIとの互換性を保持）
@@ -110,13 +95,6 @@ export const calculateDeckState = (cards: readonly DeckCard[]): DeckState => {
     }
   }
 
-  // デッキサイズのバリデーション
-  if (totalCount > MAX_DECK_SIZE) {
-    errors.push(
-      `デッキサイズが上限を超えています: ${totalCount}/${MAX_DECK_SIZE}`
-    );
-  }
-
   if (errors.length > 0) {
     return { type: "invalid", cards, totalCount, errors };
   }
@@ -147,20 +125,8 @@ export const addCardToDeck = (
     };
     deckMap.set(cardToAdd.id, updatedCard);
 
-    const totalCount = calculateTotalCardsFromMap(deckMap);
-    const sizeCheckResult = checkDeckSizeExceeded(totalCount);
-    if (sizeCheckResult.isErr()) {
-      return err(sizeCheckResult.error);
-    }
-
     return ok(mapToDeckCards(deckMap));
   } else {
-    const totalCount = calculateTotalCardsFromMap(deckMap) + 1;
-    const sizeCheckResult = checkDeckSizeExceeded(totalCount);
-    if (sizeCheckResult.isErr()) {
-      return err(sizeCheckResult.error);
-    }
-
     const newDeckCardResult = createDeckCard(cardToAdd, 1);
     if (newDeckCardResult.isErr()) {
       return err(newDeckCardResult.error);
@@ -199,12 +165,6 @@ export const setCardCount = (
 
   const updatedCard = { ...existingCard, count };
   deckMap.set(cardId, updatedCard);
-
-  const totalCount = calculateTotalCardsFromMap(deckMap);
-  const sizeCheckResult = checkDeckSizeExceeded(totalCount);
-  if (sizeCheckResult.isErr()) {
-    return err(sizeCheckResult.error);
-  }
 
   return ok(mapToDeckCards(deckMap));
 };

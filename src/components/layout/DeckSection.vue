@@ -36,7 +36,6 @@ const exportStore = useExportStore();
 
 // デッキ操作のコンポーザブル
 const {
-  deckState,
   incrementCardCount: handleIncrementCard,
   decrementCardCount: handleDecrementCard,
 } = useDeckOperations();
@@ -321,15 +320,6 @@ defineExpose({
           {{ totalDeckCards }}
         </span>
         <span class="text-xs text-slate-400">/ 60</span>
-
-        <!-- デッキ状態インジケーター -->
-        <div
-          v-if="!deckState.isValid"
-          class="ml-1 text-xs text-red-400"
-          :title="deckState.validationErrors.join(', ')"
-        >
-          ⚠️
-        </div>
 
         <div class="w-12 sm:w-16 h-1 bg-slate-700 rounded-full overflow-hidden">
           <div
