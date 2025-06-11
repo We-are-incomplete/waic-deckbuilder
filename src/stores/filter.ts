@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref, readonly, computed, shallowRef, markRaw, triggerRef } from "vue";
-import type { Card, FilterCriteria } from "../types"; // CardType を追加
+import type { Card, FilterCriteria } from "../types";
 import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants/game";
 import * as CardDomain from "../domain/card";
 import {

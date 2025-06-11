@@ -271,13 +271,10 @@ export const useDeckOperations = () => {
       const { card, count } = deckCard;
 
       // 種別統計
-      // 種別統計
       kindStats.set(card.kind, (kindStats.get(card.kind) || 0) + count);
 
       // タイプ統計
-      const typeString = Array.isArray(card.type)
-        ? card.type.join(", ")
-        : card.type;
+      const typeString = card.type;
       typeStats.set(typeString, (typeStats.get(typeString) || 0) + count);
 
       totalCards += deckCard.count;

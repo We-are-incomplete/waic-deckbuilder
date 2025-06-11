@@ -240,7 +240,6 @@ const deckCodeModalProps = computed(() => ({
   deckCode: deckCodeStore.deckCode,
   importDeckCode: deckCodeStore.importDeckCode,
   error: deckCodeStore.error?.message || null,
-  errorMessage: deckCodeStore.error?.message || null,
 }));
 
 // カード画像モーダルのプロパティを計算（Vue 3.5の最適化されたcomputed）

@@ -149,7 +149,6 @@ export const useCardsStore = defineStore("cards", () => {
       const card = cards[i];
 
       // 種別処理
-      // 種別処理
       kindSet.add(card.kind);
 
       let kindCards = kindGroups.get(card.kind);

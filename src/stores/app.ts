@@ -15,7 +15,7 @@ export const useAppStore = defineStore("app", () => {
   // DeckSectionコンポーネントのインスタンス型を定義
   // Vue 3.5の新機能: InstanceType<typeof Component> でコンポーネントインスタンスの型を正確に取得
   type DeckSectionInstance = InstanceType<typeof DeckSection> & {
-    cleanupAllHandlers: () => void;
+    cleanupAllHandlers?: () => void;
   };
   let deckSectionRef = ref<DeckSectionInstance | null>(null);
 

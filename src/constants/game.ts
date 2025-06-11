@@ -25,6 +25,7 @@ export const CARD_TYPES: readonly string[] = [
 ] as const;
 
 export const PRIORITY_TAGS: readonly string[] = [
+  // --- Artist ---
   "V.W.P",
   "花譜",
   "理芽",
@@ -67,6 +68,7 @@ export const PRIORITY_TAGS: readonly string[] = [
   "詩得",
   "瓦利斯",
   "阿栖&亜留",
+  // --- 魔力とVOL ---
   "【登場】魔力α生成",
   "【能力】魔力α生成",
   "【登場】魔力β生成",
@@ -87,15 +89,18 @@ export const PRIORITY_TAGS: readonly string[] = [
   "VOL獲得",
   "VOL消失",
   "VOLノイズ",
+  // --- サーチ ---
   "Artistサーチ",
   "Songサーチ",
   "Magicサーチ",
   "Directionサーチ",
+  // --- 色メタ ---
   "色メタ【赤】",
   "色メタ【青】",
   "色メタ【黄】",
   "色メタ【白】",
   "色メタ【黒】",
+  // --- 色補助 ---
   "色補助【赤】",
   "色補助【青】",
   "色補助【黄】",
