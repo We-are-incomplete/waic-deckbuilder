@@ -14,9 +14,8 @@ export const isCardMatchingText = (card: Card, textLower: string): boolean => {
 
   // タグでの検索
   if (card.tags) {
-    return card.tags.some((tag: string) =>
-      tag.toLowerCase().includes(textLower)
-    );
+    const tags = Array.isArray(card.tags) ? card.tags : [card.tags];
+    return tags.some((tag: string) => tag.toLowerCase().includes(textLower));
   }
 
   return false;

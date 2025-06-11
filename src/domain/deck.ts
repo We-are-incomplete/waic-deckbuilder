@@ -189,11 +189,9 @@ export const incrementCardCount = (
   cards: readonly DeckCard[],
   cardId: string
 ): Result<readonly DeckCard[], DeckOperationError> => {
-  return setCardCount(
-    cards,
-    cardId,
-    (cards.find((dc) => dc.card.id === cardId)?.count || 0) + 1
-  );
+  const deckMap = createDeckCardMap(cards);
+  const current = deckMap.get(cardId)?.count ?? 0;
+  return setCardCount(cards, cardId, current + 1);
 };
 
 // カード枚数を減らす（Mapベース最適化版）
@@ -201,11 +199,9 @@ export const decrementCardCount = (
   cards: readonly DeckCard[],
   cardId: string
 ): Result<readonly DeckCard[], DeckOperationError> => {
-  return setCardCount(
-    cards,
-    cardId,
-    (cards.find((dc) => dc.card.id === cardId)?.count || 0) - 1
-  );
+  const deckMap = createDeckCardMap(cards);
+  const current = deckMap.get(cardId)?.count ?? 0;
+  return setCardCount(cards, cardId, current - 1);
 };
 
 // デッキ操作を実行
