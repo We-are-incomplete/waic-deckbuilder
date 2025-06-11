@@ -11,9 +11,13 @@ export const useAppStore = defineStore("app", () => {
   // Vue 3.5の新機能: Template refs management
   // より柔軟なtemplate ref管理
   // DeckSectionコンポーネントのインスタンス型を定義
-  interface DeckSectionInstance extends HTMLElement {
+  // DeckSectionコンポーネントのインスタンス型を定義
+  // Vue 3.5の新機能: InstanceType<typeof Component> でコンポーネントインスタンスの型を正確に取得
+  type DeckSectionInstance = InstanceType<
+    typeof import("../components/layout/DeckSection.vue").default
+  > & {
     cleanupAllHandlers: () => void;
-  }
+  };
   let deckSectionRef = ref<DeckSectionInstance | null>(null);
 
   // Vue 3.5の新機能: shallowRef for performance optimization
@@ -45,7 +49,7 @@ export const useAppStore = defineStore("app", () => {
   const confirmResetDeck = (): void => {
     // 長押しハンドラーをクリーンアップ
     if (deckSectionRef.value) {
-      deckSectionRef.value.cleanupAllHandlers();
+      deckSectionRef.value?.cleanupAllHandlers();
     }
 
     stores.deckStore.resetDeckCards();

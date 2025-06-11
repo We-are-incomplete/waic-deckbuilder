@@ -17,7 +17,7 @@ export type CardValidationError =
   | { readonly type: "invalidKind"; readonly kind: CardKind }
   | {
       readonly type: "invalidType";
-      readonly cardType: CardType | readonly CardType[];
+      readonly cardType: CardType;
     }
   | { readonly type: "duplicateTags"; readonly tags: readonly string[] };
 
@@ -26,7 +26,7 @@ export const createCard = (
   id: string,
   name: string,
   kind: CardKind,
-  type: CardType | readonly CardType[],
+  type: CardType,
   tags?: readonly string[]
 ): Result<Card, CardValidationError> => {
   // ID検証
@@ -100,22 +100,11 @@ export const filterCardsByKind = (
     return cards;
   }
 
-  return cards.filter((card) =>
-    kinds.some((kind) => kind.type === card.kind.type)
-  );
+  return cards.filter((card) => kinds.some((kind) => kind === card.kind));
 };
 
 // カードタイプがフィルタータイプに一致するかをチェックするヘルパー関数
 // 色タイプの場合のみ、値も一致する必要がある
-const isCardTypeMatchingFilterType = (
-  cardType: CardType,
-  filterType: CardType
-): boolean => {
-  return (
-    cardType.type === filterType.type &&
-    (cardType.type !== "color" || cardType.value === filterType.value)
-  );
-};
 
 // カードタイプによる検索
 export const filterCardsByType = (
@@ -127,12 +116,7 @@ export const filterCardsByType = (
   }
 
   return cards.filter((card) => {
-    const cardTypes = Array.isArray(card.type) ? card.type : [card.type];
-    return types.some((filterType) =>
-      cardTypes.some((cardType) =>
-        isCardTypeMatchingFilterType(cardType, filterType)
-      )
-    );
+    return types.some((filterType) => card.type === filterType);
   });
 };
 

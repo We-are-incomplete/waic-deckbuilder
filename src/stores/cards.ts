@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref, shallowRef, readonly, computed, markRaw, triggerRef } from "vue";
-import type { Card, CardType } from "../types"; // CardType を追加
+import type { Card } from "../types";
 import { preloadImages, logger } from "../utils";
 import { safeAsyncOperation } from "../utils/errorHandler";
 import * as CardDomain from "../domain/card";
@@ -150,25 +150,17 @@ export const useCardsStore = defineStore("cards", () => {
 
       // 種別処理
       // 種別処理
-      kindSet.add(card.kind.type);
+      kindSet.add(card.kind);
 
-      let kindCards = kindGroups.get(card.kind.type);
+      let kindCards = kindGroups.get(card.kind);
       if (!kindCards) {
         kindCards = [];
-        kindGroups.set(card.kind.type, kindCards);
+        kindGroups.set(card.kind, kindCards);
       }
       kindCards.push(card);
 
       // タイプ処理（最適化）
-      if (Array.isArray(card.type)) {
-        const typeCount = card.type.length;
-        for (let j = 0; j < typeCount; j++) {
-          const type = card.type[j];
-          typeSet.add(type.value);
-        }
-      } else {
-        typeSet.add((card.type as CardType).value);
-      }
+      typeSet.add(card.type);
     }
 
     // 種別キャッシュに保存（メモリ効率的に）
@@ -282,7 +274,7 @@ export const useCardsStore = defineStore("cards", () => {
 
     // キャッシュにない場合はフィルタリングして追加
     const result = availableCards.value.filter((card) => {
-      return card.kind.type === kind;
+      return card.kind === kind;
     });
 
     const readonlyResult = readonly(result);
@@ -315,7 +307,7 @@ export const useCardsStore = defineStore("cards", () => {
     // キャッシュがない場合は再計算
     const kinds = new Set<string>();
     for (const card of availableCards.value) {
-      kinds.add(card.kind.type);
+      kinds.add(card.kind);
     }
 
     const result = readonly([...kinds].sort());
@@ -334,13 +326,7 @@ export const useCardsStore = defineStore("cards", () => {
     // キャッシュがない場合は再計算
     const types = new Set<string>();
     for (const card of availableCards.value) {
-      if (Array.isArray(card.type)) {
-        for (const type of card.type) {
-          types.add(type.value);
-        }
-      } else {
-        types.add((card.type as CardType).value);
-      }
+      types.add(card.type);
     }
 
     const result = readonly([...types].sort());

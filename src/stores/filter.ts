@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref, readonly, computed, shallowRef, markRaw, triggerRef } from "vue";
-import type { Card, FilterCriteria, CardType } from "../types"; // CardType を追加
+import type { Card, FilterCriteria } from "../types"; // CardType を追加
 import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants/game";
 import * as CardDomain from "../domain/card";
 import {
@@ -186,7 +186,7 @@ export const useFilterStore = defineStore("filter", () => {
     // バッチ処理で最適化
     for (let i = 0; i < cardCount; i++) {
       const card = cards[i];
-      const cardKind = card.kind.type;
+      const cardKind = card.kind;
 
       if (kindSet.has(cardKind)) {
         result.push(card);
@@ -220,10 +220,10 @@ export const useFilterStore = defineStore("filter", () => {
         const typeCount = card.type.length;
         for (let j = 0; j < typeCount && !hasMatchingType; j++) {
           const type = card.type[j];
-          hasMatchingType = typeSet.has(type.value);
+          hasMatchingType = typeSet.has(type);
         }
       } else {
-        hasMatchingType = typeSet.has((card.type as CardType).value);
+        hasMatchingType = typeSet.has(card.type);
       }
 
       if (hasMatchingType) {

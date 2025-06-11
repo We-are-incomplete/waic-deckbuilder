@@ -199,9 +199,11 @@ const handleCardNavigation = async (direction: "previous" | "next") => {
 watchEffect(() => {
   const element = deckSectionRef.value;
   if (element) {
-    const domElement = (element as any).$el || element;
-    if (appStore.deckSectionRef !== domElement) {
-      appStore.deckSectionRef = domElement;
+    // Vue 3.5の新機能: コンポーネントインスタンスを直接参照
+    // $el は HTMLElement を返すため、コンポーネントのメソッドにはアクセスできない
+    // コンポーネントインスタンス自体を渡すことで、cleanupAllHandlers にアクセス可能になる
+    if (appStore.deckSectionRef !== element) {
+      appStore.deckSectionRef = element;
     }
   }
 });

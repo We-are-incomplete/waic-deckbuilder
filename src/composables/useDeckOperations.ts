@@ -1,5 +1,5 @@
 import { computed, type ComputedRef } from "vue";
-import type { Card, DeckCard, CardType } from "../types";
+import type { Card, DeckCard } from "../types";
 import * as DeckDomain from "../domain/deck";
 import { useDeckStore } from "../stores/deck";
 import { useCardsStore } from "../stores/cards";
@@ -10,9 +10,6 @@ import {
 import { createErrorHandler } from "../utils/errorHandler"; // createErrorHandler を追加
 
 // CardTypeから文字列表現を取得するヘルパー関数（最適化版）
-const getSingleTypeString = (cardType: CardType): string => {
-  return cardType.value;
-};
 
 export const useDeckOperations = () => {
   const deckStore = useDeckStore();
@@ -34,15 +31,12 @@ export const useDeckOperations = () => {
 
         // 種別統計（効率化）
         // 種別統計（効率化）
-        kindStats.set(
-          card.kind.type,
-          (kindStats.get(card.kind.type) || 0) + count
-        );
+        kindStats.set(card.kind, (kindStats.get(card.kind) || 0) + count);
 
         // タイプ統計（効率化）
         const typeString = Array.isArray(card.type)
-          ? card.type.map((t) => t.value).join(", ")
-          : getSingleTypeString(card.type as CardType);
+          ? card.type.join(", ")
+          : card.type;
         typeStats.set(typeString, (typeStats.get(typeString) || 0) + count);
       }
 
@@ -276,15 +270,12 @@ export const useDeckOperations = () => {
 
       // 種別統計
       // 種別統計
-      kindStats.set(
-        card.kind.type,
-        (kindStats.get(card.kind.type) || 0) + count
-      );
+      kindStats.set(card.kind, (kindStats.get(card.kind) || 0) + count);
 
       // タイプ統計
       const typeString = Array.isArray(card.type)
-        ? card.type.map((t) => t.value).join(", ")
-        : getSingleTypeString(card.type as CardType);
+        ? card.type.join(", ")
+        : card.type;
       typeStats.set(typeString, (typeStats.get(typeString) || 0) + count);
 
       totalCards += deckCard.count;
