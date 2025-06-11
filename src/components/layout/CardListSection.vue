@@ -49,16 +49,8 @@ const selectedCardIndex = ref<number | null>(null);
 const openImageModal = (card: Card, cardIndex: number) => {
   selectedCard.value = card;
   selectedCardIndex.value = cardIndex;
-  const imageUrl = getCardImageUrlSafe(card.id);
-  if (imageUrl) {
-    selectedCardImage.value = imageUrl;
-    isImageModalVisible.value = true;
-  } else {
-    // 画像URLが取得できない場合はモーダルを開かない
-    selectedCardImage.value = null;
-    selectedCard.value = null;
-    selectedCardIndex.value = null;
-  }
+  selectedCardImage.value = getCardImageUrlSafe(card.id);
+  isImageModalVisible.value = true;
 };
 
 // モーダルを閉じる
@@ -84,8 +76,7 @@ const handleCardNavigation = (direction: "previous" | "next") => {
     const newCard = props.sortedAndFilteredCards[newIndex];
     selectedCard.value = newCard;
     selectedCardIndex.value = newIndex;
-    const newImageUrl = getCardImageUrlSafe(newCard.id);
-    selectedCardImage.value = newImageUrl || null; // undefined の場合は null を設定
+    selectedCardImage.value = getCardImageUrlSafe(newCard.id);
   }
 };
 
@@ -284,7 +275,6 @@ onUnmounted(() => {
           @contextmenu.prevent
         >
           <img
-            v-if="getCardImageUrlSafe(card.id)"
             :src="getCardImageUrlSafe(card.id)"
             @error="handleImageError"
             :alt="card.name"

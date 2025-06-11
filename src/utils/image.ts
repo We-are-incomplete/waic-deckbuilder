@@ -215,14 +215,14 @@ export const getCardImageUrl = (cardId: string): Result<string, string> => {
 /**
  * カード画像URLを安全に取得
  */
-export const getCardImageUrlSafe = (cardId: string): string | undefined => {
+export const getCardImageUrlSafe = (cardId: string): string => {
   const result = getCardImageUrl(cardId);
   if (result.isOk()) {
     return result.value;
   }
   // エラーをログに記録
   logger.warn(`Failed to get image URL for card: ${cardId}`, result.error);
-  return undefined; // エラー時は undefined を返す
+  return `${import.meta.env.BASE_URL}placeholder.avif`; // エラー時はプレースホルダー画像を返す
 };
 
 /**

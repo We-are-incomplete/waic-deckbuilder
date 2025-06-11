@@ -85,7 +85,6 @@ defineExpose({ exportContainer });
       >
         <!-- カード画像 -->
         <img
-          v-if="getCardImageUrlSafe(item.card.id)"
           :src="getCardImageUrlSafe(item.card.id)"
           :alt="item.card.name"
           class="w-full h-full object-cover rounded-lg"

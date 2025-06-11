@@ -75,7 +75,7 @@ class LRUCache<K, V> {
 const imageUrlCache = new LRUCache<string, string>(500);
 
 // 画像URLを高速取得（キャッシュ利用）
-const getCachedImageUrl = (cardId: string): string | undefined => {
+const getCachedImageUrl = (cardId: string): string => {
   const cached = imageUrlCache.get(cardId);
   if (cached) {
     return cached;
@@ -86,13 +86,13 @@ const getCachedImageUrl = (cardId: string): string | undefined => {
     `Failed to get image URL for card ${cardId}`
   );
 
-  if (result.isOk() && result.value !== undefined) {
+  if (result.isOk()) {
     imageUrlCache.set(cardId, result.value);
     return result.value;
   }
 
   // エラーログは safeSyncOperation 内で処理済み
-  return undefined; // フォールバック
+  return `${import.meta.env.BASE_URL}placeholder.avif`; // フォールバック
 };
 
 // 計算プロパティを使用した最適化（Vue 3.5の改善されたreactivity）
