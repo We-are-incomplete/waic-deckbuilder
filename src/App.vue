@@ -14,6 +14,7 @@ import { useAppStore } from "./stores";
 import { CardListSection, DeckSection } from "./components";
 import type { Card, DeckCard } from "./types";
 import { getCardImageUrlSafe } from "./utils/imageHelpers";
+import { safeSyncOperation } from "./utils/errorHandler";
 
 // 遅延ロードコンポーネント（プリフェッチ設定付き）
 const ConfirmModal = defineAsyncComponent({
@@ -108,14 +109,19 @@ const getCachedImageUrl = (cardId: string): string => {
     return cached;
   }
 
-  try {
-    const url = getCardImageUrlSafe(cardId);
+  const result = safeSyncOperation(
+    () => getCardImageUrlSafe(cardId),
+    `Failed to get image URL for card ${cardId}`
+  );
+
+  if (result.isOk()) {
+    const url = result.value;
     imageUrlCache.set(cardId, url);
     return url;
-  } catch (error) {
-    console.error(`Failed to get image URL for card ${cardId}:`, error);
-    return ""; // フォールバック
   }
+
+  // エラーログは safeSyncOperation 内で処理済み
+  return ""; // フォールバック
 };
 
 // 計算プロパティを使用した最適化（Vue 3.5の改善されたreactivity）
