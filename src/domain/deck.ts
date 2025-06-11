@@ -30,15 +30,6 @@ const mapToDeckCards = (map: Map<string, DeckCard>): readonly DeckCard[] => {
   return Array.from(map.values());
 };
 
-// Mapを使用した合計カード枚数計算
-const calculateTotalCardsFromMap = (map: Map<string, DeckCard>): number => {
-  let sum = 0;
-  for (const deckCard of map.values()) {
-    sum += deckCard.count;
-  }
-  return sum;
-};
-
 // =============================================================================
 // ヘルパー関数
 // =============================================================================
@@ -66,12 +57,11 @@ export const createDeckCard = (
   return ok({ card, count });
 };
 
-// デッキの合計カード枚数を計算
 export const calculateTotalCards = (cards: readonly DeckCard[]): number => {
-  const deckMap = createDeckCardMap(cards);
-  return calculateTotalCardsFromMap(deckMap);
+  let sum = 0;
+  for (const c of cards) sum += c.count;
+  return sum;
 };
-
 // デッキの状態を計算
 export const calculateDeckState = (cards: readonly DeckCard[]): DeckState => {
   if (cards.length === 0) {
