@@ -1,19 +1,11 @@
 <script setup lang="ts">
-import {
-  ref,
-  onUnmounted,
-  watchEffect,
-  defineAsyncComponent,
-  computed,
-} from "vue";
+import { ref, onUnmounted, watchEffect, computed } from "vue";
 import type { Card, DeckCard } from "../../types";
 import { handleImageError } from "../../utils/image";
-import { getCardImageUrlSafe } from "../../utils/imageHelpers";
+import { getCardImageUrlSafe } from "../../utils";
 import { useLongPress } from "../../composables/useLongPress";
 
-const CardImageModal = defineAsyncComponent(
-  () => import("../modals/CardImageModal.vue")
-);
+import { CardImageModal } from "../index";
 
 interface Props {
   availableCards: readonly Card[];

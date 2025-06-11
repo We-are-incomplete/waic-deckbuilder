@@ -6,9 +6,9 @@ import {
   triggerRef,
   onBeforeUnmount,
 } from "vue";
-import DeckExportContainer from "./DeckExportContainer.vue";
+import { DeckExportContainer } from "../index";
 import { handleImageError } from "../../utils/image";
-import { getCardImageUrlSafe } from "../../utils/imageHelpers";
+import { getCardImageUrlSafe } from "../../utils";
 import { useLongPress } from "../../composables/useLongPress";
 import { useDeckOperations } from "../../composables/useDeckOperations";
 import { useDeckStore } from "../../stores/deck";
