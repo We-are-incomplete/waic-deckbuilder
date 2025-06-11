@@ -363,6 +363,7 @@ defineExpose({
           title="長押し: 拡大表示"
         >
           <img
+            v-if="getCardImageUrlSafe(item.card.id)"
             :src="getCardImageUrlSafe(item.card.id)"
             @error="handleImageError"
             :alt="item.card.name"

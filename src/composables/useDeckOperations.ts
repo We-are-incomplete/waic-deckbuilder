@@ -30,7 +30,6 @@ export const useDeckOperations = () => {
     (deckCards: readonly DeckCard[]) => {
       const kindStats = new Map<string, number>();
       const typeStats = new Map<string, number>();
-      let totalCost = 0;
       let totalCards = 0;
 
       for (const deckCard of deckCards) {
@@ -54,7 +53,6 @@ export const useDeckOperations = () => {
         uniqueCards: deckCards.length,
         kindStats: Object.fromEntries(kindStats),
         typeStats: Object.fromEntries(typeStats),
-        totalCost,
       };
     },
     { maxSize: 20, ttl: 2 * 60 * 1000 } // 2分間キャッシュ
@@ -265,7 +263,7 @@ export const useDeckOperations = () => {
     // フォールバック
     const kindStats = new Map<string, number>();
     const typeStats = new Map<string, number>();
-    let totalCost = 0;
+    let totalCards = 0; // フォールバック時にも計算
 
     for (const deckCard of deckCards) {
       const { card, count } = deckCard;
@@ -280,10 +278,7 @@ export const useDeckOperations = () => {
         ? card.type.map(getSingleTypeString).join(", ")
         : getSingleTypeString(card.type as CardType);
       typeStats.set(typeString, (typeStats.get(typeString) || 0) + count);
-    }
 
-    let totalCards = 0; // フォールバック時にも計算
-    for (const deckCard of deckCards) {
       totalCards += deckCard.count;
     }
 
@@ -292,7 +287,6 @@ export const useDeckOperations = () => {
       uniqueCards: deckCards.length,
       kindStats: Object.fromEntries(kindStats),
       typeStats: Object.fromEntries(typeStats),
-      totalCost,
     };
   };
 
