@@ -41,6 +41,24 @@ const calculateTotalCardsFromMap = (map: Map<string, DeckCard>): number => {
 };
 
 // =============================================================================
+// ヘルパー関数
+// =============================================================================
+
+// デッキサイズ超過チェック
+const checkDeckSizeExceeded = (
+  totalCount: number
+): Result<void, DeckOperationError> => {
+  if (totalCount > MAX_DECK_SIZE) {
+    return err({
+      type: "deckSizeExceeded",
+      currentSize: totalCount,
+      maxSize: MAX_DECK_SIZE,
+    });
+  }
+  return ok(undefined);
+};
+
+// =============================================================================
 // 公開API関数（既存APIとの互換性を保持）
 // =============================================================================
 
@@ -65,7 +83,8 @@ export const createDeckCard = (
 
 // デッキの合計カード枚数を計算
 export const calculateTotalCards = (cards: readonly DeckCard[]): number => {
-  return cards.reduce((sum, deckCard) => sum + deckCard.count, 0);
+  const deckMap = createDeckCardMap(cards);
+  return calculateTotalCardsFromMap(deckMap);
 };
 
 // デッキの状態を計算
@@ -129,23 +148,17 @@ export const addCardToDeck = (
     deckMap.set(cardToAdd.id, updatedCard);
 
     const totalCount = calculateTotalCardsFromMap(deckMap);
-    if (totalCount > MAX_DECK_SIZE) {
-      return err({
-        type: "deckSizeExceeded",
-        currentSize: totalCount,
-        maxSize: MAX_DECK_SIZE,
-      });
+    const sizeCheckResult = checkDeckSizeExceeded(totalCount);
+    if (sizeCheckResult.isErr()) {
+      return err(sizeCheckResult.error);
     }
 
     return ok(mapToDeckCards(deckMap));
   } else {
     const totalCount = calculateTotalCardsFromMap(deckMap) + 1;
-    if (totalCount > MAX_DECK_SIZE) {
-      return err({
-        type: "deckSizeExceeded",
-        currentSize: totalCount,
-        maxSize: MAX_DECK_SIZE,
-      });
+    const sizeCheckResult = checkDeckSizeExceeded(totalCount);
+    if (sizeCheckResult.isErr()) {
+      return err(sizeCheckResult.error);
     }
 
     const newDeckCardResult = createDeckCard(cardToAdd, 1);
@@ -188,12 +201,9 @@ export const setCardCount = (
   deckMap.set(cardId, updatedCard);
 
   const totalCount = calculateTotalCardsFromMap(deckMap);
-  if (totalCount > MAX_DECK_SIZE) {
-    return err({
-      type: "deckSizeExceeded",
-      currentSize: totalCount,
-      maxSize: MAX_DECK_SIZE,
-    });
+  const sizeCheckResult = checkDeckSizeExceeded(totalCount);
+  if (sizeCheckResult.isErr()) {
+    return err(sizeCheckResult.error);
   }
 
   return ok(mapToDeckCards(deckMap));
@@ -219,14 +229,11 @@ export const incrementCardCount = (
   cards: readonly DeckCard[],
   cardId: string
 ): Result<readonly DeckCard[], DeckOperationError> => {
-  const deckMap = createDeckCardMap(cards);
-  const existingCard = deckMap.get(cardId);
-
-  if (!existingCard) {
-    return err({ type: "cardNotFound", cardId });
-  }
-
-  return setCardCount(cards, cardId, existingCard.count + 1);
+  return setCardCount(
+    cards,
+    cardId,
+    (cards.find((dc) => dc.card.id === cardId)?.count || 0) + 1
+  );
 };
 
 // カード枚数を減らす（Mapベース最適化版）
@@ -234,14 +241,11 @@ export const decrementCardCount = (
   cards: readonly DeckCard[],
   cardId: string
 ): Result<readonly DeckCard[], DeckOperationError> => {
-  const deckMap = createDeckCardMap(cards);
-  const existingCard = deckMap.get(cardId);
-
-  if (!existingCard) {
-    return err({ type: "cardNotFound", cardId });
-  }
-
-  return setCardCount(cards, cardId, existingCard.count - 1);
+  return setCardCount(
+    cards,
+    cardId,
+    (cards.find((dc) => dc.card.id === cardId)?.count || 0) - 1
+  );
 };
 
 // デッキ操作を実行
