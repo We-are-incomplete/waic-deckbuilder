@@ -6,9 +6,9 @@ import {
   triggerRef,
   onBeforeUnmount,
 } from "vue";
-import DeckExportContainer from "./DeckExportContainer.vue";
+import { DeckExportContainer } from "../index";
 import { handleImageError } from "../../utils/image";
-import { getCardImageUrlSafe } from "../../utils/imageHelpers";
+import { getCardImageUrlSafe } from "../../utils";
 import { useLongPress } from "../../composables/useLongPress";
 import { useDeckOperations } from "../../composables/useDeckOperations";
 import { useDeckStore } from "../../stores/deck";
@@ -370,7 +370,7 @@ defineExpose({
             class="block w-full h-full object-cover transition-transform duration-200 select-none"
           />
           <div
-            class="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-slate-900/80 via-slate-900/40 to-transparent rounded-b-lg"
+            class="absolute inset-0 bg-gradient-to-t from-slate-900/50 via-transparent to-transparent pointer-events-none"
           ></div>
         </div>
 

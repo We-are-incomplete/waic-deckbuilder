@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
   onMounted,
-  defineAsyncComponent,
   computed,
   nextTick,
   useTemplateRef,
@@ -11,42 +10,16 @@ import {
 } from "vue";
 
 import { useAppStore } from "./stores";
-import { CardListSection, DeckSection } from "./components";
+import {
+  CardListSection,
+  DeckSection,
+  ConfirmModal,
+  DeckCodeModal,
+  FilterModal,
+  CardImageModal,
+} from "./components";
 import type { Card, DeckCard } from "./types";
-import { getCardImageUrlSafe } from "./utils/imageHelpers";
-
-// 遅延ロードコンポーネント（プリフェッチ設定付き）
-const ConfirmModal = defineAsyncComponent({
-  loader: () => import("./components/modals/ConfirmModal.vue"),
-  loadingComponent: undefined,
-  errorComponent: undefined,
-  delay: 200,
-  timeout: 3000,
-});
-
-const DeckCodeModal = defineAsyncComponent({
-  loader: () => import("./components/modals/DeckCodeModal.vue"),
-  loadingComponent: undefined,
-  errorComponent: undefined,
-  delay: 200,
-  timeout: 3000,
-});
-
-const FilterModal = defineAsyncComponent({
-  loader: () => import("./components/modals/FilterModal.vue"),
-  loadingComponent: undefined,
-  errorComponent: undefined,
-  delay: 200,
-  timeout: 3000,
-});
-
-const CardImageModal = defineAsyncComponent({
-  loader: () => import("./components/modals/CardImageModal.vue"),
-  loadingComponent: undefined,
-  errorComponent: undefined,
-  delay: 200,
-  timeout: 3000,
-});
+import { getCardImageUrlSafe, safeSyncOperation } from "./utils";
 
 // ストア初期化
 const appStore = useAppStore();
@@ -108,14 +81,18 @@ const getCachedImageUrl = (cardId: string): string => {
     return cached;
   }
 
-  try {
-    const url = getCardImageUrlSafe(cardId);
-    imageUrlCache.set(cardId, url);
-    return url;
-  } catch (error) {
-    console.error(`Failed to get image URL for card ${cardId}:`, error);
-    return ""; // フォールバック
+  const result = safeSyncOperation(
+    () => getCardImageUrlSafe(cardId),
+    `Failed to get image URL for card ${cardId}`
+  );
+
+  if (result.isOk()) {
+    imageUrlCache.set(cardId, result.value);
+    return result.value;
   }
+
+  // エラーログは safeSyncOperation 内で処理済み
+  return ""; // フォールバック
 };
 
 // 計算プロパティを使用した最適化（Vue 3.5の改善されたreactivity）
@@ -247,6 +224,7 @@ const deckSectionProps = computed(() => ({
 const cardListSectionProps = computed(() => ({
   availableCards: cardsStore.availableCards,
   sortedAndFilteredCards: filterStore.sortedAndFilteredCards,
+  deckCards: deckStore.deckCards,
   isLoading: cardsStore.isLoading,
   error: cardsStore.error?.message || null,
 }));
@@ -292,6 +270,8 @@ const cardImageModalProps = computed(() => ({
         v-bind="cardListSectionProps"
         @open-filter="filterStore.openFilterModal"
         @add-card="deckStore.addCardToDeck"
+        @increment-card="deckStore.incrementCardCount"
+        @decrement-card="deckStore.decrementCardCount"
         class="lg:w-1/2 lg:h-full overflow-y-auto"
       />
     </div>

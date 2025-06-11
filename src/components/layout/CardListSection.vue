@@ -1,17 +1,16 @@
 <script setup lang="ts">
-import { ref, onUnmounted, watchEffect, defineAsyncComponent } from "vue";
-import type { Card } from "../../types";
+import { ref, onUnmounted, watchEffect, computed } from "vue";
+import type { Card, DeckCard } from "../../types";
 import { handleImageError } from "../../utils/image";
-import { getCardImageUrlSafe } from "../../utils/imageHelpers";
+import { getCardImageUrlSafe } from "../../utils";
 import { useLongPress } from "../../composables/useLongPress";
 
-const CardImageModal = defineAsyncComponent(
-  () => import("../modals/CardImageModal.vue")
-);
+import { CardImageModal } from "../index";
 
 interface Props {
   availableCards: readonly Card[];
   sortedAndFilteredCards: readonly Card[];
+  deckCards: readonly DeckCard[];
   isLoading: boolean;
   error: string | null;
 }
@@ -19,10 +18,26 @@ interface Props {
 interface Emits {
   (e: "openFilter"): void;
   (e: "addCard", card: Card): void;
+  (e: "incrementCard", cardId: string): void;
+  (e: "decrementCard", cardId: string): void;
 }
 
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
+
+// デッキにあるカードのマップを作成（パフォーマンス向上のため）
+const deckCardMap = computed(() => {
+  const map = new Map<string, number>();
+  props.deckCards.forEach((deckCard) => {
+    map.set(deckCard.card.id, deckCard.count);
+  });
+  return map;
+});
+
+// カードがデッキにあるかどうかとその枚数を取得
+const getCardInDeck = (cardId: string) => {
+  return deckCardMap.value.get(cardId) || 0;
+};
 
 // モーダルの状態
 const isImageModalVisible = ref(false);
@@ -242,11 +257,15 @@ onUnmounted(() => {
         v-else
         v-for="(card, index) in sortedAndFilteredCards"
         :key="card.id"
-        class="group flex flex-col items-center cursor-pointer transition-all duration-200 active:scale-95"
-        title="クリック: デッキに追加 / 長押し: 拡大表示"
+        class="group flex flex-col items-center relative transition-all duration-200"
+        :title="
+          getCardInDeck(card.id) > 0
+            ? '長押し: 拡大表示'
+            : 'クリック: デッキに追加 / 長押し: 拡大表示'
+        "
       >
         <div
-          class="w-full relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+          class="w-full relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer active:scale-95"
           @pointerdown="
             (event) => getLongPressHandler(card, index).startPress(event)
           "
@@ -263,8 +282,63 @@ onUnmounted(() => {
             class="block w-full h-full object-cover transition-transform duration-200 select-none"
           />
           <div
-            class="absolute inset-0 bg-gradient-to-t from-slate-900/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+            v-if="getCardInDeck(card.id) === 0"
+            class="absolute inset-0 bg-gradient-to-t from-slate-900/50 via-transparent to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200"
           ></div>
+
+          <div
+            v-if="getCardInDeck(card.id) > 0"
+            class="absolute inset-0 bg-gradient-to-t from-slate-900/50 via-transparent to-transparent pointer-events-none"
+          ></div>
+        </div>
+
+        <!-- デッキにあるカードの場合は枚数と増減ボタンを表示 -->
+        <div
+          v-if="getCardInDeck(card.id) > 0"
+          class="absolute bottom-2 w-full px-1 flex items-center justify-center gap-1"
+        >
+          <button
+            @click="emit('decrementCard', card.id)"
+            class="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-full flex items-center justify-center leading-none transition-all duration-200 shadow-lg hover:shadow-red-500/25"
+          >
+            <svg
+              class="w-3 h-3 sm:w-4 sm:h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M20 12H4"
+              ></path>
+            </svg>
+          </button>
+          <div
+            class="w-7 h-6 sm:w-9 sm:h-8 font-bold text-center flex items-center justify-center bg-slate-900/80 backdrop-blur-sm rounded-lg border border-slate-600/50 text-white text-sm sm:text-base"
+          >
+            {{ getCardInDeck(card.id) }}
+          </div>
+          <button
+            @click="emit('incrementCard', card.id)"
+            class="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-full flex items-center justify-center leading-none transition-all duration-200 shadow-lg hover:shadow-emerald-500/25 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed"
+            :disabled="getCardInDeck(card.id) >= 4"
+          >
+            <svg
+              class="w-3 h-3 sm:w-4 sm:h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+              ></path>
+            </svg>
+          </button>
         </div>
       </div>
     </div>

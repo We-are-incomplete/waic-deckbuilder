@@ -2,8 +2,7 @@
 import { ref } from "vue";
 import type { DeckCard } from "../../types";
 import { EXPORT_CONFIG } from "../../constants/export";
-import { handleImageError } from "../../utils/image";
-import { getCardImageUrlSafe } from "../../utils/imageHelpers";
+import { handleImageError, getCardImageUrlSafe } from "../../utils";
 
 interface Props {
   deckName: string;
