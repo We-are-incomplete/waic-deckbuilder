@@ -58,10 +58,14 @@ export const useFilterStore = defineStore("filter", () => {
         const cardTags = card.tags;
 
         if (cardTags) {
-          // card.tags は readonly string[] | undefined なので、Array.isArray は不要
-          const tagCount = cardTags.length;
-          for (let j = 0; j < tagCount; j++) {
-            tags.add(cardTags[j]);
+          if (Array.isArray(cardTags)) {
+            const tagCount = cardTags.length;
+            for (let j = 0; j < tagCount; j++) {
+              tags.add(cardTags[j]);
+            }
+          } else if (typeof cardTags === "string") {
+            // 単一の文字列タグの場合
+            tags.add(cardTags);
           }
         }
       }
@@ -216,15 +220,7 @@ export const useFilterStore = defineStore("filter", () => {
       const card = cards[i];
       let hasMatchingType = false;
 
-      if (Array.isArray(card.type)) {
-        const typeCount = card.type.length;
-        for (let j = 0; j < typeCount && !hasMatchingType; j++) {
-          const type = card.type[j];
-          hasMatchingType = typeSet.has(type);
-        }
-      } else {
-        hasMatchingType = typeSet.has(card.type);
-      }
+      hasMatchingType = typeSet.has(card.type);
 
       if (hasMatchingType) {
         result.push(card);

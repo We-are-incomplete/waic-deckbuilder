@@ -1,5 +1,6 @@
 import { computed, type ComputedRef } from "vue";
-import type { Card, DeckCard } from "../types";
+import type { Card } from "../types/card";
+import type { DeckCard } from "../types/deck";
 import * as DeckDomain from "../domain/deck";
 import { useDeckStore } from "../stores/deck";
 import { useCardsStore } from "../stores/cards";
@@ -30,13 +31,10 @@ export const useDeckOperations = () => {
         totalCards += count;
 
         // 種別統計（効率化）
-        // 種別統計（効率化）
         kindStats.set(card.kind, (kindStats.get(card.kind) || 0) + count);
 
         // タイプ統計（効率化）
-        const typeString = Array.isArray(card.type)
-          ? card.type.join(", ")
-          : card.type;
+        const typeString = card.type;
         typeStats.set(typeString, (typeStats.get(typeString) || 0) + count);
       }
 
@@ -155,7 +153,8 @@ export const useDeckOperations = () => {
     }
 
     errorHandler.handleValidationError(
-      `カード枚数の増加に失敗しました: ${result.error.type}`
+      `カード枚数の増加に失敗しました: ${result.error.type}`,
+      result.error
     );
     return false;
   };
@@ -175,7 +174,8 @@ export const useDeckOperations = () => {
     }
 
     errorHandler.handleValidationError(
-      `カード枚数の減少に失敗しました: ${result.error.type}`
+      `カード枚数の減少に失敗しました: ${result.error.type}`,
+      result.error
     );
     return false;
   };
@@ -195,7 +195,8 @@ export const useDeckOperations = () => {
     }
 
     errorHandler.handleValidationError(
-      `カードの削除に失敗しました: ${result.error.type}`
+      `カードの削除に失敗しました: ${result.error.type}`,
+      result.error
     );
     return false;
   };
@@ -214,7 +215,8 @@ export const useDeckOperations = () => {
     }
 
     errorHandler.handleValidationError(
-      `デッキのクリアに失敗しました: ${result.error.type}`
+      `デッキのクリアに失敗しました: ${result.error.type}`,
+      result.error
     );
     return false;
   };

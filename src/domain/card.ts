@@ -40,6 +40,7 @@ export const createCard = (
   }
 
   // タグ検証
+  let finalTags: readonly string[] | undefined = undefined;
   const processedTags = tags
     ?.map((tag) => tag.trim())
     .filter((tag) => tag.length > 0);
@@ -49,23 +50,15 @@ export const createCard = (
     if (uniqueTags.size !== processedTags.length) {
       return err({ type: "duplicateTags", tags: processedTags });
     }
-    // Setから配列に変換し、undefinedの場合はundefinedを維持
-    return ok({
-      id: id.trim(),
-      name: name.trim(),
-      kind,
-      type,
-      tags: [...uniqueTags],
-    });
+    finalTags = [...uniqueTags];
   }
 
-  // タグがない場合、または処理後にタグが空になった場合
   return ok({
     id: id.trim(),
     name: name.trim(),
     kind,
     type,
-    tags: processedTags && processedTags.length > 0 ? processedTags : undefined,
+    tags: finalTags,
   });
 };
 
@@ -102,9 +95,6 @@ export const filterCardsByKind = (
 
   return cards.filter((card) => kinds.some((kind) => kind === card.kind));
 };
-
-// カードタイプがフィルタータイプに一致するかをチェックするヘルパー関数
-// 色タイプの場合のみ、値も一致する必要がある
 
 // カードタイプによる検索
 export const filterCardsByType = (

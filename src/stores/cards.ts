@@ -160,7 +160,11 @@ export const useCardsStore = defineStore("cards", () => {
       kindCards.push(card);
 
       // タイプ処理（最適化）
-      typeSet.add(card.type);
+      if (Array.isArray(card.type)) {
+        card.type.forEach((type) => typeSet.add(type));
+      } else {
+        typeSet.add(card.type);
+      }
     }
 
     // 種別キャッシュに保存（メモリ効率的に）
@@ -326,7 +330,11 @@ export const useCardsStore = defineStore("cards", () => {
     // キャッシュがない場合は再計算
     const types = new Set<string>();
     for (const card of availableCards.value) {
-      types.add(card.type);
+      if (Array.isArray(card.type)) {
+        card.type.forEach((type) => types.add(type));
+      } else {
+        types.add(card.type);
+      }
     }
 
     const result = readonly([...types].sort());

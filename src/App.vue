@@ -205,6 +205,9 @@ watchEffect(() => {
     if (appStore.deckSectionRef !== element) {
       appStore.deckSectionRef = element;
     }
+  } else if (appStore.deckSectionRef !== null) {
+    // アンマウント時に参照を解除
+    appStore.deckSectionRef = null;
   }
 });
 
@@ -236,7 +239,8 @@ const deckCodeModalProps = computed(() => ({
   isVisible: deckCodeStore.showDeckCodeModal,
   deckCode: deckCodeStore.deckCode,
   importDeckCode: deckCodeStore.importDeckCode,
-  error: deckCodeStore.error?.message || null, // error オブジェクトから message を抽出
+  error: deckCodeStore.error?.message || null,
+  errorMessage: deckCodeStore.error?.message || null,
 }));
 
 // カード画像モーダルのプロパティを計算（Vue 3.5の最適化されたcomputed）
