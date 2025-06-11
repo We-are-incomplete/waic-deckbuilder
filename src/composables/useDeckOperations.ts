@@ -44,8 +44,8 @@ export const useDeckOperations = () => {
 
         // タイプ統計（効率化）
         const typeString = Array.isArray(card.type)
-          ? card.type.map(getSingleTypeString).join(", ")
-          : getSingleTypeString(card.type as CardType);
+          ? card.type.map((t) => t.value).join(", ")
+          : (card.type as CardType).value;
         typeStats.set(typeString, (typeStats.get(typeString) || 0) + count);
       }
 
@@ -282,8 +282,13 @@ export const useDeckOperations = () => {
       typeStats.set(typeString, (typeStats.get(typeString) || 0) + count);
     }
 
+    let totalCards = 0; // フォールバック時にも計算
+    for (const deckCard of deckCards) {
+      totalCards += deckCard.count;
+    }
+
     return {
-      totalCards: DeckDomain.calculateTotalCards(deckCards),
+      totalCards,
       uniqueCards: deckCards.length,
       kindStats: Object.fromEntries(kindStats),
       typeStats: Object.fromEntries(typeStats),

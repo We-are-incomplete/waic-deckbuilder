@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, computed, watch, readonly, shallowRef, triggerRef } from "vue";
+import { ref, computed, watch, readonly, shallowRef } from "vue";
 import type { Card, DeckCard } from "../types";
 import { GAME_CONSTANTS } from "../constants";
 import {
@@ -45,12 +45,7 @@ export const useDeckStore = defineStore("deck", () => {
    * Vue 3.5最適化: デッキの状態情報
    */
   const deckState = computed(() => {
-    // 新しい型システムのDeckCardに変換
-    const newDeckCards = deckCards.value.map((deckCard) => ({
-      card: deckCard.card,
-      count: deckCard.count,
-    }));
-    return DeckDomain.calculateDeckState(newDeckCards);
+    return DeckDomain.calculateDeckState(deckCards.value);
   });
 
   /**
@@ -65,7 +60,6 @@ export const useDeckStore = defineStore("deck", () => {
    */
   const updateDeckCards = (newCards: DeckCard[]): void => {
     deckCards.value = newCards;
-    triggerRef(deckCards); // 手動でリアクティブ更新をトリガー
   };
 
   /**
