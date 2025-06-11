@@ -92,7 +92,7 @@ const getCachedImageUrl = (cardId: string): string => {
   }
 
   // エラーログは safeSyncOperation 内で処理済み
-  return ""; // フォールバック
+  return `${import.meta.env.BASE_URL}placeholder.avif`; // フォールバック
 };
 
 // 計算プロパティを使用した最適化（Vue 3.5の改善されたreactivity）
