@@ -253,6 +253,7 @@ const deckSectionProps = computed(() => ({
 const cardListSectionProps = computed(() => ({
   availableCards: cardsStore.availableCards,
   sortedAndFilteredCards: filterStore.sortedAndFilteredCards,
+  deckCards: deckStore.deckCards,
   isLoading: cardsStore.isLoading,
   error: cardsStore.error?.message || null,
 }));
@@ -298,6 +299,8 @@ const cardImageModalProps = computed(() => ({
         v-bind="cardListSectionProps"
         @open-filter="filterStore.openFilterModal"
         @add-card="deckStore.addCardToDeck"
+        @increment-card="deckStore.incrementCardCount"
+        @decrement-card="deckStore.decrementCardCount"
         class="lg:w-1/2 lg:h-full overflow-y-auto"
       />
     </div>
