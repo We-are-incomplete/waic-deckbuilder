@@ -27,34 +27,6 @@ const cacheState: CacheState = {
 };
 
 /**
- * キャッシュからエントリーを取得
- */
-const getCacheEntry = (
-  key: string
-): Result<HTMLImageElement | undefined, string> => {
-  if (!key) {
-    return err("キーが指定されていません");
-  }
-
-  const entry = cacheState.cache.get(key);
-  if (!entry) {
-    return ok(undefined);
-  }
-
-  // アクセス時刻を更新
-  entry.lastAccessed = Date.now();
-
-  // アクセス順序を更新
-  const index = cacheState.accessOrder.indexOf(key);
-  if (index > -1) {
-    cacheState.accessOrder.splice(index, 1);
-  }
-  cacheState.accessOrder.push(key);
-
-  return ok(entry.image);
-};
-
-/**
  * キャッシュにエントリーを設定
  */
 const setCacheEntry = (
@@ -186,21 +158,6 @@ const destroyCache = (): void => {
 // 初期化
 startPeriodicCleanup();
 
-// 既存コードとの互換性のためのレガシーオブジェクト
-export const cardCache = {
-  get: (key: string) => {
-    const result = getCacheEntry(key);
-    return result.isOk() ? result.value : undefined;
-  },
-  set: (key: string, image: HTMLImageElement) => {
-    setCacheEntry(key, image);
-  },
-  has: hasCacheEntry,
-  clear: clearCache,
-  getStats: getCacheStats,
-  destroy: destroyCache,
-};
-
 /**
  * カード画像URLを取得
  */
@@ -260,10 +217,6 @@ export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
       (!deadline || deadline.timeRemaining() > 0)
     ) {
       const card = cards[currentIndex];
-      if (!card || !card.id) {
-        currentIndex++;
-        continue;
-      }
 
       if (!hasCacheEntry(card.id)) {
         const img = new Image();

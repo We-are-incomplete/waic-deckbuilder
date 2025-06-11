@@ -1,5 +1,4 @@
 import type { Card, CardType } from "../types/card";
-import type { FilterCriteria } from "../types/filter";
 
 /**
  * カードがテキスト検索にマッチするかチェック
@@ -13,17 +12,10 @@ export const isCardMatchingText = (card: Card, textLower: string): boolean => {
     return true;
   }
 
-  // タグでの検索（文字列と配列の両方に対応）
+  // タグでの検索
   if (card.tags) {
-    if (Array.isArray(card.tags)) {
-      // タグが配列の場合
-      return card.tags.some((tag: string) =>
-        tag.toLowerCase().includes(textLower)
-      );
-    } else if (typeof card.tags === "string") {
-      // タグが文字列の場合
-      return (card.tags as string).toLowerCase().includes(textLower);
-    }
+    const tags = Array.isArray(card.tags) ? card.tags : [card.tags];
+    return tags.some((tag: string) => tag.toLowerCase().includes(textLower));
   }
 
   return false;
@@ -38,27 +30,6 @@ export const isCardMatchingType = (
 ): boolean => {
   const cardTypes = Array.isArray(card.type) ? card.type : [card.type];
   return cardTypes.some((type: CardType) => typeSet.has(type));
-};
-
-/**
- * カードがタイプフィルター（文字列）にマッチするかチェック
- */
-export const isCardMatchingTypeString = (
-  card: Card,
-  typeSet: Set<string>
-): boolean => {
-  const cardTypes = Array.isArray(card.type) ? card.type : [card.type];
-  return cardTypes.some((type: CardType) => {
-    const typeString = getTypeString(type);
-    return typeSet.has(typeString);
-  });
-};
-
-/**
- * CardTypeから文字列表現を取得するヘルパー関数
- */
-const getTypeString = (cardType: CardType): string => {
-  return cardType.value;
 };
 
 /**
@@ -78,43 +49,4 @@ export const isCardMatchingTag = (card: Card, tagSet: Set<string>): boolean => {
   }
 
   return false;
-};
-
-/**
- * カードフィルター関数
- */
-export const createCardFilter = (): ((
-  cards: readonly Card[],
-  criteria: FilterCriteria
-) => Card[]) => {
-  return (cards: readonly Card[], criteria: FilterCriteria): Card[] => {
-    const textLower = criteria.text.toLowerCase();
-    const kindSet = new Set(criteria.kind);
-    const typeSet = new Set(criteria.type);
-    const tagSet = new Set(criteria.tags);
-
-    return cards.filter((card: Card) => {
-      // テキスト検索
-      if (textLower && !isCardMatchingText(card, textLower)) {
-        return false;
-      }
-
-      // 種類フィルター
-      if (kindSet.size > 0 && !kindSet.has(card.kind.type)) {
-        return false;
-      }
-
-      // タイプフィルター
-      if (typeSet.size > 0 && !isCardMatchingTypeString(card, typeSet)) {
-        return false;
-      }
-
-      // タグフィルター
-      if (tagSet.size > 0 && !isCardMatchingTag(card, tagSet)) {
-        return false;
-      }
-
-      return true;
-    });
-  };
 };

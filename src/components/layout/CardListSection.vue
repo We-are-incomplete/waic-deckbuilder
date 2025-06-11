@@ -113,7 +113,14 @@ const getLongPressHandler = (card: Card, index: number) => {
       useLongPress({
         delay: 500, // 500msで長押し判定
         onLongPress: () => openImageModal(card, index),
-        onPress: () => emit("addCard", card),
+        onPress: () => {
+          const current = getCardInDeck(card.id);
+          if (current === 0) {
+            emit("addCard", card);
+          } else if (current < 4) {
+            emit("incrementCard", card.id);
+          }
+        },
       })
     );
   }

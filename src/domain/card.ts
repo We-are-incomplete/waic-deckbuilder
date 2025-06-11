@@ -27,18 +27,25 @@ export const createCard = (
     return err({ type: "invalidName", name });
   }
 
+  // タグ検証
+  let processedTags: readonly string[] | undefined = undefined;
+  if (tags) {
+    const trimmedTags = tags
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0);
+    const uniqueTags = new Set(trimmedTags);
+    if (uniqueTags.size !== trimmedTags.length) {
+      return err({ type: "duplicateTags", tags: trimmedTags });
+    }
+    processedTags = [...uniqueTags];
+  }
+
   return ok({
     id: id.trim(),
     name: name.trim(),
     kind,
     type,
-    tags: tags
-      ? [
-          ...new Set(
-            tags.map((tag) => tag.trim()).filter((tag) => tag.length > 0)
-          ),
-        ]
-      : undefined,
+    tags: processedTags,
   });
 };
 
@@ -73,8 +80,20 @@ export const filterCardsByKind = (
     return cards;
   }
 
-  const kindTypes = kinds.map((kind) => kind.type);
-  return cards.filter((card) => kindTypes.includes(card.kind.type));
+  return cards.filter((card) =>
+    kinds.some((kind) => kind.type === card.kind.type)
+  );
+};
+
+// カードタイプがフィルタータイプに一致するかをチェックするヘルパー関数
+const isCardTypeMatchingFilterType = (
+  cardType: CardType,
+  filterType: CardType
+): boolean => {
+  return (
+    cardType.type === filterType.type &&
+    (cardType.type !== "color" || cardType.value === filterType.value)
+  );
 };
 
 // カードタイプによる検索
@@ -89,10 +108,8 @@ export const filterCardsByType = (
   return cards.filter((card) => {
     const cardTypes = Array.isArray(card.type) ? card.type : [card.type];
     return types.some((filterType) =>
-      cardTypes.some(
-        (cardType) =>
-          cardType.type === filterType.type &&
-          (cardType.type !== "color" || cardType.value === filterType.value)
+      cardTypes.some((cardType) =>
+        isCardTypeMatchingFilterType(cardType, filterType)
       )
     );
   });
