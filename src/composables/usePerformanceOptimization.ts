@@ -25,6 +25,10 @@ export const useMinimalComputed = <T>(
     const currentDepsValues = deps.map((dep) => dep.value);
 
     // 依存関係が変わっていない場合はキャッシュを返す
+    // 依存関係が変わっていない場合はキャッシュを返す
+    // 注意: 参照型（オブジェクト、配列）のディープ比較は行わない。
+    // Vueのリアクティブシステムが参照の変更を検知するため、多くの場合これで十分。
+    // ディープ比較が必要な場合は、別途ユーティリティを導入するか、getter内で処理する。
     if (
       hasCache.value &&
       currentDepsValues.length === lastDepsValues.value.length &&
@@ -60,7 +64,10 @@ export const useLazyComputed = <T>(
   const isLoading = ref(false);
 
   const compute = async () => {
-    if (isComputed.value) return value.value!;
+    if (isComputed.value) {
+      // 計算済みであれば、安全に値を返す
+      return value.value as T;
+    }
 
     isLoading.value = true;
     if (useNextTick) {
@@ -74,7 +81,8 @@ export const useLazyComputed = <T>(
       isLoading.value = false;
     }
 
-    return value.value!;
+    // 計算が完了したら、安全に値を返す
+    return value.value as T;
   };
 
   const reset = () => {

@@ -1,5 +1,6 @@
 import { computed, type ComputedRef } from "vue";
-import type { Card, DeckCard, CardType } from "../types";
+import type { Card } from "../types/card";
+import type { DeckCard } from "../types/deck";
 import * as DeckDomain from "../domain/deck";
 import { useDeckStore } from "../stores/deck";
 import { useCardsStore } from "../stores/cards";
@@ -7,23 +8,16 @@ import {
   memoizeArrayComputation,
   memoizeObjectComputation,
 } from "../utils/memoization";
-import type { ErrorHandler } from "../utils/errorHandler";
+import { createErrorHandler } from "../utils/errorHandler"; // createErrorHandler を追加
 
 // CardTypeから文字列表現を取得するヘルパー関数（最適化版）
-const getSingleTypeString = (cardType: CardType): string => {
-  return cardType.value;
-};
 
 export const useDeckOperations = () => {
   const deckStore = useDeckStore();
   const cardsStore = useCardsStore();
 
   // エラーハンドリング設定
-  const errorHandler: ErrorHandler = {
-    handleValidationError: (message: string) => {
-      console.warn(message);
-    },
-  };
+  const errorHandler = createErrorHandler();
 
   // メモ化された統計計算（配列版を使用）
   const memoizedStatsCalculation = memoizeArrayComputation(
@@ -37,14 +31,10 @@ export const useDeckOperations = () => {
         totalCards += count;
 
         // 種別統計（効率化）
-        const kindString =
-          typeof card.kind === "string" ? card.kind : card.kind.type;
-        kindStats.set(kindString, (kindStats.get(kindString) || 0) + count);
+        kindStats.set(card.kind, (kindStats.get(card.kind) || 0) + count);
 
         // タイプ統計（効率化）
-        const typeString = Array.isArray(card.type)
-          ? card.type.map((t) => t.value).join(", ")
-          : (card.type as CardType).value;
+        const typeString = card.type;
         typeStats.set(typeString, (typeStats.get(typeString) || 0) + count);
       }
 
@@ -162,7 +152,10 @@ export const useDeckOperations = () => {
       return true;
     }
 
-    errorHandler.handleValidationError("カード枚数の増加に失敗しました");
+    errorHandler.handleValidationError(
+      `カード枚数の増加に失敗しました: ${result.error.type}`,
+      result.error
+    );
     return false;
   };
 
@@ -180,7 +173,10 @@ export const useDeckOperations = () => {
       return true;
     }
 
-    errorHandler.handleValidationError("カード枚数の減少に失敗しました");
+    errorHandler.handleValidationError(
+      `カード枚数の減少に失敗しました: ${result.error.type}`,
+      result.error
+    );
     return false;
   };
 
@@ -198,7 +194,10 @@ export const useDeckOperations = () => {
       return true;
     }
 
-    errorHandler.handleValidationError("カードの削除に失敗しました");
+    errorHandler.handleValidationError(
+      `カードの削除に失敗しました: ${result.error.type}`,
+      result.error
+    );
     return false;
   };
 
@@ -215,7 +214,10 @@ export const useDeckOperations = () => {
       return true;
     }
 
-    errorHandler.handleValidationError("デッキのクリアに失敗しました");
+    errorHandler.handleValidationError(
+      `デッキのクリアに失敗しました: ${result.error.type}`,
+      result.error
+    );
     return false;
   };
 
@@ -269,14 +271,10 @@ export const useDeckOperations = () => {
       const { card, count } = deckCard;
 
       // 種別統計
-      const kindString =
-        typeof card.kind === "string" ? card.kind : card.kind.type;
-      kindStats.set(kindString, (kindStats.get(kindString) || 0) + count);
+      kindStats.set(card.kind, (kindStats.get(card.kind) || 0) + count);
 
       // タイプ統計
-      const typeString = Array.isArray(card.type)
-        ? card.type.map(getSingleTypeString).join(", ")
-        : getSingleTypeString(card.type as CardType);
+      const typeString = card.type;
       typeStats.set(typeString, (typeStats.get(typeString) || 0) + count);
 
       totalCards += deckCard.count;

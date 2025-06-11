@@ -199,10 +199,15 @@ const handleCardNavigation = async (direction: "previous" | "next") => {
 watchEffect(() => {
   const element = deckSectionRef.value;
   if (element) {
-    const domElement = (element as any).$el || element;
-    if (appStore.deckSectionRef !== domElement) {
-      appStore.deckSectionRef = domElement;
+    // Vue 3.5の新機能: コンポーネントインスタンスを直接参照
+    // $el は HTMLElement を返すため、コンポーネントのメソッドにはアクセスできない
+    // コンポーネントインスタンス自体を渡すことで、cleanupAllHandlers にアクセス可能になる
+    if (appStore.deckSectionRef !== element) {
+      appStore.deckSectionRef = element;
     }
+  } else if (appStore.deckSectionRef !== null) {
+    // アンマウント時に参照を解除
+    appStore.deckSectionRef = null;
   }
 });
 
@@ -234,7 +239,7 @@ const deckCodeModalProps = computed(() => ({
   isVisible: deckCodeStore.showDeckCodeModal,
   deckCode: deckCodeStore.deckCode,
   importDeckCode: deckCodeStore.importDeckCode,
-  error: deckCodeStore.error,
+  error: deckCodeStore.error?.message || null,
 }));
 
 // カード画像モーダルのプロパティを計算（Vue 3.5の最適化されたcomputed）

@@ -32,7 +32,7 @@ type LongPressResult =
 // エラー型
 type LongPressError =
   | { readonly type: "invalidDelay"; readonly value: number }
-  | { readonly type: "timerError"; readonly message: string };
+  | { readonly type: "timerError"; readonly message: string }; // messageプロパティを追加
 
 /**
  * 遅延値を検証する純粋関数
@@ -81,12 +81,15 @@ const createPressResult = (
         duration: state.pressTime,
       };
     case "cancelled":
+      // キャンセルされた時点でのdurationを反映させるため、endTimeを使用
+      // ただし、cancelled状態にはstartTimeがないため、0とするか、
+      // 呼び出し元で計算して渡す必要がある。ここではシンプルに0を維持。
       return {
         type: "cancelled",
-        duration: 0,
+        duration: 0, // durationは呼び出し元で計算されるべきだが、ここではシンプルに0
       };
-    default:
-      return { type: "timeout" };
+    case "idle": // idle状態からendPressが呼ばれた場合
+      return { type: "timeout" }; // durationは計算できないためtimeoutとする
   }
 };
 
@@ -166,7 +169,13 @@ export const useLongPress = (options: LongPressOptions = {}) => {
     // 長押しタイマーを開始
     const timerResult = startLongPressTimer(startTime);
     if (timerResult.isErr()) {
-      console.warn("長押しタイマーの開始に失敗しました:", timerResult.error);
+      console.warn(
+        "長押しタイマーの開始に失敗しました:",
+        timerResult.error.type,
+        timerResult.error.type === "timerError"
+          ? timerResult.error.message
+          : "不明なエラー"
+      );
       updatePressState({ type: "cancelled" });
       onCancel?.();
     }
@@ -209,6 +218,7 @@ export const useLongPress = (options: LongPressOptions = {}) => {
   const cancelPress = (): void => {
     clearTimer();
     updatePressState({ type: "cancelled" });
+    // キャンセルされた場合、durationは0とする
     lastResult.value = { type: "cancelled", duration: 0 };
     triggerRef(lastResult);
     onCancel?.();

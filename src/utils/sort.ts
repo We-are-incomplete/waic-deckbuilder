@@ -47,8 +47,8 @@ export const createNaturalSort = (): SortComparator<string> => {
 export const createKindSort = (): SortComparator<Pick<Card, "kind">> => {
   return (a: Pick<Card, "kind">, b: Pick<Card, "kind">): number => {
     // kindプロパティの型に応じて文字列を取得
-    const kindA = typeof a.kind === "string" ? a.kind : a.kind.type;
-    const kindB = typeof b.kind === "string" ? b.kind : b.kind.type;
+    const kindA = a.kind;
+    const kindB = b.kind;
 
     // CARD_KINDSは ["Artist", "Song", "Magic", "Direction"] の順序
     const indexA = CARD_KINDS.indexOf(kindA);
@@ -72,21 +72,9 @@ export const createTypeSort = (): SortComparator<Pick<Card, "type">> => {
       cardTypes: CardType | readonly CardType[] | string | readonly string[]
     ): number => {
       if (!cardTypes) return CARD_TYPES.length;
-
-      let types: string[];
-
-      // 実際のカードデータでは文字列または文字列配列の場合がある
-      if (typeof cardTypes === "string") {
-        types = [cardTypes];
-      } else if (Array.isArray(cardTypes)) {
-        // 配列の場合は各要素が文字列かCardTypeかを判定
-        types = cardTypes.map((type) =>
-          typeof type === "string" ? type : getTypeString(type as CardType)
-        );
-      } else {
-        // CardTypeオブジェクトの場合
-        types = [getTypeString(cardTypes as CardType)];
-      }
+      const types: string[] = Array.isArray(cardTypes)
+        ? [...cardTypes]
+        : [cardTypes];
 
       let minIndex = CARD_TYPES.length;
       for (const type of types) {
@@ -108,9 +96,6 @@ export const createTypeSort = (): SortComparator<Pick<Card, "type">> => {
 /**
  * CardTypeから文字列表現を取得するヘルパー関数
  */
-const getTypeString = (cardType: CardType): string => {
-  return cardType.value;
-};
 
 /**
  * 複数のソート条件を組み合わせる高階関数

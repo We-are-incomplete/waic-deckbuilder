@@ -1,3 +1,12 @@
+/**
+ * @file カードのフィルタリングに関するドメインロジックを定義する。
+ *
+ * このファイルでは、様々な条件に基づいてカードのリストをフィルタリングする純粋関数を提供する。
+ * - テキスト検索、カード種別、カードタイプ、タグによるフィルタリングをサポート
+ * - 複数のフィルター条件を組み合わせる複合フィルター機能
+ * - 副作用を避け、不変データ構造を優先する関数型アプローチを採用
+ * - エラーハンドリングは不要なため、neverthrowは使用しない
+ */
 import type { Card } from "../types/card";
 import type { FilterCondition } from "../types/filter";
 import {
@@ -27,10 +36,6 @@ export const applyFilter = (
 
     case "combined":
       return condition.conditions.reduce((filteredCards, subCondition) => {
-        // 空のフィルターをスキップして不要な処理を避ける
-        if (isEmptyFilter(subCondition)) {
-          return filteredCards;
-        }
         return applyFilter(filteredCards, subCondition);
       }, cards);
   }

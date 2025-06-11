@@ -149,29 +149,20 @@ export const useCardsStore = defineStore("cards", () => {
       const card = cards[i];
 
       // 種別処理
-      const cardKind =
-        typeof card.kind === "string" ? card.kind : String(card.kind);
-      kindSet.add(cardKind);
+      kindSet.add(card.kind);
 
-      let kindCards = kindGroups.get(cardKind);
+      let kindCards = kindGroups.get(card.kind);
       if (!kindCards) {
         kindCards = [];
-        kindGroups.set(cardKind, kindCards);
+        kindGroups.set(card.kind, kindCards);
       }
       kindCards.push(card);
 
       // タイプ処理（最適化）
-      if (typeof card.type === "string") {
-        typeSet.add(card.type);
-      } else if (Array.isArray(card.type)) {
-        const typeCount = card.type.length;
-        for (let j = 0; j < typeCount; j++) {
-          const type = card.type[j];
-          const typeStr = typeof type === "string" ? type : String(type);
-          typeSet.add(typeStr);
-        }
+      if (Array.isArray(card.type)) {
+        card.type.forEach((type) => typeSet.add(type));
       } else {
-        typeSet.add(String(card.type));
+        typeSet.add(card.type);
       }
     }
 
@@ -286,9 +277,7 @@ export const useCardsStore = defineStore("cards", () => {
 
     // キャッシュにない場合はフィルタリングして追加
     const result = availableCards.value.filter((card) => {
-      const cardKind =
-        typeof card.kind === "string" ? card.kind : String(card.kind);
-      return cardKind === kind;
+      return card.kind === kind;
     });
 
     const readonlyResult = readonly(result);
@@ -321,9 +310,7 @@ export const useCardsStore = defineStore("cards", () => {
     // キャッシュがない場合は再計算
     const kinds = new Set<string>();
     for (const card of availableCards.value) {
-      const cardKind =
-        typeof card.kind === "string" ? card.kind : String(card.kind);
-      kinds.add(cardKind);
+      kinds.add(card.kind);
     }
 
     const result = readonly([...kinds].sort());
@@ -342,15 +329,10 @@ export const useCardsStore = defineStore("cards", () => {
     // キャッシュがない場合は再計算
     const types = new Set<string>();
     for (const card of availableCards.value) {
-      if (typeof card.type === "string") {
-        types.add(card.type);
-      } else if (Array.isArray(card.type)) {
-        for (const type of card.type) {
-          const typeStr = typeof type === "string" ? type : String(type);
-          types.add(typeStr);
-        }
+      if (Array.isArray(card.type)) {
+        card.type.forEach((type) => types.add(type));
       } else {
-        types.add(String(card.type));
+        types.add(card.type);
       }
     }
 

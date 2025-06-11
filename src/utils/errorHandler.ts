@@ -19,7 +19,18 @@ export const ERROR_MESSAGES = {
 
 // エラーハンドラーインターフェース
 export interface ErrorHandler {
-  handleValidationError: (message: string) => void;
+  handleValidationError: (
+    message: string,
+    details?: unknown
+  ) => Result<never, AppError>;
+  handleRuntimeError: (
+    baseMessage: string,
+    originalError: unknown
+  ) => Result<never, AppError>;
+  handleAsyncError: (
+    baseMessage: string,
+    originalError: unknown
+  ) => Result<never, AppError>;
 }
 
 // ログ出力関数
@@ -149,19 +160,4 @@ export const safeAsyncOperation = async <T>(
   }
 
   return ok(result.value);
-};
-
-// レガシー関数（下位互換性のため）
-export const handleError = (
-  baseMessage: string,
-  error: unknown
-): Result<string, { message: string }> => {
-  const handler = createErrorHandler();
-  const result = handler.handleRuntimeError(baseMessage, error);
-
-  if (result.isErr()) {
-    return err({ message: result.error.message });
-  }
-
-  return ok(baseMessage);
 };

@@ -12,7 +12,14 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
   const importDeckCode = ref<string>("");
   const isGeneratingCode = ref<boolean>(false);
   const showDeckCodeModal = ref<boolean>(false);
-  const error = ref<string | null>(null);
+  // デッキコードストア専用のエラー型
+  type DeckCodeError =
+    | { readonly type: "generation"; readonly message: string }
+    | { readonly type: "copy"; readonly message: string }
+    | { readonly type: "validation"; readonly message: string }
+    | { readonly type: "decode"; readonly message: string };
+
+  const error = ref<DeckCodeError | null>(null);
   const deckStore = useDeckStore();
 
   /**
@@ -35,7 +42,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
     } catch (e) {
       const errorMessage = "デッキコードの生成に失敗しました";
       logger.error(errorMessage + ":", e);
-      error.value = errorMessage;
+      error.value = { type: "generation", message: errorMessage };
     } finally {
       isGeneratingCode.value = false;
     }
@@ -65,7 +72,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
     } else {
       const errorMessage = "デッキコードのコピーに失敗しました";
       logger.error(errorMessage + ":", result.error);
-      error.value = errorMessage;
+      error.value = { type: "copy", message: errorMessage };
     }
   };
 
@@ -73,14 +80,13 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
    * デッキコードからインポート
    */
   const importDeckFromCode = (availableCards: readonly Card[]): void => {
-    const deckStore = useDeckStore();
     error.value = null;
 
     // 入力検証：空文字列チェック
     if (!importDeckCode.value || importDeckCode.value.trim() === "") {
       const warningMessage = "デッキコードが空です";
       logger.warn(warningMessage);
-      error.value = warningMessage;
+      error.value = { type: "validation", message: warningMessage };
       return;
     }
 
@@ -92,7 +98,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
     if (trimmedCode.length > MAX_DECK_CODE_LENGTH) {
       const warningMessage = `デッキコードが長すぎます（最大${MAX_DECK_CODE_LENGTH}文字）`;
       logger.warn(warningMessage);
-      error.value = warningMessage;
+      error.value = { type: "validation", message: warningMessage };
       return;
     }
 
@@ -104,7 +110,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
     ) {
       const warningMessage = "無効なデッキコード形式です";
       logger.warn(warningMessage);
-      error.value = warningMessage;
+      error.value = { type: "validation", message: warningMessage };
       return;
     }
 
@@ -115,7 +121,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
       if (!cardIdPattern.test(cardId)) {
         const warningMessage = `無効なカードID形式が含まれています: ${cardId}`;
         logger.warn(warningMessage);
-        error.value = warningMessage;
+        error.value = { type: "validation", message: warningMessage };
         return;
       }
     }
@@ -128,28 +134,52 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
         availableCards.slice(0, 5).map((c) => c.id)
       );
 
-      const importedCards = decodeDeckCode(trimmedCode, availableCards);
-      logger.debug("デコード結果:", importedCards);
+      const decodeResult = decodeDeckCode(trimmedCode, availableCards);
+      logger.debug("デコード結果:", decodeResult);
 
-      if (importedCards.length > 0) {
-        deckStore.setDeckCards(importedCards);
-        importDeckCode.value = "";
-        showDeckCodeModal.value = false;
-        logger.info(
-          `デッキをインポートしました（${importedCards.length}種類のカード）`
-        );
+      if (decodeResult.isOk()) {
+        const importedCards = decodeResult.value;
+        if (importedCards.length > 0) {
+          deckStore.setDeckCards(importedCards);
+          importDeckCode.value = "";
+          showDeckCodeModal.value = false;
+          logger.info(
+            `デッキをインポートしました（${importedCards.length}種類のカード）`
+          );
+        } else {
+          const warningMessage =
+            "有効なカードが見つかりませんでした。カードIDが正しいか確認してください。";
+          logger.warn(warningMessage);
+          logger.debug("入力されたデッキコード:", trimmedCode);
+          error.value = { type: "decode", message: warningMessage };
+        }
       } else {
-        const warningMessage =
-          "有効なカードが見つかりませんでした。カードIDが正しいか確認してください。";
-        logger.warn(warningMessage);
+        // エラーの種類に応じてメッセージを設定
+        let errorMessage: string;
+        switch (decodeResult.error.type) {
+          case "emptyCode":
+            errorMessage = "デッキコードが空です";
+            break;
+          case "invalidCardId":
+            errorMessage = `無効なカードIDが含まれています: ${decodeResult.error.invalidId}`;
+            break;
+          case "cardNotFound":
+            errorMessage = `一部のカードが見つかりませんでした: ${decodeResult.error.notFoundIds.join(
+              ", "
+            )}`;
+            break;
+          default:
+            errorMessage = "デッキコードのデコードに失敗しました";
+        }
+        logger.warn(errorMessage);
         logger.debug("入力されたデッキコード:", trimmedCode);
-        error.value = warningMessage;
+        error.value = { type: "decode", message: errorMessage };
       }
     } catch (e) {
       const errorMessage = "デッキコードの復元に失敗しました";
       logger.error(errorMessage + ":", e);
       logger.debug("入力されたデッキコード:", trimmedCode);
-      error.value = errorMessage;
+      error.value = { type: "decode", message: errorMessage };
     }
   };
 

@@ -64,6 +64,7 @@ export const useFilterStore = defineStore("filter", () => {
               tags.add(cardTags[j]);
             }
           } else if (typeof cardTags === "string") {
+            // 単一の文字列タグの場合
             tags.add(cardTags);
           }
         }
@@ -189,8 +190,7 @@ export const useFilterStore = defineStore("filter", () => {
     // バッチ処理で最適化
     for (let i = 0; i < cardCount; i++) {
       const card = cards[i];
-      const cardKind =
-        typeof card.kind === "string" ? card.kind : String(card.kind);
+      const cardKind = card.kind;
 
       if (kindSet.has(cardKind)) {
         result.push(card);
@@ -220,18 +220,7 @@ export const useFilterStore = defineStore("filter", () => {
       const card = cards[i];
       let hasMatchingType = false;
 
-      if (typeof card.type === "string") {
-        hasMatchingType = typeSet.has(card.type);
-      } else if (Array.isArray(card.type)) {
-        const typeCount = card.type.length;
-        for (let j = 0; j < typeCount && !hasMatchingType; j++) {
-          const type = card.type[j];
-          const typeStr = typeof type === "string" ? type : String(type);
-          hasMatchingType = typeSet.has(typeStr);
-        }
-      } else {
-        hasMatchingType = typeSet.has(String(card.type));
-      }
+      hasMatchingType = typeSet.has(card.type);
 
       if (hasMatchingType) {
         result.push(card);
@@ -269,8 +258,6 @@ export const useFilterStore = defineStore("filter", () => {
         for (let j = 0; j < tagCount && !hasMatchingTag; j++) {
           hasMatchingTag = tagSet.has(cardTags[j]);
         }
-      } else if (typeof cardTags === "string") {
-        hasMatchingTag = tagSet.has(cardTags);
       }
 
       if (hasMatchingTag) {

@@ -7,6 +7,16 @@ import { logger } from "./logger";
  * @param delay 遅延時間（ミリ秒）
  * @returns 成功時はデバウンスされた関数とクリア関数、失敗時はエラー情報
  */
+// デバウンス関数専用のエラー型
+type DebounceError =
+  | { readonly type: "invalidFunction"; readonly message: string }
+  | { readonly type: "invalidDelay"; readonly message: string }
+  | {
+      readonly type: "execution";
+      readonly message: string;
+      readonly originalError: unknown;
+    };
+
 export function createDebounce<T extends (...args: any[]) => void>(
   func: T,
   delay: number
@@ -17,17 +27,23 @@ export function createDebounce<T extends (...args: any[]) => void>(
     flush: () => void;
     pending: () => boolean;
   },
-  string
+  DebounceError
 > {
   if (!func) {
-    return err("関数が指定されていません");
+    return err({
+      type: "invalidFunction",
+      message: "関数が指定されていません",
+    });
   }
 
   if (delay < 0) {
-    return err("遅延時間は0以上で指定してください");
+    return err({
+      type: "invalidDelay",
+      message: "遅延時間は0以上で指定してください",
+    });
   }
 
-  let timer: number | null = null;
+  let timer: ReturnType<typeof setTimeout> | null = null; // 型定義を改善
   let lastArgs: Parameters<T> | null = null;
 
   const debouncedFunc = ((...args: Parameters<T>) => {
@@ -44,6 +60,8 @@ export function createDebounce<T extends (...args: any[]) => void>(
         }
       } catch (error) {
         logger.error("デバウンス関数の実行中にエラーが発生しました:", error);
+        // エラーを捕捉し、DebounceErrorとしてログ
+        // ただし、デバウンス関数自体はResultを返さないため、ここではログのみ
       } finally {
         timer = null;
         lastArgs = null;
@@ -69,6 +87,7 @@ export function createDebounce<T extends (...args: any[]) => void>(
           "デバウンス関数のフラッシュ実行中にエラーが発生しました:",
           error
         );
+        // エラーを捕捉し、DebounceErrorとしてログ
       } finally {
         timer = null;
         lastArgs = null;

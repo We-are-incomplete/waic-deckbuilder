@@ -7,10 +7,17 @@ import { useFilterStore } from "./filter";
 import { useDeckCodeStore } from "./deckCode";
 import { useExportStore } from "./export";
 
+import type DeckSection from "../components/layout/DeckSection.vue";
+
 export const useAppStore = defineStore("app", () => {
   // Vue 3.5の新機能: Template refs management
   // より柔軟なtemplate ref管理
-  let deckSectionRef = ref<HTMLElement | null>(null);
+  // DeckSectionコンポーネントのインスタンス型を定義
+  // Vue 3.5の新機能: InstanceType<typeof Component> でコンポーネントインスタンスの型を正確に取得
+  type DeckSectionInstance = InstanceType<typeof DeckSection> & {
+    cleanupAllHandlers?: () => void;
+  };
+  let deckSectionRef = ref<DeckSectionInstance | null>(null);
 
   // Vue 3.5の新機能: shallowRef for performance optimization
   // 頻繁に変更されない状態にはshallowRefを使用
@@ -40,12 +47,7 @@ export const useAppStore = defineStore("app", () => {
 
   const confirmResetDeck = (): void => {
     // 長押しハンドラーをクリーンアップ
-    if (
-      deckSectionRef.value &&
-      typeof (deckSectionRef.value as any).cleanupAllHandlers === "function"
-    ) {
-      (deckSectionRef.value as any).cleanupAllHandlers();
-    }
+    deckSectionRef.value?.cleanupAllHandlers();
 
     stores.deckStore.resetDeckCards();
     stores.deckStore.resetDeckName();
@@ -82,7 +84,7 @@ export const useAppStore = defineStore("app", () => {
     get deckSectionRef() {
       return deckSectionRef.value;
     },
-    set deckSectionRef(value: HTMLElement | null) {
+    set deckSectionRef(value: DeckSectionInstance | null) {
       deckSectionRef.value = value;
     },
 

@@ -1,6 +1,26 @@
 import type { Card } from "../types/card";
 import type { DeckCard } from "../types/deck";
 import { logger } from "./logger"; // loggerをインポート
+import { ok, err, type Result } from "neverthrow"; // Result をインポート
+
+// デッキコードデコードエラー型
+export type DeckCodeDecodeError =
+  | { readonly type: "emptyCode"; readonly message: string }
+  | {
+      readonly type: "invalidCardId";
+      readonly message: string;
+      readonly invalidId: string;
+    }
+  | {
+      readonly type: "cardNotFound";
+      readonly message: string;
+      readonly notFoundIds: readonly string[];
+    }
+  | {
+      readonly type: "unknown";
+      readonly message: string;
+      readonly originalError: unknown;
+    };
 
 /**
  * デッキコードをエンコード
@@ -18,11 +38,11 @@ export const encodeDeckCode = (deck: readonly DeckCard[]): string => {
 export const decodeDeckCode = (
   code: string,
   availableCards: readonly Card[]
-): DeckCard[] => {
+): Result<DeckCard[], DeckCodeDecodeError> => {
   // 空文字列の場合は早期リターン
   if (!code || code.trim() === "") {
     logger.debug("デッキコードが空です");
-    return [];
+    return err({ type: "emptyCode", message: "デッキコードが空です" });
   }
 
   const cardIds = code.split("/").filter((id) => id.trim() !== ""); // 空文字列を除外
@@ -63,7 +83,12 @@ export const decodeDeckCode = (
   logger.debug(`見つかったカード: ${foundCount}/${cardCounts.size}`);
   if (notFoundIds.length > 0) {
     logger.warn("見つからなかったカードID:", notFoundIds);
+    return err({
+      type: "cardNotFound",
+      message: "一部のカードが見つかりませんでした",
+      notFoundIds: notFoundIds,
+    });
   }
 
-  return cards;
+  return ok(cards);
 };

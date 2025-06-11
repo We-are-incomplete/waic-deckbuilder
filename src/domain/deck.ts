@@ -1,3 +1,14 @@
+/**
+ * @file デッキのドメインロジックを定義する。
+ *
+ * このファイルでは、デッキ内のカードの追加、削除、枚数変更、状態計算など、
+ * デッキ操作に関する純粋関数を提供する。
+ * - デッキカードのバリデーションと生成
+ * - デッキの状態（空、有効、無効）の計算
+ * - 副作用を避け、不変データ構造を優先する関数型アプローチを採用
+ * - エラーハンドリングにはneverthrowのResult型を使用し、例外をスローしない
+ * - パフォーマンス最適化のためにMapベースの内部処理を活用
+ */
 import { ok, err, type Result } from "neverthrow";
 import type { Card } from "../types/card";
 import type {
@@ -58,9 +69,7 @@ export const createDeckCard = (
 };
 
 export const calculateTotalCards = (cards: readonly DeckCard[]): number => {
-  let sum = 0;
-  for (const c of cards) sum += c.count;
-  return sum;
+  return cards.reduce((sum, c) => sum + c.count, 0);
 };
 // デッキの状態を計算
 export const calculateDeckState = (cards: readonly DeckCard[]): DeckState => {
@@ -179,8 +188,7 @@ export const incrementCardCount = (
   cards: readonly DeckCard[],
   cardId: string
 ): Result<readonly DeckCard[], DeckOperationError> => {
-  const deckMap = createDeckCardMap(cards);
-  const current = deckMap.get(cardId)?.count ?? 0;
+  const current = cards.find((dc) => dc.card.id === cardId)?.count ?? 0;
   return setCardCount(cards, cardId, current + 1);
 };
 
@@ -189,8 +197,7 @@ export const decrementCardCount = (
   cards: readonly DeckCard[],
   cardId: string
 ): Result<readonly DeckCard[], DeckOperationError> => {
-  const deckMap = createDeckCardMap(cards);
-  const current = deckMap.get(cardId)?.count ?? 0;
+  const current = cards.find((dc) => dc.card.id === cardId)?.count ?? 0;
   return setCardCount(cards, cardId, current - 1);
 };
 
