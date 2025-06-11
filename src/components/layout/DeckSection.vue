@@ -370,7 +370,7 @@ defineExpose({
             class="block w-full h-full object-cover transition-transform duration-200 select-none"
           />
           <div
-            class="absolute inset-0 bg-gradient-to-t from-slate-900/50 via-transparent to-transparent"
+            class="absolute inset-0 bg-gradient-to-t from-slate-900/50 via-transparent to-transparent pointer-events-none"
           ></div>
         </div>
 

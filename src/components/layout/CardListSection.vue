@@ -283,12 +283,12 @@ onUnmounted(() => {
           />
           <div
             v-if="getCardInDeck(card.id) === 0"
-            class="absolute inset-0 bg-gradient-to-t from-slate-900/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+            class="absolute inset-0 bg-gradient-to-t from-slate-900/50 via-transparent to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200"
           ></div>
 
           <div
             v-if="getCardInDeck(card.id) > 0"
-            class="absolute inset-0 bg-gradient-to-t from-slate-900/50 via-transparent to-transparent"
+            class="absolute inset-0 bg-gradient-to-t from-slate-900/50 via-transparent to-transparent pointer-events-none"
           ></div>
         </div>
 

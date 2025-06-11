@@ -87,9 +87,8 @@ const getCachedImageUrl = (cardId: string): string => {
   );
 
   if (result.isOk()) {
-    const url = result.value;
-    imageUrlCache.set(cardId, url);
-    return url;
+    imageUrlCache.set(cardId, result.value);
+    return result.value;
   }
 
   // エラーログは safeSyncOperation 内で処理済み
