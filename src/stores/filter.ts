@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref, readonly, computed, shallowRef, markRaw, triggerRef } from "vue";
-import type { Card, FilterCriteria } from "../types";
+import type { Card, FilterCriteria, CardType } from "../types"; // CardType を追加
 import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants/game";
 import * as CardDomain from "../domain/card";
 import {
@@ -58,13 +58,10 @@ export const useFilterStore = defineStore("filter", () => {
         const cardTags = card.tags;
 
         if (cardTags) {
-          if (Array.isArray(cardTags)) {
-            const tagCount = cardTags.length;
-            for (let j = 0; j < tagCount; j++) {
-              tags.add(cardTags[j]);
-            }
-          } else if (typeof cardTags === "string") {
-            tags.add(cardTags);
+          // card.tags は readonly string[] | undefined なので、Array.isArray は不要
+          const tagCount = cardTags.length;
+          for (let j = 0; j < tagCount; j++) {
+            tags.add(cardTags[j]);
           }
         }
       }
@@ -189,8 +186,7 @@ export const useFilterStore = defineStore("filter", () => {
     // バッチ処理で最適化
     for (let i = 0; i < cardCount; i++) {
       const card = cards[i];
-      const cardKind =
-        typeof card.kind === "string" ? card.kind : String(card.kind);
+      const cardKind = card.kind.type;
 
       if (kindSet.has(cardKind)) {
         result.push(card);
@@ -220,17 +216,14 @@ export const useFilterStore = defineStore("filter", () => {
       const card = cards[i];
       let hasMatchingType = false;
 
-      if (typeof card.type === "string") {
-        hasMatchingType = typeSet.has(card.type);
-      } else if (Array.isArray(card.type)) {
+      if (Array.isArray(card.type)) {
         const typeCount = card.type.length;
         for (let j = 0; j < typeCount && !hasMatchingType; j++) {
           const type = card.type[j];
-          const typeStr = typeof type === "string" ? type : String(type);
-          hasMatchingType = typeSet.has(typeStr);
+          hasMatchingType = typeSet.has(type.value);
         }
       } else {
-        hasMatchingType = typeSet.has(String(card.type));
+        hasMatchingType = typeSet.has((card.type as CardType).value);
       }
 
       if (hasMatchingType) {
@@ -269,8 +262,6 @@ export const useFilterStore = defineStore("filter", () => {
         for (let j = 0; j < tagCount && !hasMatchingTag; j++) {
           hasMatchingTag = tagSet.has(cardTags[j]);
         }
-      } else if (typeof cardTags === "string") {
-        hasMatchingTag = tagSet.has(cardTags);
       }
 
       if (hasMatchingTag) {

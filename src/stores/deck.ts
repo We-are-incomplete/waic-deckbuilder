@@ -1,7 +1,6 @@
 import { defineStore } from "pinia";
 import { ref, computed, watch, readonly, shallowRef } from "vue";
 import type { Card, DeckCard } from "../types";
-import { GAME_CONSTANTS } from "../constants";
 import {
   saveDeckToLocalStorage,
   loadDeckFromLocalStorage,
@@ -66,96 +65,72 @@ export const useDeckStore = defineStore("deck", () => {
    * Vue 3.5最適化: カードをデッキに追加
    */
   const addCardToDeck = (card: Card): void => {
-    const existingCardIndex = deckCards.value.findIndex(
-      (item: DeckCard) => item.card.id === card.id
-    );
+    const result = DeckDomain.executeDeckOperation(deckCards.value, {
+      type: "addCard",
+      card,
+    });
 
-    if (existingCardIndex > -1) {
-      if (
-        deckCards.value[existingCardIndex].count >=
-        GAME_CONSTANTS.MAX_CARD_COPIES
-      ) {
-        errorHandler.value.handleValidationError(
-          `カード「${card.name}」は既に最大枚数です`
-        );
-        return;
-      }
-
-      // 配列を新しいものに置き換える
-      const newDeckCards = [...deckCards.value];
-      newDeckCards[existingCardIndex] = {
-        ...newDeckCards[existingCardIndex],
-        count: newDeckCards[existingCardIndex].count + 1,
-      };
-      updateDeckCards(newDeckCards);
-      return;
+    if (result.isOk()) {
+      updateDeckCards([...result.value]);
+    } else {
+      errorHandler.value.handleValidationError(
+        `カードの追加に失敗しました: ${result.error.type}`
+      );
     }
-
-    updateDeckCards([...deckCards.value, { card: card, count: 1 }]);
   };
 
   /**
    * Vue 3.5最適化: カード枚数を増やす
    */
   const incrementCardCount = (cardId: string): void => {
-    const existingCardIndex = deckCards.value.findIndex(
-      (item: DeckCard) => item.card.id === cardId
-    );
+    const result = DeckDomain.executeDeckOperation(deckCards.value, {
+      type: "incrementCount",
+      cardId,
+    });
 
-    if (existingCardIndex === -1) {
-      return;
-    }
-
-    const item = deckCards.value[existingCardIndex];
-    if (item.count >= GAME_CONSTANTS.MAX_CARD_COPIES) {
+    if (result.isOk()) {
+      updateDeckCards([...result.value]);
+    } else {
       errorHandler.value.handleValidationError(
-        "カード枚数が上限に達しています"
+        `カード枚数の増加に失敗しました: ${result.error.type}`
       );
-      return;
     }
-
-    const newDeckCards = [...deckCards.value];
-    newDeckCards[existingCardIndex] = {
-      ...item,
-      count: item.count + 1,
-    };
-    updateDeckCards(newDeckCards);
   };
 
   /**
    * Vue 3.5最適化: カード枚数を減らす
    */
   const decrementCardCount = (cardId: string): void => {
-    const existingCardIndex = deckCards.value.findIndex(
-      (item: DeckCard) => item.card.id === cardId
-    );
+    const result = DeckDomain.executeDeckOperation(deckCards.value, {
+      type: "decrementCount",
+      cardId,
+    });
 
-    if (existingCardIndex === -1) {
-      return;
+    if (result.isOk()) {
+      updateDeckCards([...result.value]);
+    } else {
+      errorHandler.value.handleValidationError(
+        `カード枚数の減少に失敗しました: ${result.error.type}`
+      );
     }
-
-    const item = deckCards.value[existingCardIndex];
-    if (item.count === 1) {
-      removeCardFromDeck(cardId);
-      return;
-    }
-
-    const newDeckCards = [...deckCards.value];
-    newDeckCards[existingCardIndex] = {
-      ...item,
-      count: item.count - 1,
-    };
-    updateDeckCards(newDeckCards);
   };
 
   /**
    * Vue 3.5最適化: カードをデッキから削除
    */
   const removeCardFromDeck = (cardId: string): void => {
-    const filteredCards = deckCards.value.filter(
-      (item: DeckCard) => item.card.id !== cardId
-    );
-    updateDeckCards(filteredCards);
+    const result = DeckDomain.executeDeckOperation(deckCards.value, {
+      type: "removeCard",
+      cardId,
+    });
+
+    if (result.isOk()) {
+      updateDeckCards([...result.value]);
+    } else {
+      errorHandler.value.handleValidationError(
+        `カードの削除に失敗しました: ${result.error.type}`
+      );
+    }
   };
 
   /**

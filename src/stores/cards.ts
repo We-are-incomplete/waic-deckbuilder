@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref, shallowRef, readonly, computed, markRaw, triggerRef } from "vue";
-import type { Card } from "../types";
+import type { Card, CardType } from "../types"; // CardType を追加
 import { preloadImages, logger } from "../utils";
 import { safeAsyncOperation } from "../utils/errorHandler";
 import * as CardDomain from "../domain/card";
@@ -149,29 +149,25 @@ export const useCardsStore = defineStore("cards", () => {
       const card = cards[i];
 
       // 種別処理
-      const cardKind =
-        typeof card.kind === "string" ? card.kind : String(card.kind);
-      kindSet.add(cardKind);
+      // 種別処理
+      kindSet.add(card.kind.type);
 
-      let kindCards = kindGroups.get(cardKind);
+      let kindCards = kindGroups.get(card.kind.type);
       if (!kindCards) {
         kindCards = [];
-        kindGroups.set(cardKind, kindCards);
+        kindGroups.set(card.kind.type, kindCards);
       }
       kindCards.push(card);
 
       // タイプ処理（最適化）
-      if (typeof card.type === "string") {
-        typeSet.add(card.type);
-      } else if (Array.isArray(card.type)) {
+      if (Array.isArray(card.type)) {
         const typeCount = card.type.length;
         for (let j = 0; j < typeCount; j++) {
           const type = card.type[j];
-          const typeStr = typeof type === "string" ? type : String(type);
-          typeSet.add(typeStr);
+          typeSet.add(type.value);
         }
       } else {
-        typeSet.add(String(card.type));
+        typeSet.add((card.type as CardType).value);
       }
     }
 
@@ -286,9 +282,7 @@ export const useCardsStore = defineStore("cards", () => {
 
     // キャッシュにない場合はフィルタリングして追加
     const result = availableCards.value.filter((card) => {
-      const cardKind =
-        typeof card.kind === "string" ? card.kind : String(card.kind);
-      return cardKind === kind;
+      return card.kind.type === kind;
     });
 
     const readonlyResult = readonly(result);
@@ -321,9 +315,7 @@ export const useCardsStore = defineStore("cards", () => {
     // キャッシュがない場合は再計算
     const kinds = new Set<string>();
     for (const card of availableCards.value) {
-      const cardKind =
-        typeof card.kind === "string" ? card.kind : String(card.kind);
-      kinds.add(cardKind);
+      kinds.add(card.kind.type);
     }
 
     const result = readonly([...kinds].sort());
@@ -342,15 +334,12 @@ export const useCardsStore = defineStore("cards", () => {
     // キャッシュがない場合は再計算
     const types = new Set<string>();
     for (const card of availableCards.value) {
-      if (typeof card.type === "string") {
-        types.add(card.type);
-      } else if (Array.isArray(card.type)) {
+      if (Array.isArray(card.type)) {
         for (const type of card.type) {
-          const typeStr = typeof type === "string" ? type : String(type);
-          types.add(typeStr);
+          types.add(type.value);
         }
       } else {
-        types.add(String(card.type));
+        types.add((card.type as CardType).value);
       }
     }
 

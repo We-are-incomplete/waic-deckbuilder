@@ -1,8 +1,27 @@
 import { defineStore } from "pinia";
-import { ref, nextTick } from "vue";
+import { ref, nextTick, readonly } from "vue"; // readonly を追加
 import html2canvas from "html2canvas-pro";
 import { EXPORT_CONFIG } from "../constants";
 import { generateFileName, downloadCanvas, logger } from "../utils";
+import { ok, err, type Result } from "neverthrow"; // ok, err を追加
+
+// エクスポートストア専用のエラー型
+type ExportError =
+  | {
+      readonly type: "html2canvas";
+      readonly message: string;
+      readonly originalError: unknown;
+    }
+  | {
+      readonly type: "imageLoad";
+      readonly message: string;
+      readonly originalError: unknown;
+    }
+  | {
+      readonly type: "unknown";
+      readonly message: string;
+      readonly originalError: unknown;
+    };
 
 export const useExportStore = defineStore("export", () => {
   const isSaving = ref<boolean>(false);
@@ -10,17 +29,19 @@ export const useExportStore = defineStore("export", () => {
   /**
    * すべての画像の読み込み完了を待つ
    */
-  const waitForImagesLoaded = (container: HTMLElement): Promise<void> => {
-    return new Promise((resolve, reject) => {
+  const waitForImagesLoaded = (
+    container: HTMLElement
+  ): Promise<Result<void, ExportError>> => {
+    return new Promise((resolve) => {
       const images = container.querySelectorAll("img");
 
       if (images.length === 0) {
-        resolve();
+        resolve(ok(undefined));
         return;
       }
 
       let loadedCount = 0;
-      let hasError = false;
+      let hasErrorOccurred = false;
 
       const cleanupListeners = () => {
         images.forEach((img) => {
@@ -30,25 +51,27 @@ export const useExportStore = defineStore("export", () => {
       };
 
       const checkComplete = () => {
-        if (hasError) return;
+        if (hasErrorOccurred) return;
 
         loadedCount++;
         if (loadedCount === images.length) {
           cleanupListeners();
-          resolve();
+          resolve(ok(undefined));
         }
       };
 
       const handleImageError = (error: Event) => {
-        if (hasError) return;
-        hasError = true;
+        if (hasErrorOccurred) return;
+        hasErrorOccurred = true;
         cleanupListeners();
-        reject(
-          new Error(
-            `画像の読み込みに失敗しました: ${
-              (error.target as HTMLImageElement)?.src
-            }`
-          )
+        resolve(
+          err({
+            type: "imageLoad",
+            message: `画像の読み込みに失敗しました: ${
+              (error.target as HTMLImageElement)?.src || "不明な画像"
+            }`,
+            originalError: error,
+          })
         );
       };
 
@@ -71,8 +94,14 @@ export const useExportStore = defineStore("export", () => {
   const saveDeckAsPng = async (
     deckName: string,
     exportContainer: HTMLElement
-  ): Promise<void> => {
-    if (!exportContainer) return;
+  ): Promise<Result<void, ExportError>> => {
+    if (!exportContainer) {
+      return err({
+        type: "unknown",
+        message: "エクスポートコンテナが見つかりません",
+        originalError: null,
+      });
+    }
 
     isSaving.value = true;
 
@@ -81,7 +110,10 @@ export const useExportStore = defineStore("export", () => {
       await nextTick();
 
       // すべての画像の読み込み完了を待つ
-      await waitForImagesLoaded(exportContainer);
+      const imageLoadResult = await waitForImagesLoaded(exportContainer);
+      if (imageLoadResult.isErr()) {
+        return imageLoadResult; // 画像読み込みエラーを伝播
+      }
 
       // Canvas生成
       const canvas = await html2canvas(exportContainer, {
@@ -102,13 +134,19 @@ export const useExportStore = defineStore("export", () => {
     } catch (e) {
       const errorMessage = "デッキ画像の保存に失敗しました";
       logger.error(errorMessage + ":", e);
+      return err({
+        type: "html2canvas",
+        message: errorMessage,
+        originalError: e,
+      });
     } finally {
       isSaving.value = false;
     }
+    return ok(undefined);
   };
 
   return {
-    isSaving,
+    isSaving: readonly(isSaving),
     saveDeckAsPng,
   };
 });

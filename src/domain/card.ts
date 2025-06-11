@@ -1,3 +1,12 @@
+/**
+ * @file カードのドメインロジックを定義する。
+ *
+ * このファイルでは、カードの作成、検索、フィルタリングに関する純粋関数を提供する。
+ * - カードのバリデーションと生成
+ * - カード名、種別、タイプ、タグによるフィルタリング
+ * - 副作用を避け、不変データ構造を優先する関数型アプローチを採用
+ * - エラーハンドリングにはneverthrowのResult型を使用し、例外をスローしない
+ */
 import { ok, err, type Result } from "neverthrow";
 import type { Card, CardKind, CardType } from "../types/card";
 
@@ -5,8 +14,11 @@ import type { Card, CardKind, CardType } from "../types/card";
 export type CardValidationError =
   | { readonly type: "invalidId"; readonly id: string }
   | { readonly type: "invalidName"; readonly name: string }
-  | { readonly type: "invalidKind"; readonly kind: unknown }
-  | { readonly type: "invalidType"; readonly cardType: unknown }
+  | { readonly type: "invalidKind"; readonly kind: CardKind }
+  | {
+      readonly type: "invalidType";
+      readonly cardType: CardType | readonly CardType[];
+    }
   | { readonly type: "duplicateTags"; readonly tags: readonly string[] };
 
 // カード作成関数
@@ -28,24 +40,32 @@ export const createCard = (
   }
 
   // タグ検証
-  let processedTags: readonly string[] | undefined = undefined;
-  if (tags) {
-    const trimmedTags = tags
-      .map((tag) => tag.trim())
-      .filter((tag) => tag.length > 0);
-    const uniqueTags = new Set(trimmedTags);
-    if (uniqueTags.size !== trimmedTags.length) {
-      return err({ type: "duplicateTags", tags: trimmedTags });
+  const processedTags = tags
+    ?.map((tag) => tag.trim())
+    .filter((tag) => tag.length > 0);
+
+  if (processedTags && processedTags.length > 0) {
+    const uniqueTags = new Set(processedTags);
+    if (uniqueTags.size !== processedTags.length) {
+      return err({ type: "duplicateTags", tags: processedTags });
     }
-    processedTags = [...uniqueTags];
+    // Setから配列に変換し、undefinedの場合はundefinedを維持
+    return ok({
+      id: id.trim(),
+      name: name.trim(),
+      kind,
+      type,
+      tags: [...uniqueTags],
+    });
   }
 
+  // タグがない場合、または処理後にタグが空になった場合
   return ok({
     id: id.trim(),
     name: name.trim(),
     kind,
     type,
-    tags: processedTags,
+    tags: processedTags && processedTags.length > 0 ? processedTags : undefined,
   });
 };
 
@@ -86,6 +106,7 @@ export const filterCardsByKind = (
 };
 
 // カードタイプがフィルタータイプに一致するかをチェックするヘルパー関数
+// 色タイプの場合のみ、値も一致する必要がある
 const isCardTypeMatchingFilterType = (
   cardType: CardType,
   filterType: CardType

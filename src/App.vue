@@ -234,7 +234,7 @@ const deckCodeModalProps = computed(() => ({
   isVisible: deckCodeStore.showDeckCodeModal,
   deckCode: deckCodeStore.deckCode,
   importDeckCode: deckCodeStore.importDeckCode,
-  error: deckCodeStore.error,
+  error: deckCodeStore.error?.message || null, // error オブジェクトから message を抽出
 }));
 
 // カード画像モーダルのプロパティを計算（Vue 3.5の最適化されたcomputed）
