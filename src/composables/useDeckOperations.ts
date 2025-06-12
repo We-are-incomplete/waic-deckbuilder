@@ -17,16 +17,26 @@ let searchHitCount = 0;
 let searchMissCount = 0;
 
 /**
- * 軽量ハッシュ関数（djb2アルゴリズム）
- * 長いキーを短縮してメモリ効率を向上させる
+ * 安全なハッシュ関数（64bitバージョン）
+ * 32bitハッシュの衝突リスクを大幅に削減
+ * 2つの異なる32bitハッシュを組み合わせて64bitハッシュを生成
+ * 約1.8 × 10^19通り（2^64）のパターンで衝突リスクを大幅に軽減
  */
-const hashString = (str: string): string => {
-  let hash = 5381;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash * 33) ^ str.charCodeAt(i);
+const createSafeHash = (input: string): string => {
+  let hashA = 5381;
+  let hashB = 52711;
+
+  for (let i = 0; i < input.length; i++) {
+    const char = input.charCodeAt(i);
+    hashA = (hashA * 33) ^ char;
+    hashB = (hashB * 37) ^ char;
   }
-  // 32bit符号なし整数として扱い、16進数で返す（8文字固定長）
-  return (hash >>> 0).toString(16).padStart(8, "0");
+
+  // 64bitハッシュとして結合（32bit × 2）
+  // 16文字の16進文字列 = 約1.8 × 10^19通り
+  const hashAStr = (hashA >>> 0).toString(16).padStart(8, "0");
+  const hashBStr = (hashB >>> 0).toString(16).padStart(8, "0");
+  return hashAStr + hashBStr;
 };
 
 export const useDeckOperations = () => {
@@ -74,7 +84,7 @@ export const useDeckOperations = () => {
     };
   };
 
-  // メモ化された統計計算（最適化版）
+  // メモ化された統計計算（安全なキー版）
   const baseMemoizedStatsCalculation = useMemoize(
     (_deckHash: string, deckCards: readonly DeckCard[]) => {
       const kindStats = new Map<string, number>();
@@ -97,12 +107,12 @@ export const useDeckOperations = () => {
       };
     },
     {
-      // カスタムキー関数: deckHashをハッシュ化してメモリ効率を向上
-      getKey: (deckHash: string) => hashString(deckHash),
+      // 安全なキー関数: 64bitハッシュで衝突リスクを大幅に削減
+      getKey: (deckHash: string) => createSafeHash(deckHash),
     }
   );
 
-  // メモ化された検索機能（最適化版）
+  // メモ化された検索機能（安全なキー版）
   const baseMemoizedDeckSearch = useMemoize(
     (
       _searchKey: string,
@@ -131,8 +141,8 @@ export const useDeckOperations = () => {
       return result;
     },
     {
-      // カスタムキー関数: 長いsearchKeyをハッシュ化してメモリ効率を向上
-      getKey: (searchKey: string) => hashString(searchKey),
+      // 安全なキー関数: 64bitハッシュで衝突リスクを大幅に削減
+      getKey: (searchKey: string) => createSafeHash(searchKey),
     }
   );
 

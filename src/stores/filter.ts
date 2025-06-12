@@ -16,6 +16,9 @@ export const useFilterStore = defineStore("filter", () => {
     tags: [],
   });
 
+  // WeakMapを使って配列のメモIDを管理（Vueのリアクティビティを壊さない）
+  const arrayMemoIds = new WeakMap<readonly Card[], string>();
+
   // メモ化されたソート処理（より効率的な実装）
   const memoizedCardSorting = useMemoize(
     (cards: readonly Card[]) => {
@@ -25,11 +28,13 @@ export const useFilterStore = defineStore("filter", () => {
     },
     {
       getKey: (cards) => {
-        // 配列参照をキーとして使用（JSON.stringifyによる高コストを回避）
-        return (
-          (cards as any).__vueuse_memoize_id ||
-          ((cards as any).__vueuse_memoize_id = Math.random().toString(36))
-        );
+        // WeakMapを使用して配列参照をキーとして使用（JSON.stringifyによる高コストを回避）
+        let memoId = arrayMemoIds.get(cards);
+        if (!memoId) {
+          memoId = Math.random().toString(36);
+          arrayMemoIds.set(cards, memoId);
+        }
+        return memoId;
       },
     }
   );
@@ -50,9 +55,11 @@ export const useFilterStore = defineStore("filter", () => {
       getKey: (params) => {
         const { cards, criteria } = params;
         // cardsの参照IDとcriteriaの内容ハッシュでキーを生成
-        const cardsRefId =
-          (cards as any).__vueuse_memoize_id ||
-          ((cards as any).__vueuse_memoize_id = Math.random().toString(36));
+        let cardsRefId = arrayMemoIds.get(cards);
+        if (!cardsRefId) {
+          cardsRefId = Math.random().toString(36);
+          arrayMemoIds.set(cards, cardsRefId);
+        }
         const criteriaHash = [
           criteria.text.trim(),
           [...criteria.kind].sort().join(","),
@@ -94,11 +101,13 @@ export const useFilterStore = defineStore("filter", () => {
     },
     {
       getKey: (cards) => {
-        // 配列参照をキーとして使用（JSON.stringifyによる高コストを回避）
-        return (
-          (cards as any).__vueuse_memoize_id ||
-          ((cards as any).__vueuse_memoize_id = Math.random().toString(36))
-        );
+        // WeakMapを使用して配列参照をキーとして使用（JSON.stringifyによる高コストを回避）
+        let memoId = arrayMemoIds.get(cards);
+        if (!memoId) {
+          memoId = Math.random().toString(36);
+          arrayMemoIds.set(cards, memoId);
+        }
+        return memoId;
       },
     }
   );

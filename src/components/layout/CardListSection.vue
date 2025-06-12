@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watchEffect, computed, shallowReactive } from "vue";
+import { ref, watchEffect, computed, reactive } from "vue";
 import type { Card, DeckCard } from "../../types";
 import { handleImageError } from "../../utils/image";
 import { getCardImageUrlSafe } from "../../utils";
@@ -90,9 +90,9 @@ const handleCardClick = (card: Card) => {
 };
 
 // 長押し機能の設定
-const cardRefs = shallowReactive(new Map<string, HTMLElement>());
+const cardRefs = reactive(new Map<string, HTMLElement>());
 // カードIDごとの長押しstop関数を保存
-const cardLongPressStops = shallowReactive(new Map<string, Function>());
+const cardLongPressStops = reactive(new Map<string, Function>());
 // 前回のカードIDsを保存
 const previousCardIds = ref(new Set<string>());
 
