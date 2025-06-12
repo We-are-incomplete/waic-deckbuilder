@@ -48,19 +48,22 @@ export const useDeckOperations = () => {
 
   /**
    * メモ化関数の統一ラッパー
-   * 実際の呼び出し結果に基づいてヒット/ミスを正確にカウント
+   * キャッシュキーを事前にチェックしてヒット/ミスを正確にカウント
    */
   const createMemoizationWrapper = <TArgs extends readonly unknown[], TReturn>(
     memoizedFn: (...args: TArgs) => TReturn,
+    getKey: (...args: TArgs) => string,
     statsType: "stats" | "search"
   ) => {
     return (...args: TArgs): TReturn => {
-      const beforeCacheSize = (memoizedFn as any)._cache?.size || 0;
-      const result = memoizedFn(...args);
-      const afterCacheSize = (memoizedFn as any)._cache?.size || 0;
+      // キャッシュキーを生成
+      const cacheKey = getKey(...args);
 
-      // キャッシュサイズが変わらない場合はヒット、増加した場合はミス
-      const isHit = beforeCacheSize === afterCacheSize && beforeCacheSize > 0;
+      // キャッシュに既にキーが存在するかチェック
+      const cache = (memoizedFn as any).cache || (memoizedFn as any)._cache;
+      const isHit = cache && cache.has && cache.has(cacheKey);
+
+      const result = memoizedFn(...args);
 
       if (statsType === "stats") {
         if (isHit) {
@@ -149,11 +152,13 @@ export const useDeckOperations = () => {
   // 統一ラッパーでラップしたメモ化関数
   const memoizedStatsCalculation = createMemoizationWrapper(
     baseMemoizedStatsCalculation,
+    (deckHash: string) => createSafeHash(deckHash),
     "stats"
   );
 
   const memoizedDeckSearch = createMemoizationWrapper(
     baseMemoizedDeckSearch,
+    (searchKey: string) => createSafeHash(searchKey),
     "search"
   );
 

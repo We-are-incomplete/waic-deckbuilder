@@ -19,6 +19,10 @@ export const useFilterStore = defineStore("filter", () => {
   // WeakMapを使って配列のメモIDを管理（Vueのリアクティビティを壊さない）
   const arrayMemoIds = new WeakMap<readonly Card[], string>();
 
+  // 一意のキー生成のためのカウンター（テスト再現性とコリジョン回避のため）
+  let uniqueKeyCounter = 0;
+  const generateUniqueKey = (): string => `key_${++uniqueKeyCounter}`;
+
   // メモ化されたソート処理（より効率的な実装）
   const memoizedCardSorting = useMemoize(
     (cards: readonly Card[]) => {
@@ -31,7 +35,7 @@ export const useFilterStore = defineStore("filter", () => {
         // WeakMapを使用して配列参照をキーとして使用（JSON.stringifyによる高コストを回避）
         let memoId = arrayMemoIds.get(cards);
         if (!memoId) {
-          memoId = Math.random().toString(36);
+          memoId = generateUniqueKey();
           arrayMemoIds.set(cards, memoId);
         }
         return memoId;
@@ -57,7 +61,7 @@ export const useFilterStore = defineStore("filter", () => {
         // cardsの参照IDとcriteriaの内容ハッシュでキーを生成
         let cardsRefId = arrayMemoIds.get(cards);
         if (!cardsRefId) {
-          cardsRefId = Math.random().toString(36);
+          cardsRefId = generateUniqueKey();
           arrayMemoIds.set(cards, cardsRefId);
         }
         const criteriaHash = [
@@ -104,7 +108,7 @@ export const useFilterStore = defineStore("filter", () => {
         // WeakMapを使用して配列参照をキーとして使用（JSON.stringifyによる高コストを回避）
         let memoId = arrayMemoIds.get(cards);
         if (!memoId) {
-          memoId = Math.random().toString(36);
+          memoId = generateUniqueKey();
           arrayMemoIds.set(cards, memoId);
         }
         return memoId;

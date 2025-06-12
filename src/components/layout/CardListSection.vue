@@ -92,13 +92,20 @@ const handleCardClick = (card: Card) => {
 // 長押し機能の設定
 const cardRefs = reactive(new Map<string, HTMLElement>());
 // カードIDごとの長押しstop関数を保存
-const cardLongPressStops = reactive(new Map<string, Function>());
+const cardLongPressStops = reactive(new Map<string, () => void>());
 // 前回のカードIDsを保存
 const previousCardIds = ref(new Set<string>());
 
 const setCardRef = (el: HTMLElement | null, cardId: string) => {
   if (el) {
     cardRefs.set(cardId, el);
+    // 要素が設定されたら即座に長押しイベントのバインディングを試行
+    const cardIndex = props.sortedAndFilteredCards.findIndex(
+      (card) => card.id === cardId
+    );
+    if (cardIndex !== -1 && !cardLongPressStops.has(cardId)) {
+      bindLongPress(cardId, cardIndex);
+    }
   } else {
     cardRefs.delete(cardId);
   }
