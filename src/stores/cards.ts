@@ -37,6 +37,12 @@ export const useCardsStore = defineStore("cards", () => {
   const memoizedSearch = useMemoize(
     (params: { cards: readonly Card[]; searchText: string }) => {
       return CardDomain.searchCardsByName(params.cards, params.searchText);
+    },
+    {
+      getKey: (params: { cards: readonly Card[]; searchText: string }) => {
+        // カード配列の代わりに軽量な識別子を使用（カード数 + 検索テキスト）
+        return `${params.cards.length}_${params.searchText}`;
+      },
     }
   );
 
@@ -251,9 +257,6 @@ export const useCardsStore = defineStore("cards", () => {
       cards: availableCards.value,
       searchText: normalizedSearch,
     });
-
-    // 最終フォールバック
-    return CardDomain.searchCardsByName(availableCards.value, searchText);
   };
 
   /**

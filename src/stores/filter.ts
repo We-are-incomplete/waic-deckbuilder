@@ -68,9 +68,8 @@ export const useFilterStore = defineStore("filter", () => {
   // シンプルなMapベースの文字列正規化キャッシュ（markRawで最適化）
   const stringNormalizationCache = markRaw(new Map<string, string>());
   const normalizeString = (str: string): string => {
-    if (stringNormalizationCache.has(str)) {
-      return stringNormalizationCache.get(str)!;
-    }
+    const cached = stringNormalizationCache.get(str);
+    if (cached) return cached;
 
     const normalized = str.trim().toLowerCase();
 
@@ -88,8 +87,9 @@ export const useFilterStore = defineStore("filter", () => {
   const fastSetCache = markRaw(new Map<string, Set<string>>());
   const createFastSet = (items: readonly string[]): Set<string> => {
     const key = items.join("|");
-    if (fastSetCache.has(key)) {
-      return fastSetCache.get(key)!;
+    const cached = fastSetCache.get(key);
+    if (cached !== undefined) {
+      return cached;
     }
 
     const set = new Set(items);

@@ -61,8 +61,8 @@ const openImageModal = (cardId: string) => {
 
 const deckCardRefs = ref<Map<string, HTMLElement>>(new Map());
 
-const setDeckCardRef = (el: HTMLElement | null, cardId: string) => {
-  if (el) {
+const setDeckCardRef = (el: unknown, cardId: string) => {
+  if (el instanceof HTMLElement) {
     deckCardRefs.value.set(cardId, el);
   } else {
     deckCardRefs.value.delete(cardId);
@@ -315,7 +315,7 @@ defineExpose({
       >
         <div
           class="w-full relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
-          :ref="(el) => setDeckCardRef(el as HTMLElement, item.card.id)"
+          :ref="(el) => setDeckCardRef(el, item.card.id)"
           @contextmenu.prevent
           title="長押し: 拡大表示"
         >

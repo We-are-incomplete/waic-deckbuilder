@@ -47,7 +47,9 @@ export const deserializeDeckCards = (
 };
 
 // useLocalStorage を使用してデッキカードを管理
-const deckCardsStorage = useLocalStorage(STORAGE_KEYS.DECK_CARDS, [], {
+const deckCardsStorage = useLocalStorage<
+  readonly { id: string; count: number }[]
+>(STORAGE_KEYS.DECK_CARDS, [], {
   serializer: {
     read: (raw: string): readonly { id: string; count: number }[] => {
       try {
@@ -63,7 +65,10 @@ const deckCardsStorage = useLocalStorage(STORAGE_KEYS.DECK_CARDS, [], {
 });
 
 // useLocalStorage を使用してデッキ名を管理
-const deckNameStorage = useLocalStorage(STORAGE_KEYS.DECK_NAME, "新しいデッキ");
+const deckNameStorage = useLocalStorage<string>(
+  STORAGE_KEYS.DECK_NAME,
+  "新しいデッキ"
+);
 
 /**
  * デッキをローカルストレージに保存
@@ -112,9 +117,8 @@ export const loadDeckFromLocalStorage = (
       e,
       JSON.stringify(deckCardsStorage.value)
     );
-    // エラー時はストレージをクリーンアップ
+    // エラー時はデッキカードのみクリーンアップ（デッキ名は保持）
     removeDeckCardsFromLocalStorage();
-    removeDeckNameFromLocalStorage();
     return err({
       type: "parseError",
       key: STORAGE_KEYS.DECK_CARDS,

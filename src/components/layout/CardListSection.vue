@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watchEffect, computed } from "vue";
+import { ref, watchEffect, computed, shallowReactive } from "vue";
 import type { Card, DeckCard } from "../../types";
 import { handleImageError } from "../../utils/image";
 import { getCardImageUrlSafe } from "../../utils";
@@ -80,20 +80,20 @@ const handleCardNavigation = (direction: "previous" | "next") => {
 };
 
 // 長押し機能の設定
-const cardRefs = ref<Map<string, HTMLElement>>(new Map());
+const cardRefs = shallowReactive(new Map<string, HTMLElement>());
 
 const setCardRef = (el: HTMLElement | null, cardId: string) => {
   if (el) {
-    cardRefs.value.set(cardId, el);
+    cardRefs.set(cardId, el);
   } else {
-    cardRefs.value.delete(cardId);
+    cardRefs.delete(cardId);
   }
 };
 
 watchEffect((onCleanup) => {
   const stops: Function[] = [];
   props.sortedAndFilteredCards.forEach((card, index) => {
-    const el = cardRefs.value.get(card.id);
+    const el = cardRefs.get(card.id);
     if (el) {
       const stop = onLongPress(el, () => openImageModal(card, index), {
         delay: 500, // 500msで長押し判定
