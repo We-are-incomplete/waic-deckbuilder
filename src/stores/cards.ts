@@ -5,7 +5,7 @@ import { preloadImages, logger } from "../utils";
 import { safeAsyncOperation } from "../utils/errorHandler";
 import * as CardDomain from "../domain/card";
 import { fromAsyncThrowable, ok, err, type Result } from "neverthrow";
-import { memoizeObjectComputation } from "../utils/memoization";
+import { useMemoize } from "@vueuse/core";
 
 // カードストア専用のエラー型
 type CardStoreError =
@@ -23,6 +23,9 @@ export const useCardsStore = defineStore("cards", () => {
   const isLoading = ref<boolean>(true);
   const error = ref<CardStoreError | null>(null);
 
+  // カードデータのバージョン管理（キャッシュ無効化用）
+  const cardsVersion = ref<number>(0);
+
   // パフォーマンス改善のためのキャッシュ（markRawで最適化）
   const cardByIdCache = markRaw(new Map<string, Card>());
   const cardsByKindCache = markRaw(new Map<string, readonly Card[]>());
@@ -34,11 +37,24 @@ export const useCardsStore = defineStore("cards", () => {
   const isIndexBuilt = ref(false);
 
   // メモ化された検索処理
-  const memoizedSearch = memoizeObjectComputation(
-    (params: { cards: readonly Card[]; searchText: string }) => {
+  const memoizedSearch = useMemoize(
+    (params: {
+      cards: readonly Card[];
+      searchText: string;
+      version: number;
+    }) => {
       return CardDomain.searchCardsByName(params.cards, params.searchText);
     },
-    { maxSize: 50, ttl: 5 * 60 * 1000 } // 5分間キャッシュ
+    {
+      getKey: (params: {
+        cards: readonly Card[];
+        searchText: string;
+        version: number;
+      }) => {
+        // cardsVersionだけでキャッシュの無効化を確実に行う
+        return `${params.searchText}_v${params.version}`;
+      },
+    }
   );
 
   /**
@@ -248,15 +264,11 @@ export const useCardsStore = defineStore("cards", () => {
     }
 
     // メモ化検索をフォールバックとして使用
-    if (memoizedSearch.isOk()) {
-      return memoizedSearch.value({
-        cards: availableCards.value,
-        searchText: normalizedSearch,
-      });
-    }
-
-    // 最終フォールバック
-    return CardDomain.searchCardsByName(availableCards.value, searchText);
+    return memoizedSearch({
+      cards: availableCards.value,
+      searchText: normalizedSearch,
+      version: cardsVersion.value,
+    });
   };
 
   /**
@@ -289,12 +301,18 @@ export const useCardsStore = defineStore("cards", () => {
    * 全キャッシュクリア（最適化版）
    */
   const clearAllCaches = (): void => {
+    // cardsVersionを単調増加させることで古いキャッシュヒットを防ぐ
+    cardsVersion.value++;
     cardByIdCache.clear();
     cardsByKindCache.clear();
     cardSearchIndex.clear();
     availableKindsCache.value = null;
     availableTypesCache.value = null;
     isIndexBuilt.value = false;
+    // memoizedSearchのキャッシュもクリア（防御的チェック）
+    if (typeof memoizedSearch.clear === "function") {
+      memoizedSearch.clear();
+    }
     triggerRef(availableKindsCache);
     triggerRef(availableTypesCache);
   };
@@ -365,6 +383,12 @@ export const useCardsStore = defineStore("cards", () => {
         throw new Error(checkedCardsResult.error);
       }
       const checkedCards = checkedCardsResult.value;
+
+      // キャッシュバージョンを先に更新（新しいデータ設定前に）
+      // 重要: memoizedSearchのキャッシュ無効化はcardsVersionにのみ依存し、
+      // cardsの配列参照には依存しない。カードの配列内容が変更される場合は、
+      // 古い検索結果を防ぐために必ずcardsVersionをインクリメントする必要がある
+      cardsVersion.value++;
 
       // ストアに設定
       availableCards.value = readonly(checkedCards);
