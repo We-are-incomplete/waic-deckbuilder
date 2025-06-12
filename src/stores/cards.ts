@@ -23,6 +23,9 @@ export const useCardsStore = defineStore("cards", () => {
   const isLoading = ref<boolean>(true);
   const error = ref<CardStoreError | null>(null);
 
+  // カードデータのバージョン管理（キャッシュ無効化用）
+  const cardsVersion = ref<number>(0);
+
   // パフォーマンス改善のためのキャッシュ（markRawで最適化）
   const cardByIdCache = markRaw(new Map<string, Card>());
   const cardsByKindCache = markRaw(new Map<string, readonly Card[]>());
@@ -35,13 +38,21 @@ export const useCardsStore = defineStore("cards", () => {
 
   // メモ化された検索処理
   const memoizedSearch = useMemoize(
-    (params: { cards: readonly Card[]; searchText: string }) => {
+    (params: {
+      cards: readonly Card[];
+      searchText: string;
+      version: number;
+    }) => {
       return CardDomain.searchCardsByName(params.cards, params.searchText);
     },
     {
-      getKey: (params: { cards: readonly Card[]; searchText: string }) => {
-        // カード配列の代わりに軽量な識別子を使用（カード数 + 検索テキスト）
-        return `${params.cards.length}_${params.searchText}`;
+      getKey: (params: {
+        cards: readonly Card[];
+        searchText: string;
+        version: number;
+      }) => {
+        // カードデータのバージョンを含めることで、内容変更時のキャッシュ衝突を防ぐ
+        return `${params.cards.length}_${params.searchText}_v${params.version}`;
       },
     }
   );
@@ -135,6 +146,9 @@ export const useCardsStore = defineStore("cards", () => {
    * キャッシュを更新する（最適化版）
    */
   const updateCaches = (cards: readonly Card[]): void => {
+    // カードデータのバージョンを更新（メモ化キャッシュの無効化用）
+    cardsVersion.value++;
+
     // IDキャッシュの更新（バッチ処理で最適化）
     cardByIdCache.clear();
     const cardCount = cards.length;
@@ -256,6 +270,7 @@ export const useCardsStore = defineStore("cards", () => {
     return memoizedSearch({
       cards: availableCards.value,
       searchText: normalizedSearch,
+      version: cardsVersion.value,
     });
   };
 
@@ -289,6 +304,7 @@ export const useCardsStore = defineStore("cards", () => {
    * 全キャッシュクリア（最適化版）
    */
   const clearAllCaches = (): void => {
+    cardsVersion.value = 0;
     cardByIdCache.clear();
     cardsByKindCache.clear();
     cardSearchIndex.clear();

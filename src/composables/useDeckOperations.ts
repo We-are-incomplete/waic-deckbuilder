@@ -11,8 +11,10 @@ import { createErrorHandler } from "../utils/errorHandler"; // createErrorHandle
  * メモ化最適化: パフォーマンステスト用のカウンター
  * 実測でヒット率を確認するためのデバッグ機能
  */
-let memoHitCount = 0;
-let memoMissCount = 0;
+let statsHitCount = 0;
+let statsMissCount = 0;
+let searchHitCount = 0;
+let searchMissCount = 0;
 
 export const useDeckOperations = () => {
   const deckStore = useDeckStore();
@@ -21,13 +23,17 @@ export const useDeckOperations = () => {
   // エラーハンドリング設定
   const errorHandler = createErrorHandler();
 
+  // 独自のキャッシュ追跡用Map（ライブラリの内部APIに依存しない）
+  const statsCache = new Map<string, boolean>();
+  const searchCache = new Map<string, boolean>();
+
   // メモ化された統計計算（最適化版）
   const memoizedStatsCalculation = useMemoize(
     (_deckHash: string, deckCards: readonly DeckCard[]) => {
-      memoMissCount++;
+      statsMissCount++;
       console.debug(
-        `Stats cache MISS. Total: Hit=${memoHitCount}, Miss=${memoMissCount}, Ratio=${(
-          (memoHitCount / (memoHitCount + memoMissCount)) *
+        `Stats cache MISS. Total: Hit=${statsHitCount}, Miss=${statsMissCount}, Ratio=${(
+          (statsHitCount / (statsHitCount + statsMissCount)) *
           100
         ).toFixed(1)}%`
       );
@@ -252,13 +258,28 @@ export const useDeckOperations = () => {
     const deckHash = deckStore.deckHash;
     const searchKey = `${deckHash}|${searchText.trim().toLowerCase()}`;
 
-    // キャッシュヒット/ミスの判定
-    const cachedResult = memoizedDeckSearch.cache.get(searchKey);
-    if (cachedResult) {
+    // 独自のキャッシュ追跡でヒット/ミスの判定
+    const isHit = searchCache.has(searchKey);
+    if (isHit) {
+      searchHitCount++;
       console.debug(`Search cache HIT for key: ${searchKey.slice(0, 50)}...`);
+    } else {
+      searchMissCount++;
+      console.debug(`Search cache MISS for key: ${searchKey.slice(0, 50)}...`);
     }
 
-    return memoizedDeckSearch(searchKey, deckStore.sortedDeckCards, searchText);
+    const result = memoizedDeckSearch(
+      searchKey,
+      deckStore.sortedDeckCards,
+      searchText
+    );
+
+    // 結果をキャッシュ追跡に記録
+    if (!isHit) {
+      searchCache.set(searchKey, true);
+    }
+
+    return result;
   };
 
   /**
@@ -268,26 +289,65 @@ export const useDeckOperations = () => {
     // ストアから提供される軽量ハッシュを使用
     const deckHash = deckStore.deckHash;
 
-    // キャッシュヒット/ミスの判定
-    const cachedResult = memoizedStatsCalculation.cache.get(deckHash);
-    if (cachedResult) {
-      memoHitCount++;
+    // 独自のキャッシュ追跡でヒット/ミスの判定
+    const isHit = statsCache.has(deckHash);
+    if (isHit) {
+      statsHitCount++;
       console.debug(`Stats cache HIT for hash: ${deckHash.slice(0, 50)}...`);
+    } else {
+      console.debug(`Stats cache MISS for hash: ${deckHash.slice(0, 50)}...`);
     }
 
-    return memoizedStatsCalculation(deckHash, deckStore.sortedDeckCards);
+    const result = memoizedStatsCalculation(
+      deckHash,
+      deckStore.sortedDeckCards
+    );
+
+    // 結果をキャッシュ追跡に記録
+    if (!isHit) {
+      statsCache.set(deckHash, true);
+    }
+
+    return result;
   };
 
   /**
    * メモ化パフォーマンス統計を取得（デバッグ用）
    */
   const getMemoizationStats = () => {
-    const total = memoHitCount + memoMissCount;
+    const statsTotal = statsHitCount + statsMissCount;
+    const searchTotal = searchHitCount + searchMissCount;
+    const overallTotal = statsTotal + searchTotal;
+    const overallHits = statsHitCount + searchHitCount;
+
     return {
-      hitCount: memoHitCount,
-      missCount: memoMissCount,
-      hitRatio: total > 0 ? ((memoHitCount / total) * 100).toFixed(1) : "0.0",
-      total,
+      stats: {
+        hitCount: statsHitCount,
+        missCount: statsMissCount,
+        hitRatio:
+          statsTotal > 0
+            ? ((statsHitCount / statsTotal) * 100).toFixed(1)
+            : "0.0",
+        total: statsTotal,
+      },
+      search: {
+        hitCount: searchHitCount,
+        missCount: searchMissCount,
+        hitRatio:
+          searchTotal > 0
+            ? ((searchHitCount / searchTotal) * 100).toFixed(1)
+            : "0.0",
+        total: searchTotal,
+      },
+      overall: {
+        hitCount: overallHits,
+        missCount: statsMissCount + searchMissCount,
+        hitRatio:
+          overallTotal > 0
+            ? ((overallHits / overallTotal) * 100).toFixed(1)
+            : "0.0",
+        total: overallTotal,
+      },
     };
   };
 
@@ -295,8 +355,12 @@ export const useDeckOperations = () => {
    * メモ化統計をリセット（デバッグ用）
    */
   const resetMemoizationStats = () => {
-    memoHitCount = 0;
-    memoMissCount = 0;
+    statsHitCount = 0;
+    statsMissCount = 0;
+    searchHitCount = 0;
+    searchMissCount = 0;
+    statsCache.clear();
+    searchCache.clear();
   };
 
   return {

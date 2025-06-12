@@ -79,6 +79,16 @@ const handleCardNavigation = (direction: "previous" | "next") => {
   }
 };
 
+// カードクリック処理
+const handleCardClick = (card: Card) => {
+  const current = getCardInDeck(card.id);
+  if (current === 0) {
+    emit("addCard", card);
+  } else if (current < 4) {
+    emit("incrementCard", card.id);
+  }
+};
+
 // 長押し機能の設定
 const cardRefs = shallowReactive(new Map<string, HTMLElement>());
 
@@ -243,16 +253,7 @@ watchEffect((onCleanup) => {
         <div
           class="w-full relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer active:scale-95"
           :ref="(el) => setCardRef(el as HTMLElement, card.id)"
-          @click="
-            () => {
-              const current = getCardInDeck(card.id);
-              if (current === 0) {
-                emit('addCard', card);
-              } else if (current < 4) {
-                emit('incrementCard', card.id);
-              }
-            }
-          "
+          @click="handleCardClick(card)"
           @contextmenu.prevent
         >
           <img

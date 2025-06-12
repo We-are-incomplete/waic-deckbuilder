@@ -34,6 +34,22 @@ export const useFilterStore = defineStore("filter", () => {
       }
 
       return applyAllFiltersOptimized(cards, criteria);
+    },
+    {
+      getKey: (params) => {
+        const { cards, criteria } = params;
+        // cardsの参照IDとcriteriaの内容ハッシュでキーを生成
+        const cardsRefId =
+          (cards as any).__vueuse_memoize_id ||
+          ((cards as any).__vueuse_memoize_id = Math.random().toString(36));
+        const criteriaHash = [
+          criteria.text.trim(),
+          [...criteria.kind].sort().join(","),
+          [...criteria.type].sort().join(","),
+          [...criteria.tags].sort().join(","),
+        ].join("|");
+        return `${cardsRefId}:${criteriaHash}`;
+      },
     }
   );
 
