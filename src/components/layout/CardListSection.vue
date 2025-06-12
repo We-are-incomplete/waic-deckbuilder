@@ -91,6 +91,10 @@ const handleCardClick = (card: Card) => {
 
 // 長押し機能の設定
 const cardRefs = shallowReactive(new Map<string, HTMLElement>());
+// カードIDごとの長押しstop関数を保存
+const cardLongPressStops = shallowReactive(new Map<string, Function>());
+// 前回のカードIDsを保存
+const previousCardIds = ref(new Set<string>());
 
 const setCardRef = (el: HTMLElement | null, cardId: string) => {
   if (el) {
@@ -100,19 +104,60 @@ const setCardRef = (el: HTMLElement | null, cardId: string) => {
   }
 };
 
-watchEffect((onCleanup) => {
-  const stops: Function[] = [];
-  props.sortedAndFilteredCards.forEach((card, index) => {
-    const el = cardRefs.get(card.id);
-    if (el) {
-      const stop = onLongPress(el, () => openImageModal(card, index), {
-        delay: 500, // 500msで長押し判定
-      });
-      stops.push(stop);
-    }
+// 長押しハンドラーをバインド
+const bindLongPress = (cardId: string, cardIndex: number) => {
+  const el = cardRefs.get(cardId);
+  if (!el) return;
+
+  // 既存のstop関数があれば先にクリーンアップ
+  const existingStop = cardLongPressStops.get(cardId);
+  if (existingStop) {
+    existingStop();
+  }
+
+  const card = props.sortedAndFilteredCards[cardIndex];
+  const stop = onLongPress(el, () => openImageModal(card, cardIndex), {
+    delay: 500, // 500msで長押し判定
   });
+  cardLongPressStops.set(cardId, stop);
+};
+
+// 長押しハンドラーをアンバインド
+const unbindLongPress = (cardId: string) => {
+  const stop = cardLongPressStops.get(cardId);
+  if (stop) {
+    stop();
+    cardLongPressStops.delete(cardId);
+  }
+};
+
+watchEffect((onCleanup) => {
+  // 現在のカードIDsを取得
+  const currentCardIds = new Set(
+    props.sortedAndFilteredCards.map((card) => card.id)
+  );
+
+  // 削除されたカードの長押しハンドラーをアンバインド
+  for (const prevCardId of previousCardIds.value) {
+    if (!currentCardIds.has(prevCardId)) {
+      unbindLongPress(prevCardId);
+    }
+  }
+
+  // 全てのカードの長押しハンドラーをバインド（新規追加と順序変更に対応）
+  props.sortedAndFilteredCards.forEach((card, index) => {
+    bindLongPress(card.id, index);
+  });
+
+  // 前回のカードIDsを更新
+  previousCardIds.value = currentCardIds;
+
+  // コンポーネント終了時に全てのstop関数を呼び出し
   onCleanup(() => {
-    stops.forEach((stop) => stop());
+    for (const stop of cardLongPressStops.values()) {
+      stop();
+    }
+    cardLongPressStops.clear();
   });
 });
 </script>

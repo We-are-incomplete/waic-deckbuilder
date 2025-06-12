@@ -24,8 +24,22 @@ export const useDeckOperations = () => {
   const errorHandler = createErrorHandler();
 
   // 独自のキャッシュ追跡用Map（ライブラリの内部APIに依存しない）
+  // メモリリーク防止のため、キャッシュサイズを監視し閾値で自動クリア
+  const CACHE_SIZE_LIMIT = 500;
   const statsCache = new Map<string, boolean>();
   const searchCache = new Map<string, boolean>();
+
+  /**
+   * キャッシュサイズを監視し、閾値を超えた場合にクリアする
+   */
+  const manageCacheSize = (cache: Map<string, boolean>, cacheName: string) => {
+    if (cache.size > CACHE_SIZE_LIMIT) {
+      console.debug(
+        `${cacheName} cache size limit (${CACHE_SIZE_LIMIT}) exceeded. Clearing cache to prevent memory leak.`
+      );
+      cache.clear();
+    }
+  };
 
   // メモ化された統計計算（最適化版）
   const memoizedStatsCalculation = useMemoize(
@@ -277,6 +291,7 @@ export const useDeckOperations = () => {
     // 結果をキャッシュ追跡に記録
     if (!isHit) {
       searchCache.set(searchKey, true);
+      manageCacheSize(searchCache, "Search");
     }
 
     return result;
@@ -306,6 +321,7 @@ export const useDeckOperations = () => {
     // 結果をキャッシュ追跡に記録
     if (!isHit) {
       statsCache.set(deckHash, true);
+      manageCacheSize(statsCache, "Stats");
     }
 
     return result;

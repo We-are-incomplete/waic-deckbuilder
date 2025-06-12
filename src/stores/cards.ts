@@ -51,8 +51,8 @@ export const useCardsStore = defineStore("cards", () => {
         searchText: string;
         version: number;
       }) => {
-        // カードデータのバージョンを含めることで、内容変更時のキャッシュ衝突を防ぐ
-        return `${params.cards.length}_${params.searchText}_v${params.version}`;
+        // cardsVersionだけでキャッシュの無効化を確実に行う
+        return `${params.searchText}_v${params.version}`;
       },
     }
   );
@@ -304,13 +304,16 @@ export const useCardsStore = defineStore("cards", () => {
    * 全キャッシュクリア（最適化版）
    */
   const clearAllCaches = (): void => {
-    cardsVersion.value = 0;
+    // cardsVersionを単調増加させることで古いキャッシュヒットを防ぐ
+    cardsVersion.value++;
     cardByIdCache.clear();
     cardsByKindCache.clear();
     cardSearchIndex.clear();
     availableKindsCache.value = null;
     availableTypesCache.value = null;
     isIndexBuilt.value = false;
+    // memoizedSearchのキャッシュもクリア
+    memoizedSearch.clear();
     triggerRef(availableKindsCache);
     triggerRef(availableTypesCache);
   };

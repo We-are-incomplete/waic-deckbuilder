@@ -17,11 +17,22 @@ export const useFilterStore = defineStore("filter", () => {
   });
 
   // メモ化されたソート処理（より効率的な実装）
-  const memoizedCardSorting = useMemoize((cards: readonly Card[]) => {
-    // 配列の参照が同じ場合は何もしない
-    if (cards.length === 0) return cards;
-    return readonly(sortCards(cards));
-  });
+  const memoizedCardSorting = useMemoize(
+    (cards: readonly Card[]) => {
+      // 配列の参照が同じ場合は何もしない
+      if (cards.length === 0) return cards;
+      return readonly(sortCards(cards));
+    },
+    {
+      getKey: (cards) => {
+        // 配列参照をキーとして使用（JSON.stringifyによる高コストを回避）
+        return (
+          (cards as any).__vueuse_memoize_id ||
+          ((cards as any).__vueuse_memoize_id = Math.random().toString(36))
+        );
+      },
+    }
+  );
 
   // より効率的なフィルタリング実装
   const memoizedFilterApplication = useMemoize(
