@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { ref, onUnmounted, watchEffect, computed } from "vue";
+import { ref, watchEffect, computed } from "vue";
 import type { Card, DeckCard } from "../../types";
 import { handleImageError } from "../../utils/image";
 import { getCardImageUrlSafe } from "../../utils";
-import { useLongPress } from "../../composables/useLongPress";
-
 import { CardImageModal } from "../index";
+import { onLongPress } from "@vueuse/core";
 
 interface Props {
   availableCards: readonly Card[];
@@ -81,60 +80,30 @@ const handleCardNavigation = (direction: "previous" | "next") => {
 };
 
 // 長押し機能の設定
-const longPressHandlers = new Map<string, ReturnType<typeof useLongPress>>();
+const cardRefs = ref<Map<string, HTMLElement>>(new Map());
 
-// longPressHandlersのクリーンアップ関数
-const cleanupLongPressHandlers = () => {
-  longPressHandlers.clear();
-};
-
-// 使用されていないハンドラーをクリーンアップ
-const cleanupUnusedHandlers = () => {
-  const currentCardIds = new Set(
-    props.sortedAndFilteredCards.map((card) => card.id)
-  );
-  const handlersToDelete: string[] = [];
-
-  for (const cardId of longPressHandlers.keys()) {
-    if (!currentCardIds.has(cardId)) {
-      handlersToDelete.push(cardId);
-    }
-  }
-
-  for (const cardId of handlersToDelete) {
-    longPressHandlers.delete(cardId);
+const setCardRef = (el: HTMLElement | null, cardId: string) => {
+  if (el) {
+    cardRefs.value.set(cardId, el);
+  } else {
+    cardRefs.value.delete(cardId);
   }
 };
 
-const getLongPressHandler = (card: Card, index: number) => {
-  if (!longPressHandlers.has(card.id)) {
-    longPressHandlers.set(
-      card.id,
-      useLongPress({
+watchEffect((onCleanup) => {
+  const stops: Function[] = [];
+  props.sortedAndFilteredCards.forEach((card, index) => {
+    const el = cardRefs.value.get(card.id);
+    if (el) {
+      const stop = onLongPress(el, () => openImageModal(card, index), {
         delay: 500, // 500msで長押し判定
-        onLongPress: () => openImageModal(card, index),
-        onPress: () => {
-          const current = getCardInDeck(card.id);
-          if (current === 0) {
-            emit("addCard", card);
-          } else if (current < 4) {
-            emit("incrementCard", card.id);
-          }
-        },
-      })
-    );
-  }
-  return longPressHandlers.get(card.id)!;
-};
-
-// カードリストが変更されたら使用されていないハンドラーをクリーンアップ
-watchEffect(() => {
-  cleanupUnusedHandlers();
-});
-
-// コンポーネントアンマウント時に全てのハンドラーをクリーンアップ
-onUnmounted(() => {
-  cleanupLongPressHandlers();
+      });
+      stops.push(stop);
+    }
+  });
+  onCleanup(() => {
+    stops.forEach((stop) => stop());
+  });
 });
 </script>
 
@@ -262,7 +231,7 @@ onUnmounted(() => {
 
       <div
         v-else
-        v-for="(card, index) in sortedAndFilteredCards"
+        v-for="card in sortedAndFilteredCards"
         :key="card.id"
         class="group flex flex-col items-center relative transition-all duration-200"
         :title="
@@ -273,12 +242,17 @@ onUnmounted(() => {
       >
         <div
           class="w-full relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer active:scale-95"
-          @pointerdown="
-            (event) => getLongPressHandler(card, index).startPress(event)
+          :ref="(el) => setCardRef(el as HTMLElement, card.id)"
+          @click="
+            () => {
+              const current = getCardInDeck(card.id);
+              if (current === 0) {
+                emit('addCard', card);
+              } else if (current < 4) {
+                emit('incrementCard', card.id);
+              }
+            }
           "
-          @pointerup="() => getLongPressHandler(card, index).endPress()"
-          @pointerleave="() => getLongPressHandler(card, index).cancelPress()"
-          @pointercancel="() => getLongPressHandler(card, index).cancelPress()"
           @contextmenu.prevent
         >
           <img

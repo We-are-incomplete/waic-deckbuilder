@@ -8,11 +8,11 @@ import {
   loadDeckName,
   removeDeckCardsFromLocalStorage,
   removeDeckNameFromLocalStorage,
-  createDebounce,
 } from "../utils";
 import { createErrorHandler } from "../utils/errorHandler";
 import * as DeckDomain from "../domain/deck";
 import { sortDeckCards } from "../domain/sort";
+import { useDebounceFn } from "@vueuse/core";
 
 export const useDeckStore = defineStore("deck", () => {
   // Vue 3.5の新機能: shallowRef for array performance optimization
@@ -191,22 +191,13 @@ export const useDeckStore = defineStore("deck", () => {
   };
 
   // Vue 3.5の新機能: より効率的なデバウンス処理
-  const debouncedSaveResult = createDebounce((cards: DeckCard[]) => {
+  const debouncedSave = useDebounceFn((cards: DeckCard[]) => {
     saveDeckToLocalStorage(cards);
   }, 500);
 
-  const debouncedSaveNameResult = createDebounce((name: string) => {
+  const debouncedSaveName = useDebounceFn((name: string) => {
     saveDeckName(name);
   }, 500);
-
-  // デバウンス関数を抽出
-  const debouncedSave = debouncedSaveResult.isOk()
-    ? debouncedSaveResult.value.debouncedFunc
-    : (cards: DeckCard[]) => saveDeckToLocalStorage(cards);
-
-  const debouncedSaveName = debouncedSaveNameResult.isOk()
-    ? debouncedSaveNameResult.value.debouncedFunc
-    : (name: string) => saveDeckName(name);
 
   // Vue 3.5最適化: watchEffect for better side effect management
   watch(

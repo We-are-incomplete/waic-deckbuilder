@@ -47,7 +47,12 @@ export const useAppStore = defineStore("app", () => {
 
   const confirmResetDeck = (): void => {
     // 長押しハンドラーをクリーンアップ
-    deckSectionRef.value?.cleanupAllHandlers();
+    if (
+      deckSectionRef.value &&
+      typeof deckSectionRef.value.cleanupAllHandlers === "function"
+    ) {
+      deckSectionRef.value.cleanupAllHandlers();
+    }
 
     stores.deckStore.resetDeckCards();
     stores.deckStore.resetDeckName();

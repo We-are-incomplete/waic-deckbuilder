@@ -3,12 +3,9 @@ import { ref, readonly, computed, shallowRef, markRaw, triggerRef } from "vue";
 import type { Card, FilterCriteria } from "../types";
 import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants/game";
 import * as CardDomain from "../domain/card";
-import {
-  memoizeArrayComputation,
-  memoizeObjectComputation,
-} from "../utils/memoization";
 import { useCardsStore } from "./cards";
 import { sortCards } from "../domain/sort";
+import { useMemoize } from "@vueuse/core";
 
 export const useFilterStore = defineStore("filter", () => {
   const isFilterModalOpen = ref<boolean>(false);
@@ -20,17 +17,14 @@ export const useFilterStore = defineStore("filter", () => {
   });
 
   // メモ化されたソート処理（より効率的な実装）
-  const memoizedCardSorting = memoizeArrayComputation(
-    (cards: readonly Card[]) => {
-      // 配列の参照が同じ場合は何もしない
-      if (cards.length === 0) return cards;
-      return readonly(sortCards(cards));
-    },
-    { maxSize: 20, ttl: 10 * 60 * 1000 } // 10分間キャッシュ、より多くのエントリを保持
-  );
+  const memoizedCardSorting = useMemoize((cards: readonly Card[]) => {
+    // 配列の参照が同じ場合は何もしない
+    if (cards.length === 0) return cards;
+    return readonly(sortCards(cards));
+  });
 
   // より効率的なフィルタリング実装
-  const memoizedFilterApplication = memoizeObjectComputation(
+  const memoizedFilterApplication = useMemoize(
     (params: { cards: readonly Card[]; criteria: FilterCriteria }) => {
       const { cards, criteria } = params;
 
@@ -40,40 +34,36 @@ export const useFilterStore = defineStore("filter", () => {
       }
 
       return applyAllFiltersOptimized(cards, criteria);
-    },
-    { maxSize: 100, ttl: 5 * 60 * 1000 } // 5分間キャッシュ、キャッシュサイズ増加
+    }
   );
 
   // タグ抽出の最適化（Set操作を効率化）
-  const memoizedTagExtraction = memoizeArrayComputation(
-    (cards: readonly Card[]) => {
-      if (cards.length === 0) return new Set<string>();
+  const memoizedTagExtraction = useMemoize((cards: readonly Card[]) => {
+    if (cards.length === 0) return new Set<string>();
 
-      const tags = new Set<string>();
-      const cardCount = cards.length;
+    const tags = new Set<string>();
+    const cardCount = cards.length;
 
-      // より効率的なループ処理
-      for (let i = 0; i < cardCount; i++) {
-        const card = cards[i];
-        const cardTags = card.tags;
+    // より効率的なループ処理
+    for (let i = 0; i < cardCount; i++) {
+      const card = cards[i];
+      const cardTags = card.tags;
 
-        if (cardTags) {
-          if (Array.isArray(cardTags)) {
-            const tagCount = cardTags.length;
-            for (let j = 0; j < tagCount; j++) {
-              tags.add(cardTags[j]);
-            }
-          } else if (typeof cardTags === "string") {
-            // 単一の文字列タグの場合
-            tags.add(cardTags);
+      if (cardTags) {
+        if (Array.isArray(cardTags)) {
+          const tagCount = cardTags.length;
+          for (let j = 0; j < tagCount; j++) {
+            tags.add(cardTags[j]);
           }
+        } else if (typeof cardTags === "string") {
+          // 単一の文字列タグの場合
+          tags.add(cardTags);
         }
       }
+    }
 
-      return tags;
-    },
-    { maxSize: 10, ttl: 15 * 60 * 1000 } // 15分間キャッシュ
-  );
+    return tags;
+  });
 
   // シンプルなMapベースの文字列正規化キャッシュ（markRawで最適化）
   const stringNormalizationCache = markRaw(new Map<string, string>());
@@ -119,37 +109,32 @@ export const useFilterStore = defineStore("filter", () => {
   const allTags = computed(() => {
     const cardsStore = useCardsStore();
 
-    if (memoizedTagExtraction.isOk()) {
-      const tags = memoizedTagExtraction.value(cardsStore.availableCards);
+    const tags = memoizedTagExtraction(cardsStore.availableCards);
 
-      if (tags.size === 0) {
-        return readonly([]);
-      }
-
-      const priorityTagSet = new Set(PRIORITY_TAGS);
-      const priorityTags: string[] = [];
-      const otherTags: string[] = [];
-
-      // 一度のループで分類
-      for (const tag of tags) {
-        if (priorityTagSet.has(tag)) {
-          priorityTags.push(tag);
-        } else {
-          otherTags.push(tag);
-        }
-      }
-
-      // 優先タグは元の順序を保持、その他のタグはソート
-      const orderedPriorityTags = PRIORITY_TAGS.filter((tag) =>
-        priorityTags.includes(tag)
-      );
-      otherTags.sort();
-
-      return readonly([...orderedPriorityTags, ...otherTags]);
+    if (tags.size === 0) {
+      return readonly([]);
     }
 
-    // フォールバック処理は最小限に
-    return readonly([]);
+    const priorityTagSet = new Set(PRIORITY_TAGS);
+    const priorityTags: string[] = [];
+    const otherTags: string[] = [];
+
+    // 一度のループで分類
+    for (const tag of tags) {
+      if (priorityTagSet.has(tag)) {
+        priorityTags.push(tag);
+      } else {
+        otherTags.push(tag);
+      }
+    }
+
+    // 優先タグは元の順序を保持、その他のタグはソート
+    const orderedPriorityTags = PRIORITY_TAGS.filter((tag) =>
+      priorityTags.includes(tag)
+    );
+    otherTags.sort();
+
+    return readonly([...orderedPriorityTags, ...otherTags]);
   });
 
   /**
@@ -326,24 +311,16 @@ export const useFilterStore = defineStore("filter", () => {
     // フィルターが空の場合はソートのみ実行
     const currentCriteria = filterCriteria.value;
     if (isEmptyFilter(currentCriteria)) {
-      if (memoizedCardSorting.isOk()) {
-        return memoizedCardSorting.value(cards);
-      }
-      return readonly(sortCards(cards));
+      return memoizedCardSorting(cards);
     }
 
     let result: readonly Card[] = cards;
 
     // フィルタリングの適用（メモ化優先）
-    if (memoizedFilterApplication.isOk()) {
-      result = memoizedFilterApplication.value({
-        cards,
-        criteria: currentCriteria,
-      });
-    } else {
-      // フォールバック
-      result = applyAllFiltersOptimized(cards, currentCriteria);
-    }
+    result = memoizedFilterApplication({
+      cards,
+      criteria: currentCriteria,
+    });
 
     // 結果が空の場合は早期リターン
     if (result.length === 0) {
@@ -351,11 +328,7 @@ export const useFilterStore = defineStore("filter", () => {
     }
 
     // ソートの適用
-    if (memoizedCardSorting.isOk()) {
-      return memoizedCardSorting.value(result);
-    }
-
-    return readonly(sortCards(result));
+    return memoizedCardSorting(result);
   });
 
   /**

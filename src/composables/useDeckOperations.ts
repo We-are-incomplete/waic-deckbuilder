@@ -4,10 +4,7 @@ import type { DeckCard } from "../types/deck";
 import * as DeckDomain from "../domain/deck";
 import { useDeckStore } from "../stores/deck";
 import { useCardsStore } from "../stores/cards";
-import {
-  memoizeArrayComputation,
-  memoizeObjectComputation,
-} from "../utils/memoization";
+import { useMemoize } from "@vueuse/core";
 import { createErrorHandler } from "../utils/errorHandler"; // createErrorHandler を追加
 
 // CardTypeから文字列表現を取得するヘルパー関数（最適化版）
@@ -19,8 +16,8 @@ export const useDeckOperations = () => {
   // エラーハンドリング設定
   const errorHandler = createErrorHandler();
 
-  // メモ化された統計計算（配列版を使用）
-  const memoizedStatsCalculation = memoizeArrayComputation(
+  // メモ化された統計計算
+  const memoizedStatsCalculation = useMemoize(
     (deckCards: readonly DeckCard[]) => {
       const kindStats = new Map<string, number>();
       const typeStats = new Map<string, number>();
@@ -29,11 +26,7 @@ export const useDeckOperations = () => {
       for (const deckCard of deckCards) {
         const { card, count } = deckCard;
         totalCards += count;
-
-        // 種別統計（効率化）
         kindStats.set(card.kind, (kindStats.get(card.kind) || 0) + count);
-
-        // タイプ統計（効率化）
         const typeString = card.type;
         typeStats.set(typeString, (typeStats.get(typeString) || 0) + count);
       }
@@ -45,11 +38,15 @@ export const useDeckOperations = () => {
         typeStats: Object.fromEntries(typeStats),
       };
     },
-    { maxSize: 20, ttl: 2 * 60 * 1000 } // 2分間キャッシュ
+    {
+      // VueUseのuseMemoizeはキーシリアライザを直接受け取らないため、
+      // デフォルトのJSON.stringifyに依存するか、カスタムキーを生成するラッパーを検討
+      // ここではデフォルトの動作に任せる
+    }
   );
 
   // メモ化された検索機能
-  const memoizedDeckSearch = memoizeObjectComputation(
+  const memoizedDeckSearch = useMemoize(
     (params: { deckCards: readonly DeckCard[]; searchText: string }) => {
       const { deckCards, searchText } = params;
 
@@ -74,7 +71,7 @@ export const useDeckOperations = () => {
 
       return result;
     },
-    { maxSize: 30, ttl: 1 * 60 * 1000 } // 1分間キャッシュ
+    {}
   );
 
   /**
@@ -232,12 +229,10 @@ export const useDeckOperations = () => {
    * デッキ内のカードを検索（最適化版）
    */
   const searchDeckCards = (searchText: string): readonly DeckCard[] => {
-    if (memoizedDeckSearch.isOk()) {
-      return memoizedDeckSearch.value({
-        deckCards: deckStore.sortedDeckCards,
-        searchText,
-      });
-    }
+    return memoizedDeckSearch({
+      deckCards: deckStore.sortedDeckCards,
+      searchText,
+    });
 
     // フォールバック
     if (!searchText || searchText.trim().length === 0) {
@@ -258,9 +253,7 @@ export const useDeckOperations = () => {
   const getDeckStatistics = () => {
     const deckCards = deckStore.sortedDeckCards;
 
-    if (memoizedStatsCalculation.isOk()) {
-      return memoizedStatsCalculation.value(deckCards);
-    }
+    return memoizedStatsCalculation(deckCards);
 
     // フォールバック
     const kindStats = new Map<string, number>();

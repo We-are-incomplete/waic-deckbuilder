@@ -1,18 +1,12 @@
 <script setup lang="ts">
-import {
-  computed,
-  useTemplateRef,
-  shallowRef,
-  triggerRef,
-  onBeforeUnmount,
-} from "vue";
+import { computed, useTemplateRef, ref, watchEffect } from "vue";
 import { DeckExportContainer } from "../index";
 import { handleImageError } from "../../utils/image";
 import { getCardImageUrlSafe } from "../../utils";
-import { useLongPress } from "../../composables/useLongPress";
 import { useDeckOperations } from "../../composables/useDeckOperations";
 import { useDeckStore } from "../../stores/deck";
 import { useExportStore } from "../../stores/export";
+import { onLongPress } from "@vueuse/core";
 
 // Vue 3.5の新機能: 改善されたdefineProps with better TypeScript support
 interface Props {
@@ -65,54 +59,37 @@ const openImageModal = (cardId: string) => {
   emit("openImageModal", cardId);
 };
 
-// Vue 3.5の新機能: shallowRef for Map performance optimization
-// Map自体の深い監視は不要なためshallowRefを使用
-const deckCardLongPressHandlers = shallowRef(
-  new Map<string, ReturnType<typeof useLongPress>>()
-);
+const deckCardRefs = ref<Map<string, HTMLElement>>(new Map());
 
-const getDeckCardLongPressHandler = (cardId: string) => {
-  const handlers = deckCardLongPressHandlers.value;
-
-  if (!handlers.has(cardId)) {
-    handlers.set(
-      cardId,
-      useLongPress({
-        delay: 500,
-        onLongPress: () => openImageModal(cardId),
-      })
-    );
-    triggerRef(deckCardLongPressHandlers); // 手動でリアクティブ更新をトリガー
+const setDeckCardRef = (el: HTMLElement | null, cardId: string) => {
+  if (el) {
+    deckCardRefs.value.set(cardId, el);
+  } else {
+    deckCardRefs.value.delete(cardId);
   }
-  return handlers.get(cardId)!;
 };
 
-// ハンドラーのクリーンアップ機能
-const cleanupCardHandler = (cardId: string) => {
-  const handlers = deckCardLongPressHandlers.value;
-  handlers.delete(cardId);
-  triggerRef(deckCardLongPressHandlers);
-};
-
-const cleanupAllHandlers = () => {
-  deckCardLongPressHandlers.value.clear();
-  triggerRef(deckCardLongPressHandlers);
-};
+watchEffect((onCleanup) => {
+  const stops: Function[] = [];
+  sortedDeckCards.value.forEach((item) => {
+    const el = deckCardRefs.value.get(item.card.id);
+    if (el) {
+      const stop = onLongPress(el, () => openImageModal(item.card.id), {
+        delay: 500,
+      });
+      stops.push(stop);
+    }
+  });
+  onCleanup(() => {
+    stops.forEach((stop) => stop());
+  });
+});
 
 // カードデクリメント処理（ハンドラークリーンアップ付き）
 const decrementCard = (cardId: string) => {
-  // 現在のカードの情報を取得
-  const currentCard = deckCards.value.find((card) => card.card.id === cardId);
-
-  // カウントが1の場合、デクリメント後に削除されるためハンドラーもクリーンアップ
-  if (currentCard && currentCard.count === 1) {
-    cleanupCardHandler(cardId);
-  }
-
   handleDecrementCard(cardId);
 };
 
-// デッキリセット処理（ハンドラークリーンアップ付き）
 const resetDeck = () => {
   emit("resetDeck");
 };
@@ -147,16 +124,9 @@ const saveDeckAsPng = async () => {
   }
 };
 
-// Vue 3.5の新機能: improved cleanup
-onBeforeUnmount(() => {
-  cleanupAllHandlers();
-});
-
 // エクスポート用
 defineExpose({
   exportContainer,
-  cleanupAllHandlers,
-  getDeckCardLongPressHandler,
   decrementCard,
   resetDeck,
   saveDeckAsPng,
@@ -345,10 +315,7 @@ defineExpose({
       >
         <div
           class="w-full relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
-          @pointerdown="getDeckCardLongPressHandler(item.card.id).startPress"
-          @pointerup="getDeckCardLongPressHandler(item.card.id).endPress"
-          @pointerleave="getDeckCardLongPressHandler(item.card.id).cancelPress"
-          @pointercancel="getDeckCardLongPressHandler(item.card.id).cancelPress"
+          :ref="(el) => setDeckCardRef(el as HTMLElement, item.card.id)"
           @contextmenu.prevent
           title="長押し: 拡大表示"
         >

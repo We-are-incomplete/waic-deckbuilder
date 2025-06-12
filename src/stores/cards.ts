@@ -5,7 +5,7 @@ import { preloadImages, logger } from "../utils";
 import { safeAsyncOperation } from "../utils/errorHandler";
 import * as CardDomain from "../domain/card";
 import { fromAsyncThrowable, ok, err, type Result } from "neverthrow";
-import { memoizeObjectComputation } from "../utils/memoization";
+import { useMemoize } from "@vueuse/core";
 
 // カードストア専用のエラー型
 type CardStoreError =
@@ -34,11 +34,10 @@ export const useCardsStore = defineStore("cards", () => {
   const isIndexBuilt = ref(false);
 
   // メモ化された検索処理
-  const memoizedSearch = memoizeObjectComputation(
+  const memoizedSearch = useMemoize(
     (params: { cards: readonly Card[]; searchText: string }) => {
       return CardDomain.searchCardsByName(params.cards, params.searchText);
-    },
-    { maxSize: 50, ttl: 5 * 60 * 1000 } // 5分間キャッシュ
+    }
   );
 
   /**
@@ -248,12 +247,10 @@ export const useCardsStore = defineStore("cards", () => {
     }
 
     // メモ化検索をフォールバックとして使用
-    if (memoizedSearch.isOk()) {
-      return memoizedSearch.value({
-        cards: availableCards.value,
-        searchText: normalizedSearch,
-      });
-    }
+    return memoizedSearch({
+      cards: availableCards.value,
+      searchText: normalizedSearch,
+    });
 
     // 最終フォールバック
     return CardDomain.searchCardsByName(availableCards.value, searchText);

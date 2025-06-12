@@ -1,9 +1,9 @@
 import { ok, err, type Result } from "neverthrow";
-import { fromThrowable } from "neverthrow";
 import type { Card } from "../types/card";
 import type { DeckCard } from "../types/deck";
 import { STORAGE_KEYS } from "../constants/storage";
-import { logger } from "./logger"; // loggerをインポート
+import { logger } from "./logger";
+import { useLocalStorage } from "@vueuse/core";
 
 // ストレージ操作エラー型
 export type StorageError =
@@ -46,29 +46,24 @@ export const deserializeDeckCards = (
     .filter((item: DeckCard | null): item is DeckCard => item !== null);
 };
 
-// IO操作：ローカルストレージから文字列を取得
-const getFromLocalStorage = fromThrowable(
-  (key: string): string | null => {
-    return localStorage.getItem(key);
+// useLocalStorage を使用してデッキカードを管理
+const deckCardsStorage = useLocalStorage(STORAGE_KEYS.DECK_CARDS, [], {
+  serializer: {
+    read: (raw: string): readonly { id: string; count: number }[] => {
+      try {
+        return JSON.parse(raw);
+      } catch (e) {
+        logger.error("Failed to parse deck cards from local storage", e);
+        return [];
+      }
+    },
+    write: (value: readonly { id: string; count: number }[]) =>
+      JSON.stringify(value),
   },
-  (error: unknown) => ({ type: "getError" as const, key: "unknown", error })
-);
+});
 
-// IO操作：ローカルストレージに文字列を保存
-const setToLocalStorage = fromThrowable(
-  (key: string, value: string): void => {
-    localStorage.setItem(key, value);
-  },
-  (error: unknown) => ({ type: "setError" as const, key: "unknown", error })
-);
-
-// IO操作：ローカルストレージから削除
-const removeFromLocalStorage = fromThrowable(
-  (key: string): void => {
-    localStorage.removeItem(key);
-  },
-  (error: unknown) => ({ type: "removeError" as const, key: "unknown", error })
-);
+// useLocalStorage を使用してデッキ名を管理
+const deckNameStorage = useLocalStorage(STORAGE_KEYS.DECK_NAME, "新しいデッキ");
 
 /**
  * デッキをローカルストレージに保存
@@ -85,22 +80,10 @@ export const saveDeckToLocalStorage = (
   }
 
   try {
-    const serializedDeck = serializeDeckCards(deck);
-    const jsonString = JSON.stringify(serializedDeck);
-
-    const saveResult = setToLocalStorage(STORAGE_KEYS.DECK_CARDS, jsonString);
-    if (saveResult.isErr()) {
-      logger.error("デッキの保存に失敗しました", saveResult.error);
-      return err({
-        type: "saveError",
-        key: STORAGE_KEYS.DECK_CARDS,
-        data: deck,
-      });
-    }
-
+    deckCardsStorage.value = serializeDeckCards(deck);
     return ok(undefined);
   } catch (e) {
-    logger.error("デッキの保存に失敗しました", e);
+    logger.error("デッキの保存に失敗しました", e, deck);
     return err({ type: "saveError", key: STORAGE_KEYS.DECK_CARDS, data: deck });
   }
 };
@@ -119,42 +102,23 @@ export const loadDeckFromLocalStorage = (
     });
   }
 
-  const getResult = getFromLocalStorage(STORAGE_KEYS.DECK_CARDS);
-  if (getResult.isErr()) {
-    logger.error("保存されたデッキの読み込みに失敗しました", getResult.error);
-    return err({ type: "notFound", key: STORAGE_KEYS.DECK_CARDS });
-  }
-
-  const savedDeck = getResult.value;
-  if (!savedDeck) {
-    return ok([]);
-  }
-
   try {
-    const parsedDeck: { id: string; count: number }[] = JSON.parse(savedDeck);
+    const parsedDeck = deckCardsStorage.value;
     const deckCards = deserializeDeckCards(parsedDeck, availableCards);
     return ok(deckCards);
   } catch (e) {
-    logger.error("保存されたデッキの読み込みに失敗しました", e);
+    logger.error(
+      "保存されたデッキの読み込みに失敗しました",
+      e,
+      JSON.stringify(deckCardsStorage.value)
+    );
     // エラー時はストレージをクリーンアップ
-    const cleanupResult = removeDeckCardsFromLocalStorage();
-    if (cleanupResult.isErr()) {
-      logger.warn(
-        "デッキデータのクリーンアップに失敗しました",
-        cleanupResult.error
-      );
-    }
-    const nameCleanupResult = removeDeckNameFromLocalStorage();
-    if (nameCleanupResult.isErr()) {
-      logger.warn(
-        "デッキ名のクリーンアップに失敗しました",
-        nameCleanupResult.error
-      );
-    }
+    removeDeckCardsFromLocalStorage();
+    removeDeckNameFromLocalStorage();
     return err({
       type: "parseError",
       key: STORAGE_KEYS.DECK_CARDS,
-      data: savedDeck,
+      data: JSON.stringify(deckCardsStorage.value),
     });
   }
 };
@@ -171,27 +135,26 @@ export const saveDeckName = (name: string): Result<void, StorageError> => {
     });
   }
 
-  const saveResult = setToLocalStorage(STORAGE_KEYS.DECK_NAME, name);
-  if (saveResult.isErr()) {
-    logger.error("デッキ名の保存に失敗しました", saveResult.error);
+  try {
+    deckNameStorage.value = name;
+    return ok(undefined);
+  } catch (e) {
+    logger.error("デッキ名の保存に失敗しました", e);
     return err({ type: "saveError", key: STORAGE_KEYS.DECK_NAME, data: name });
   }
-
-  return ok(undefined);
 };
 
 /**
  * ローカルストレージからデッキ名を読み込み
  */
 export const loadDeckName = (): Result<string, StorageError> => {
-  const getResult = getFromLocalStorage(STORAGE_KEYS.DECK_NAME);
-  if (getResult.isErr()) {
-    logger.error("デッキ名の読み込みに失敗しました", getResult.error);
-    return ok("新しいデッキ"); // デフォルト値を返す
+  try {
+    const name = deckNameStorage.value;
+    return ok(name || "新しいデッキ");
+  } catch (e) {
+    logger.error("デッキ名の読み込みに失敗しました", e);
+    return ok("新しいデッキ");
   }
-
-  const name = getResult.value;
-  return ok(name || "新しいデッキ");
 };
 
 /**
@@ -201,13 +164,13 @@ export const removeDeckCardsFromLocalStorage = (): Result<
   void,
   StorageError
 > => {
-  const removeResult = removeFromLocalStorage(STORAGE_KEYS.DECK_CARDS);
-  if (removeResult.isErr()) {
-    logger.error("デッキカードの削除に失敗しました", removeResult.error);
+  try {
+    deckCardsStorage.value = [];
+    return ok(undefined);
+  } catch (e) {
+    logger.error("デッキカードの削除に失敗しました", e, []);
     return err({ type: "removeError", key: STORAGE_KEYS.DECK_CARDS });
   }
-
-  return ok(undefined);
 };
 
 /**
@@ -217,11 +180,11 @@ export const removeDeckNameFromLocalStorage = (): Result<
   void,
   StorageError
 > => {
-  const removeResult = removeFromLocalStorage(STORAGE_KEYS.DECK_NAME);
-  if (removeResult.isErr()) {
-    logger.error("デッキ名の削除に失敗しました", removeResult.error);
+  try {
+    deckNameStorage.value = "新しいデッキ";
+    return ok(undefined);
+  } catch (e) {
+    logger.error("デッキ名の削除に失敗しました", e, "新しいデッキ");
     return err({ type: "removeError", key: STORAGE_KEYS.DECK_NAME });
   }
-
-  return ok(undefined);
 };
