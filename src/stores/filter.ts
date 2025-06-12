@@ -65,38 +65,49 @@ export const useFilterStore = defineStore("filter", () => {
   );
 
   // タグ抽出の最適化（Set操作を効率化）
-  const memoizedTagExtraction = useMemoize((cards: readonly Card[]) => {
-    if (cards.length === 0) return new Set<string>();
+  const memoizedTagExtraction = useMemoize(
+    (cards: readonly Card[]) => {
+      if (cards.length === 0) return new Set<string>();
 
-    const tags = new Set<string>();
-    const cardCount = cards.length;
+      const tags = new Set<string>();
+      const cardCount = cards.length;
 
-    // より効率的なループ処理
-    for (let i = 0; i < cardCount; i++) {
-      const card = cards[i];
-      const cardTags = card.tags;
+      // より効率的なループ処理
+      for (let i = 0; i < cardCount; i++) {
+        const card = cards[i];
+        const cardTags = card.tags;
 
-      if (cardTags) {
-        if (Array.isArray(cardTags)) {
-          const tagCount = cardTags.length;
-          for (let j = 0; j < tagCount; j++) {
-            tags.add(cardTags[j]);
+        if (cardTags) {
+          if (Array.isArray(cardTags)) {
+            const tagCount = cardTags.length;
+            for (let j = 0; j < tagCount; j++) {
+              tags.add(cardTags[j]);
+            }
+          } else if (typeof cardTags === "string") {
+            // 単一の文字列タグの場合
+            tags.add(cardTags);
           }
-        } else if (typeof cardTags === "string") {
-          // 単一の文字列タグの場合
-          tags.add(cardTags);
         }
       }
-    }
 
-    return tags;
-  });
+      return tags;
+    },
+    {
+      getKey: (cards) => {
+        // 配列参照をキーとして使用（JSON.stringifyによる高コストを回避）
+        return (
+          (cards as any).__vueuse_memoize_id ||
+          ((cards as any).__vueuse_memoize_id = Math.random().toString(36))
+        );
+      },
+    }
+  );
 
   // シンプルなMapベースの文字列正規化キャッシュ（markRawで最適化）
   const stringNormalizationCache = markRaw(new Map<string, string>());
   const normalizeString = (str: string): string => {
     const cached = stringNormalizationCache.get(str);
-    if (cached) return cached;
+    if (cached !== undefined) return cached;
 
     const normalized = str.trim().toLowerCase();
 
@@ -143,13 +154,13 @@ export const useFilterStore = defineStore("filter", () => {
     }
 
     const priorityTagSet = new Set(PRIORITY_TAGS);
-    const priorityTags: string[] = [];
+    const priorityTags = new Set<string>();
     const otherTags: string[] = [];
 
     // 一度のループで分類
     for (const tag of tags) {
       if (priorityTagSet.has(tag)) {
-        priorityTags.push(tag);
+        priorityTags.add(tag);
       } else {
         otherTags.push(tag);
       }
@@ -157,7 +168,7 @@ export const useFilterStore = defineStore("filter", () => {
 
     // 優先タグは元の順序を保持、その他のタグはソート
     const orderedPriorityTags = PRIORITY_TAGS.filter((tag) =>
-      priorityTags.includes(tag)
+      priorityTags.has(tag)
     );
     otherTags.sort();
 

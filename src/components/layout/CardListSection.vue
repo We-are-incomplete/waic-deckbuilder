@@ -144,9 +144,12 @@ watchEffect((onCleanup) => {
     }
   }
 
-  // 全てのカードの長押しハンドラーをバインド（新規追加と順序変更に対応）
+  // 新しく追加されたカードのみに長押しハンドラーをバインド
   props.sortedAndFilteredCards.forEach((card, index) => {
-    bindLongPress(card.id, index);
+    // 既にハンドラーが存在する場合はスキップ
+    if (!cardLongPressStops.has(card.id)) {
+      bindLongPress(card.id, index);
+    }
   });
 
   // 前回のカードIDsを更新

@@ -146,9 +146,6 @@ export const useCardsStore = defineStore("cards", () => {
    * キャッシュを更新する（最適化版）
    */
   const updateCaches = (cards: readonly Card[]): void => {
-    // カードデータのバージョンを更新（メモ化キャッシュの無効化用）
-    cardsVersion.value++;
-
     // IDキャッシュの更新（バッチ処理で最適化）
     cardByIdCache.clear();
     const cardCount = cards.length;
@@ -312,8 +309,10 @@ export const useCardsStore = defineStore("cards", () => {
     availableKindsCache.value = null;
     availableTypesCache.value = null;
     isIndexBuilt.value = false;
-    // memoizedSearchのキャッシュもクリア
-    memoizedSearch.clear();
+    // memoizedSearchのキャッシュもクリア（防御的チェック）
+    if (typeof memoizedSearch.clear === "function") {
+      memoizedSearch.clear();
+    }
     triggerRef(availableKindsCache);
     triggerRef(availableTypesCache);
   };
@@ -384,6 +383,12 @@ export const useCardsStore = defineStore("cards", () => {
         throw new Error(checkedCardsResult.error);
       }
       const checkedCards = checkedCardsResult.value;
+
+      // キャッシュバージョンを先に更新（新しいデータ設定前に）
+      // 重要: memoizedSearchのキャッシュ無効化はcardsVersionにのみ依存し、
+      // cardsの配列参照には依存しない。カードの配列内容が変更される場合は、
+      // 古い検索結果を防ぐために必ずcardsVersionをインクリメントする必要がある
+      cardsVersion.value++;
 
       // ストアに設定
       availableCards.value = readonly(checkedCards);
