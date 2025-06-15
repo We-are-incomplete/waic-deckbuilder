@@ -1,7 +1,6 @@
 import { defineStore } from "pinia";
 import { ref, nextTick, readonly } from "vue"; // readonly を追加
 import html2canvas from "html2canvas-pro";
-import { EXPORT_CONFIG } from "../constants";
 import { generateFileName, downloadCanvas, logger } from "../utils";
 import { ok, err, type Result } from "neverthrow"; // ok, err を追加
 
@@ -118,12 +117,9 @@ export const useExportStore = defineStore("export", () => {
       // Canvas生成
       const canvas = await html2canvas(exportContainer, {
         scale: 1,
-        width: EXPORT_CONFIG.canvas.width,
-        height: EXPORT_CONFIG.canvas.height,
         useCORS: true,
         logging: false,
         allowTaint: true,
-        backgroundColor: EXPORT_CONFIG.canvas.backgroundColor,
       });
 
       // ダウンロード

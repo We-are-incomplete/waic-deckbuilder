@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import type { DeckCard } from "../../types";
-import { EXPORT_CONFIG } from "../../constants/export";
 import { handleImageError, getCardImageUrlSafe } from "../../utils";
 
 interface Props {
@@ -15,27 +14,38 @@ defineProps<Props>();
 
 const exportContainer = ref<HTMLElement | null>(null);
 
+// エクスポート用のコンテナの設定
+const EXPORT_CONTAINER_WIDTH = 3840; // エクスポート用のコンテナ幅
+const EXPORT_CONTAINER_HEIGHT = 2160; // エクスポート用のコンテナ高さ
+const EXPORT_CONTAINER_PADDING = "298px 242px 297px 241px"; // エクスポート用のコンテナのパディング
+
 // カード幅計算に使用する定数
-const CARD_COUNT_THRESHOLD_SMALL = 30;
-const CARD_COUNT_THRESHOLD_MEDIUM = 48;
+const CARD_COUNT_THRESHOLD = 30;
 const CARDS_PER_ROW_SMALL = 10;
-const CARDS_PER_ROW_MEDIUM = 12;
 const CARDS_PER_ROW_LARGE = 15;
-const MARGIN_SMALL = 36;
-const MARGIN_MEDIUM = 44;
-const MARGIN_LARGE = 56;
+const GRID_GAP = 13; // グリッドの間隔
+const MARGIN_SMALL = GRID_GAP * (CARDS_PER_ROW_SMALL - 1);
+const MARGIN_LARGE = GRID_GAP * (CARDS_PER_ROW_LARGE - 1);
 
 /**
  * カード枚数に基づいてカード幅を計算
  */
 const calculateCardWidth = (cardCount: number): string => {
-  if (cardCount <= CARD_COUNT_THRESHOLD_SMALL) {
+  if (cardCount <= CARD_COUNT_THRESHOLD) {
     return `calc((100% - ${MARGIN_SMALL}px) / ${CARDS_PER_ROW_SMALL})`;
   }
-  if (cardCount <= CARD_COUNT_THRESHOLD_MEDIUM) {
-    return `calc((100% - ${MARGIN_MEDIUM}px) / ${CARDS_PER_ROW_MEDIUM})`;
-  }
   return `calc((100% - ${MARGIN_LARGE}px) / ${CARDS_PER_ROW_LARGE})`;
+};
+
+/**
+ * カード枚数に基づいて背景画像のURLを返す
+ */
+const getBackgroundImageUrl = (cardCount: number): string => {
+  if (cardCount <= CARD_COUNT_THRESHOLD) {
+    return `${import.meta.env.BASE_URL}sheet.avif`;
+  } else {
+    return `${import.meta.env.BASE_URL}sheet_nogrid.avif`;
+  }
 };
 
 // 親コンポーネントからrefを取得できるように公開
@@ -49,31 +59,22 @@ defineExpose({ exportContainer });
     v-show="isSaving"
     class="fixed pointer-events-none -left-[9999px] top-0 -z-10"
     :style="{
-      width: `${EXPORT_CONFIG.canvas.width}px`,
-      height: `${EXPORT_CONFIG.canvas.height}px`,
-      backgroundColor: EXPORT_CONFIG.canvas.backgroundColor,
-      padding: EXPORT_CONFIG.canvas.padding,
+      width: `${EXPORT_CONTAINER_WIDTH}px`,
+      height: `${EXPORT_CONTAINER_HEIGHT}px`,
+      padding: EXPORT_CONTAINER_PADDING,
+      backgroundImage: `url(${getBackgroundImageUrl(deckCards.length)})`,
     }"
   >
     <!-- デッキ名 -->
     <div
-      class="absolute top-5 left-1/2 -translate-x-1/2 z-10 w-full px-4 text-center leading-tight"
-      :style="{
-        fontSize: EXPORT_CONFIG.deckName.fontSize,
-        fontWeight: EXPORT_CONFIG.deckName.fontWeight,
-        color: EXPORT_CONFIG.deckName.color,
-        fontFamily: EXPORT_CONFIG.deckName.fontFamily,
-      }"
+      class="absolute top-[120px] left-1/2 -translate-x-1/2 z-10 w-full text-center leading-tight font-exdeck text-[128px] font-bold text-[#353100]"
     >
-      {{ deckName }}
+      「{{ deckName }}」
     </div>
 
     <!-- カードグリッド -->
     <div
-      class="flex flex-wrap w-full h-full justify-start items-center content-center"
-      :style="{
-        gap: EXPORT_CONFIG.grid.gap,
-      }"
+      class="flex flex-wrap w-full h-full justify-start items-center content-center gap-x-[13px] gap-y-[5px]"
     >
       <div
         v-for="item in sortedDeckCards"
@@ -94,9 +95,9 @@ defineExpose({ exportContainer });
 
         <!-- カウントバッジ -->
         <div
-          class="absolute bottom-[5px] right-[5px] font-bold text-white bg-black/70 py-0.5 px-3 rounded-xl text-[32px]"
+          class="mt-[12px] h-[54px] w-full text-center font-exdeck text-[36px] font-bold text-[#353100]"
         >
-          ×{{ item.count }}
+          {{ item.count }}
         </div>
       </div>
     </div>
