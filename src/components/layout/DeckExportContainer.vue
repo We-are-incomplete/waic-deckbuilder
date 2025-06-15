@@ -20,7 +20,7 @@ const EXPORT_CONTAINER_HEIGHT = 2160; // エクスポート用のコンテナ高
 const EXPORT_CONTAINER_PADDING = "298px 242px 297px 241px"; // エクスポート用のコンテナのパディング
 
 // カード幅計算に使用する定数
-const CARD_COUNT_THRESHOLD_SMALL = 30;
+const CARD_COUNT_THRESHOLD = 30;
 const CARDS_PER_ROW_SMALL = 10;
 const CARDS_PER_ROW_LARGE = 15;
 const GRID_GAP = 13; // グリッドの間隔
@@ -31,7 +31,7 @@ const MARGIN_LARGE = GRID_GAP * (CARDS_PER_ROW_LARGE - 1);
  * カード枚数に基づいてカード幅を計算
  */
 const calculateCardWidth = (cardCount: number): string => {
-  if (cardCount <= CARD_COUNT_THRESHOLD_SMALL) {
+  if (cardCount <= CARD_COUNT_THRESHOLD) {
     return `calc((100% - ${MARGIN_SMALL}px) / ${CARDS_PER_ROW_SMALL})`;
   }
   return `calc((100% - ${MARGIN_LARGE}px) / ${CARDS_PER_ROW_LARGE})`;
@@ -41,7 +41,7 @@ const calculateCardWidth = (cardCount: number): string => {
  * カード枚数に基づいて背景画像のURLを返す
  */
 const getBackgroundImageUrl = (cardCount: number): string => {
-  if (cardCount <= 30) {
+  if (cardCount <= CARD_COUNT_THRESHOLD) {
     return `${import.meta.env.BASE_URL}sheet.avif`;
   } else {
     return `${import.meta.env.BASE_URL}sheet_nogrid.avif`;
@@ -67,14 +67,14 @@ defineExpose({ exportContainer });
   >
     <!-- デッキ名 -->
     <div
-      class="absolute top-30 left-1/2 -translate-x-1/2 z-10 w-full px-4 text-center leading-tight font-exdeck text-9xl font-bold text-[#353100]"
+      class="absolute top-[120px] left-1/2 -translate-x-1/2 z-10 w-full text-center leading-tight font-exdeck text-[128px] font-bold text-[#353100]"
     >
       「{{ deckName }}」
     </div>
 
     <!-- カードグリッド -->
     <div
-      class="flex flex-wrap w-full h-full justify-start items-center content-center gap-x-3.25 gap-y-1.25"
+      class="flex flex-wrap w-full h-full justify-start items-center content-center gap-x-[13px] gap-y-[5px]"
     >
       <div
         v-for="item in sortedDeckCards"
@@ -95,7 +95,7 @@ defineExpose({ exportContainer });
 
         <!-- カウントバッジ -->
         <div
-          class="mt-4.5 h-12 w-full text-center font-exdeck text-4xl font-bold text-[#353100]"
+          class="mt-[12px] h-[54px] w-full text-center font-exdeck text-[36px] font-bold text-[#353100]"
         >
           {{ item.count }}
         </div>
