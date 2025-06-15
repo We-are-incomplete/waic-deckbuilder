@@ -74,7 +74,7 @@ defineExpose({ exportContainer });
 
     <!-- カードグリッド -->
     <div
-      class="flex flex-wrap w-full h-full justify-start items-center content-center gap-x-[13px] gap-y-[5px]"
+      class="flex flex-wrap w-full h-full justify-start items-center content-start gap-x-[13px] gap-y-[5px]"
     >
       <div
         v-for="item in sortedDeckCards"
