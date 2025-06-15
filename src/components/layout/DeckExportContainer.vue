@@ -17,17 +17,15 @@ const exportContainer = ref<HTMLElement | null>(null);
 // エクスポート用のコンテナの設定
 const EXPORT_CONTAINER_WIDTH = 3840; // エクスポート用のコンテナ幅
 const EXPORT_CONTAINER_HEIGHT = 2160; // エクスポート用のコンテナ高さ
-const EXPORT_CONTAINER_PADDING = "296px 239px 297px 235px"; // エクスポート用のコンテナのパディング
+const EXPORT_CONTAINER_PADDING = "298px 242px 297px 241px"; // エクスポート用のコンテナのパディング
 
 // カード幅計算に使用する定数
 const CARD_COUNT_THRESHOLD_SMALL = 30;
-const CARD_COUNT_THRESHOLD_MEDIUM = 48;
 const CARDS_PER_ROW_SMALL = 10;
-const CARDS_PER_ROW_MEDIUM = 12;
 const CARDS_PER_ROW_LARGE = 15;
-const MARGIN_SMALL = 13 * (CARDS_PER_ROW_SMALL - 1);
-const MARGIN_MEDIUM = 13 * (CARDS_PER_ROW_MEDIUM - 1);
-const MARGIN_LARGE = 13 * (CARDS_PER_ROW_LARGE - 1);
+const GRID_GAP = 13; // グリッドの間隔
+const MARGIN_SMALL = GRID_GAP * (CARDS_PER_ROW_SMALL - 1);
+const MARGIN_LARGE = GRID_GAP * (CARDS_PER_ROW_LARGE - 1);
 
 /**
  * カード枚数に基づいてカード幅を計算
@@ -35,9 +33,6 @@ const MARGIN_LARGE = 13 * (CARDS_PER_ROW_LARGE - 1);
 const calculateCardWidth = (cardCount: number): string => {
   if (cardCount <= CARD_COUNT_THRESHOLD_SMALL) {
     return `calc((100% - ${MARGIN_SMALL}px) / ${CARDS_PER_ROW_SMALL})`;
-  }
-  if (cardCount <= CARD_COUNT_THRESHOLD_MEDIUM) {
-    return `calc((100% - ${MARGIN_MEDIUM}px) / ${CARDS_PER_ROW_MEDIUM})`;
   }
   return `calc((100% - ${MARGIN_LARGE}px) / ${CARDS_PER_ROW_LARGE})`;
 };
@@ -100,7 +95,7 @@ defineExpose({ exportContainer });
 
         <!-- カウントバッジ -->
         <div
-          class="mt-4 mb-2.25 text-center font-exdeck text-4xl font-bold text-[#353100]"
+          class="mt-4.5 h-12 w-full text-center font-exdeck text-4xl font-bold text-[#353100]"
         >
           {{ item.count }}
         </div>
