@@ -39,7 +39,8 @@ TypeScript で関数型ドメインモデリングを行う。class を使わず
 
 ## その他の使用コマンド
 
+- Linter: `pnpm lint`
+- Formatter: `pnpm format`
 - 開発サーバ起動: `pnpm dev`
-- Linter: `pnpm oxlint`
 - ビルド: `pnpm build`
 - プレビュー: `pnpm preview`
