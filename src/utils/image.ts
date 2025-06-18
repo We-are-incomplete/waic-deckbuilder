@@ -29,10 +29,7 @@ const cacheState: CacheState = {
 /**
  * キャッシュにエントリーを設定
  */
-const setCacheEntry = (
-  key: string,
-  image: HTMLImageElement
-): Result<void, string> => {
+const setCacheEntry = (key: string, image: HTMLImageElement): Result<void, string> => {
   if (!key) {
     return err("キーが指定されていません");
   }
@@ -108,9 +105,7 @@ const cleanupStaleEntries = (): void => {
     }
   }
 
-  logger.info(
-    `Image cache cleanup: removed ${keysToDelete.length} stale entries`
-  );
+  logger.info(`Image cache cleanup: removed ${keysToDelete.length} stale entries`);
 };
 
 /**
@@ -212,10 +207,7 @@ export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
   let currentIndex = 0;
 
   const processBatch = (deadline?: IdleDeadline): void => {
-    while (
-      currentIndex < cards.length &&
-      (!deadline || deadline.timeRemaining() > 0)
-    ) {
+    while (currentIndex < cards.length && (!deadline || deadline.timeRemaining() > 0)) {
       const card = cards[currentIndex];
 
       if (!hasCacheEntry(card.id)) {

@@ -40,7 +40,7 @@ export const useFilterStore = defineStore("filter", () => {
         }
         return memoId;
       },
-    }
+    },
   );
 
   // より効率的なフィルタリング実装
@@ -72,7 +72,7 @@ export const useFilterStore = defineStore("filter", () => {
         ].join("|");
         return `${cardsRefId}:${criteriaHash}`;
       },
-    }
+    },
   );
 
   // タグ抽出の最適化（Set操作を効率化）
@@ -113,7 +113,7 @@ export const useFilterStore = defineStore("filter", () => {
         }
         return memoId;
       },
-    }
+    },
   );
 
   // シンプルなMapベースの文字列正規化キャッシュ（markRawで最適化）
@@ -180,9 +180,7 @@ export const useFilterStore = defineStore("filter", () => {
     }
 
     // 優先タグは元の順序を保持、その他のタグはソート
-    const orderedPriorityTags = PRIORITY_TAGS.filter((tag) =>
-      priorityTags.has(tag)
-    );
+    const orderedPriorityTags = PRIORITY_TAGS.filter((tag) => priorityTags.has(tag));
     otherTags.sort();
 
     return readonly([...orderedPriorityTags, ...otherTags]);
@@ -191,10 +189,7 @@ export const useFilterStore = defineStore("filter", () => {
   /**
    * 最適化されたテキストフィルタリング
    */
-  const applyTextFilter = (
-    cards: readonly Card[],
-    text: string
-  ): readonly Card[] => {
+  const applyTextFilter = (cards: readonly Card[], text: string): readonly Card[] => {
     if (!text || text.trim().length === 0) {
       return cards;
     }
@@ -210,10 +205,7 @@ export const useFilterStore = defineStore("filter", () => {
   /**
    * 最適化された種別フィルタリング（高速Set使用）
    */
-  const applyKindFilter = (
-    cards: readonly Card[],
-    kinds: readonly string[]
-  ): readonly Card[] => {
+  const applyKindFilter = (cards: readonly Card[], kinds: readonly string[]): readonly Card[] => {
     if (kinds.length === 0) {
       return cards;
     }
@@ -239,10 +231,7 @@ export const useFilterStore = defineStore("filter", () => {
   /**
    * 最適化されたタイプフィルタリング（高速Set使用）
    */
-  const applyTypeFilter = (
-    cards: readonly Card[],
-    types: readonly string[]
-  ): readonly Card[] => {
+  const applyTypeFilter = (cards: readonly Card[], types: readonly string[]): readonly Card[] => {
     if (types.length === 0) {
       return cards;
     }
@@ -269,10 +258,7 @@ export const useFilterStore = defineStore("filter", () => {
   /**
    * 最適化されたタグフィルタリング
    */
-  const applyTagFilter = (
-    cards: readonly Card[],
-    tags: readonly string[]
-  ): readonly Card[] => {
+  const applyTagFilter = (cards: readonly Card[], tags: readonly string[]): readonly Card[] => {
     if (tags.length === 0) {
       return cards;
     }
@@ -309,7 +295,7 @@ export const useFilterStore = defineStore("filter", () => {
    */
   const applyAllFiltersOptimized = (
     cards: readonly Card[],
-    criteria: FilterCriteria
+    criteria: FilterCriteria,
   ): readonly Card[] => {
     let filteredCards = cards;
 

@@ -19,18 +19,9 @@ export const ERROR_MESSAGES = {
 
 // エラーハンドラーインターフェース
 export interface ErrorHandler {
-  handleValidationError: (
-    message: string,
-    details?: unknown
-  ) => Result<never, AppError>;
-  handleRuntimeError: (
-    baseMessage: string,
-    originalError: unknown
-  ) => Result<never, AppError>;
-  handleAsyncError: (
-    baseMessage: string,
-    originalError: unknown
-  ) => Result<never, AppError>;
+  handleValidationError: (message: string, details?: unknown) => Result<never, AppError>;
+  handleRuntimeError: (baseMessage: string, originalError: unknown) => Result<never, AppError>;
+  handleAsyncError: (baseMessage: string, originalError: unknown) => Result<never, AppError>;
 }
 
 // ログ出力関数
@@ -55,67 +46,61 @@ const createErrorMessage = (baseMessage: string, error: unknown): string => {
 
 // エラーハンドリング関数を関数型で実装
 export const createErrorHandler = () => {
+  // 共通のエラーハンドリングヘルパー
+  const handleError = (
+    type: AppError["type"],
+    baseMessage: string,
+    originalError: unknown,
+  ): Result<never, AppError> => {
+    const fullMessage = createErrorMessage(baseMessage, originalError);
+    const error: AppError = {
+      type,
+      message: fullMessage,
+      originalError,
+    };
+    logError(baseMessage, originalError);
+    return err(error);
+  };
+
   return {
     // バリデーションエラーを処理
-    handleValidationError: (
-      message: string,
-      details?: unknown
-    ): Result<never, AppError> => {
+    handleValidationError: (message: string, details?: unknown): Result<never, AppError> => {
       const error: AppError = { type: "validation", message, details };
       logError(message, details);
       return err(error);
     },
 
     // ランタイムエラーを処理
-    handleRuntimeError: (
-      baseMessage: string,
-      originalError: unknown
-    ): Result<never, AppError> => {
-      const fullMessage = createErrorMessage(baseMessage, originalError);
-      const error: AppError = {
-        type: "runtime",
-        message: fullMessage,
-        originalError,
-      };
-      logError(baseMessage, originalError);
-      return err(error);
+    handleRuntimeError: (baseMessage: string, originalError: unknown): Result<never, AppError> => {
+      return handleError("runtime", baseMessage, originalError);
     },
 
     // 非同期エラーを処理
-    handleAsyncError: (
-      baseMessage: string,
-      originalError: unknown
-    ): Result<never, AppError> => {
-      const fullMessage = createErrorMessage(baseMessage, originalError);
-      const error: AppError = {
-        type: "async",
-        message: fullMessage,
-        originalError,
-      };
-      logError(baseMessage, originalError);
-      return err(error);
+    handleAsyncError: (baseMessage: string, originalError: unknown): Result<never, AppError> => {
+      return handleError("async", baseMessage, originalError);
     },
   };
 };
+
+// 共通のエラーハンドラーインスタンスを生成
+const commonErrorHandler = createErrorHandler();
 
 /**
  * 同期操作を安全に実行するヘルパー関数
  */
 export const safeSyncOperation = <T>(
   operation: () => T,
-  errorMessage: string
+  errorMessage: string,
 ): Result<T, AppError> => {
   if (!operation) {
-    const handler = createErrorHandler();
-    return handler.handleValidationError(
-      ERROR_MESSAGES.VALIDATION.OPERATION_NOT_PROVIDED
+    return commonErrorHandler.handleValidationError(
+      ERROR_MESSAGES.VALIDATION.OPERATION_NOT_PROVIDED,
     );
   }
 
   if (!errorMessage) {
-    const handler = createErrorHandler();
-    return handler.handleValidationError(
-      ERROR_MESSAGES.VALIDATION.ERROR_MESSAGE_NOT_PROVIDED
+    return commonErrorHandler.handleValidationError(
+      ERROR_MESSAGES.VALIDATION.ERROR_MESSAGE_NOT_PROVIDED,
     );
   }
 
@@ -123,8 +108,7 @@ export const safeSyncOperation = <T>(
   const result = safeOperation();
 
   if (result.isErr()) {
-    const handler = createErrorHandler();
-    return handler.handleRuntimeError(errorMessage, result.error);
+    return commonErrorHandler.handleRuntimeError(errorMessage, result.error);
   }
 
   return ok(result.value);
@@ -135,19 +119,17 @@ export const safeSyncOperation = <T>(
  */
 export const safeAsyncOperation = async <T>(
   operation: () => Promise<T>,
-  errorMessage: string
+  errorMessage: string,
 ): Promise<Result<T, AppError>> => {
   if (!operation) {
-    const handler = createErrorHandler();
-    return handler.handleValidationError(
-      ERROR_MESSAGES.VALIDATION.OPERATION_NOT_PROVIDED
+    return commonErrorHandler.handleValidationError(
+      ERROR_MESSAGES.VALIDATION.OPERATION_NOT_PROVIDED,
     );
   }
 
   if (!errorMessage) {
-    const handler = createErrorHandler();
-    return handler.handleValidationError(
-      ERROR_MESSAGES.VALIDATION.ERROR_MESSAGE_NOT_PROVIDED
+    return commonErrorHandler.handleValidationError(
+      ERROR_MESSAGES.VALIDATION.ERROR_MESSAGE_NOT_PROVIDED,
     );
   }
 
@@ -155,8 +137,7 @@ export const safeAsyncOperation = async <T>(
   const result = await safeAsyncOp();
 
   if (result.isErr()) {
-    const handler = createErrorHandler();
-    return handler.handleAsyncError(errorMessage, result.error);
+    return commonErrorHandler.handleAsyncError(errorMessage, result.error);
   }
 
   return ok(result.value);

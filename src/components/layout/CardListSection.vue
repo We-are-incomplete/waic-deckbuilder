@@ -100,9 +100,7 @@ const setCardRef = (el: HTMLElement | null, cardId: string) => {
   if (el) {
     cardRefs.set(cardId, el);
     // 要素が設定されたら即座に長押しイベントのバインディングを試行
-    const cardIndex = props.sortedAndFilteredCards.findIndex(
-      (card) => card.id === cardId
-    );
+    const cardIndex = props.sortedAndFilteredCards.findIndex((card) => card.id === cardId);
     if (cardIndex !== -1 && !cardLongPressStops.has(cardId)) {
       bindLongPress(cardId, cardIndex);
     }
@@ -140,9 +138,7 @@ const unbindLongPress = (cardId: string) => {
 
 watchEffect((onCleanup) => {
   // 現在のカードIDsを取得
-  const currentCardIds = new Set(
-    props.sortedAndFilteredCards.map((card) => card.id)
-  );
+  const currentCardIds = new Set(props.sortedAndFilteredCards.map((card) => card.id));
 
   // 削除されたカードの長押しハンドラーをアンバインド
   for (const prevCardId of previousCardIds.value) {

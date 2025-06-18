@@ -69,12 +69,10 @@ export const createKindSort = (): SortComparator<Pick<Card, "kind">> => {
 export const createTypeSort = (): SortComparator<Pick<Card, "type">> => {
   return (a: Pick<Card, "type">, b: Pick<Card, "type">): number => {
     const getEarliestTypeIndex = (
-      cardTypes: CardType | readonly CardType[] | string | readonly string[]
+      cardTypes: CardType | readonly CardType[] | string | readonly string[],
     ): number => {
       if (!cardTypes) return CARD_TYPES.length;
-      const types: string[] = Array.isArray(cardTypes)
-        ? [...cardTypes]
-        : [cardTypes];
+      const types: string[] = Array.isArray(cardTypes) ? [...cardTypes] : [cardTypes];
 
       let minIndex = CARD_TYPES.length;
       for (const type of types) {
@@ -115,8 +113,6 @@ export const createCombinedSort = <T>(
 /**
  * ソート順を逆にする高階関数
  */
-export const reverseSort = <T>(
-  comparator: SortComparator<T>
-): SortComparator<T> => {
+export const reverseSort = <T>(comparator: SortComparator<T>): SortComparator<T> => {
   return (a: T, b: T): number => -comparator(a, b);
 };

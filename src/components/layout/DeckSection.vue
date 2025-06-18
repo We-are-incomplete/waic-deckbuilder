@@ -29,10 +29,8 @@ const deckStore = useDeckStore();
 const exportStore = useExportStore();
 
 // デッキ操作のコンポーザブル
-const {
-  incrementCardCount: handleIncrementCard,
-  decrementCardCount: handleDecrementCard,
-} = useDeckOperations();
+const { incrementCardCount: handleIncrementCard, decrementCardCount: handleDecrementCard } =
+  useDeckOperations();
 
 // 計算プロパティ（ストアから直接取得）- Vue 3.5の改善されたreactivity
 const deckCards = computed(() => deckStore.deckCards);
@@ -46,13 +44,10 @@ const updateDeckName = (value: string) => {
 };
 
 // Vue 3.5の新機能: useTemplateRef でテンプレート参照を管理
-const deckExportContainerRef = useTemplateRef<
-  InstanceType<typeof DeckExportContainer>
->("deckExportContainer");
+const deckExportContainerRef =
+  useTemplateRef<InstanceType<typeof DeckExportContainer>>("deckExportContainer");
 
-const exportContainer = computed(
-  () => deckExportContainerRef.value?.exportContainer || null
-);
+const exportContainer = computed(() => deckExportContainerRef.value?.exportContainer || null);
 
 // カード画像を拡大表示
 const openImageModal = (cardId: string) => {

@@ -5,10 +5,7 @@ import type { Card, CardType } from "../types/card";
  */
 export const isCardMatchingText = (card: Card, textLower: string): boolean => {
   // 名前とIDでの検索
-  if (
-    card.name.toLowerCase().includes(textLower) ||
-    card.id.toLowerCase().includes(textLower)
-  ) {
+  if (card.name.toLowerCase().includes(textLower) || card.id.toLowerCase().includes(textLower)) {
     return true;
   }
 
@@ -24,10 +21,7 @@ export const isCardMatchingText = (card: Card, textLower: string): boolean => {
 /**
  * カードがタイプフィルターにマッチするかチェック
  */
-export const isCardMatchingType = (
-  card: Card,
-  typeSet: Set<CardType>
-): boolean => {
+export const isCardMatchingType = (card: Card, typeSet: Set<CardType>): boolean => {
   const cardTypes = Array.isArray(card.type) ? card.type : [card.type];
   return cardTypes.some((type: CardType) => typeSet.has(type));
 };

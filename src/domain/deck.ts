@@ -11,12 +11,7 @@
  */
 import { ok, err, type Result } from "neverthrow";
 import type { Card } from "../types/card";
-import type {
-  DeckCard,
-  DeckState,
-  DeckOperation,
-  DeckOperationError,
-} from "../types/deck";
+import type { DeckCard, DeckState, DeckOperation, DeckOperationError } from "../types/deck";
 
 // ドメイン定数
 const MAX_CARD_COPIES = 4;
@@ -26,9 +21,7 @@ const MAX_CARD_COPIES = 4;
 // =============================================================================
 
 // DeckCard配列をMapに変換
-const createDeckCardMap = (
-  cards: readonly DeckCard[]
-): Map<string, DeckCard> => {
+const createDeckCardMap = (cards: readonly DeckCard[]): Map<string, DeckCard> => {
   const map = new Map<string, DeckCard>();
   for (const deckCard of cards) {
     map.set(deckCard.card.id, deckCard);
@@ -50,10 +43,7 @@ const mapToDeckCards = (map: Map<string, DeckCard>): readonly DeckCard[] => {
 // =============================================================================
 
 // デッキカード作成関数
-export const createDeckCard = (
-  card: Card,
-  count: number
-): Result<DeckCard, DeckOperationError> => {
+export const createDeckCard = (card: Card, count: number): Result<DeckCard, DeckOperationError> => {
   if (count < 1) {
     return err({ type: "invalidCardCount", cardId: card.id, count });
   }
@@ -83,13 +73,11 @@ export const calculateDeckState = (cards: readonly DeckCard[]): DeckState => {
   // カード枚数のバリデーション
   for (const deckCard of cards) {
     if (deckCard.count < 1) {
-      errors.push(
-        `カード「${deckCard.card.name}」の枚数が無効です: ${deckCard.count}`
-      );
+      errors.push(`カード「${deckCard.card.name}」の枚数が無効です: ${deckCard.count}`);
     }
     if (deckCard.count > MAX_CARD_COPIES) {
       errors.push(
-        `カード「${deckCard.card.name}」の枚数が上限を超えています: ${deckCard.count}/${MAX_CARD_COPIES}`
+        `カード「${deckCard.card.name}」の枚数が上限を超えています: ${deckCard.count}/${MAX_CARD_COPIES}`,
       );
     }
   }
@@ -104,7 +92,7 @@ export const calculateDeckState = (cards: readonly DeckCard[]): DeckState => {
 // カードをデッキに追加（Mapベース最適化版）
 export const addCardToDeck = (
   cards: readonly DeckCard[],
-  cardToAdd: Card
+  cardToAdd: Card,
 ): Result<readonly DeckCard[], DeckOperationError> => {
   const deckMap = createDeckCardMap(cards);
   const existingCard = deckMap.get(cardToAdd.id);
@@ -140,7 +128,7 @@ export const addCardToDeck = (
 export const setCardCount = (
   cards: readonly DeckCard[],
   cardId: string,
-  count: number
+  count: number,
 ): Result<readonly DeckCard[], DeckOperationError> => {
   const deckMap = createDeckCardMap(cards);
   const existingCard = deckMap.get(cardId);
@@ -171,7 +159,7 @@ export const setCardCount = (
 // カードをデッキから削除（Mapベース最適化版）
 export const removeCardFromDeck = (
   cards: readonly DeckCard[],
-  cardId: string
+  cardId: string,
 ): Result<readonly DeckCard[], DeckOperationError> => {
   const deckMap = createDeckCardMap(cards);
 
@@ -186,7 +174,7 @@ export const removeCardFromDeck = (
 // カード枚数を増やす（Mapベース最適化版）
 export const incrementCardCount = (
   cards: readonly DeckCard[],
-  cardId: string
+  cardId: string,
 ): Result<readonly DeckCard[], DeckOperationError> => {
   const current = cards.find((dc) => dc.card.id === cardId)?.count ?? 0;
   return setCardCount(cards, cardId, current + 1);
@@ -195,7 +183,7 @@ export const incrementCardCount = (
 // カード枚数を減らす（Mapベース最適化版）
 export const decrementCardCount = (
   cards: readonly DeckCard[],
-  cardId: string
+  cardId: string,
 ): Result<readonly DeckCard[], DeckOperationError> => {
   const current = cards.find((dc) => dc.card.id === cardId)?.count ?? 0;
   return setCardCount(cards, cardId, current - 1);
@@ -204,7 +192,7 @@ export const decrementCardCount = (
 // デッキ操作を実行
 export const executeDeckOperation = (
   cards: readonly DeckCard[],
-  operation: DeckOperation
+  operation: DeckOperation,
 ): Result<readonly DeckCard[], DeckOperationError> => {
   switch (operation.type) {
     case "addCard":

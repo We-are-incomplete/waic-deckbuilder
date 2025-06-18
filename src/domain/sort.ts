@@ -1,9 +1,5 @@
 import type { Card, DeckCard } from "../types";
-import {
-  createNaturalSort,
-  createKindSort,
-  createTypeSort,
-} from "../utils/sort";
+import { createNaturalSort, createKindSort, createTypeSort } from "../utils/sort";
 
 /**
  * @file カードとデッキカードのソートに関するドメインロジックを定義する。
@@ -56,9 +52,7 @@ export const sortCards = (cards: readonly Card[]): readonly Card[] => {
 /**
  * デッキカード配列をソートする純粋関数
  */
-export const sortDeckCards = (
-  deckCards: readonly DeckCard[]
-): readonly DeckCard[] => {
+export const sortDeckCards = (deckCards: readonly DeckCard[]): readonly DeckCard[] => {
   const sorted = [...deckCards];
   sorted.sort(compareDeckCards);
   return sorted;

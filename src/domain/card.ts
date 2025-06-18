@@ -27,7 +27,7 @@ export const createCard = (
   name: string,
   kind: CardKind,
   type: CardType,
-  tags?: readonly string[]
+  tags?: readonly string[],
 ): Result<Card, CardValidationError> => {
   // ID検証
   if (!id || id.trim().length === 0) {
@@ -41,9 +41,7 @@ export const createCard = (
 
   // タグ検証
   let finalTags: readonly string[] | undefined = undefined;
-  const processedTags = tags
-    ?.map((tag) => tag.trim())
-    .filter((tag) => tag.length > 0);
+  const processedTags = tags?.map((tag) => tag.trim()).filter((tag) => tag.length > 0);
 
   if (processedTags && processedTags.length > 0) {
     const uniqueTags = new Set(processedTags);
@@ -68,10 +66,7 @@ export const hasTag = (card: Card, tag: string): boolean => {
 };
 
 // カード名による検索
-export const searchCardsByName = (
-  cards: readonly Card[],
-  searchText: string
-): readonly Card[] => {
+export const searchCardsByName = (cards: readonly Card[], searchText: string): readonly Card[] => {
   if (!searchText || searchText.trim().length === 0) {
     return cards;
   }
@@ -80,14 +75,14 @@ export const searchCardsByName = (
   return cards.filter(
     (card) =>
       card.name.toLowerCase().includes(normalizedSearchText) ||
-      card.id.toLowerCase().includes(normalizedSearchText)
+      card.id.toLowerCase().includes(normalizedSearchText),
   );
 };
 
 // カード種別による検索
 export const filterCardsByKind = (
   cards: readonly Card[],
-  kinds: readonly CardKind[]
+  kinds: readonly CardKind[],
 ): readonly Card[] => {
   if (kinds.length === 0) {
     return cards;
@@ -99,7 +94,7 @@ export const filterCardsByKind = (
 // カードタイプによる検索
 export const filterCardsByType = (
   cards: readonly Card[],
-  types: readonly CardType[]
+  types: readonly CardType[],
 ): readonly Card[] => {
   if (types.length === 0) {
     return cards;
@@ -113,7 +108,7 @@ export const filterCardsByType = (
 // タグによる検索
 export const filterCardsByTags = (
   cards: readonly Card[],
-  tags: readonly string[]
+  tags: readonly string[],
 ): readonly Card[] => {
   if (tags.length === 0) {
     return cards;

@@ -26,9 +26,7 @@ export type DeckCodeDecodeError =
  * デッキコードをエンコード
  */
 export const encodeDeckCode = (deck: readonly DeckCard[]): string => {
-  const cardIds = deck.flatMap((item: DeckCard) =>
-    Array(item.count).fill(item.card.id)
-  );
+  const cardIds = deck.flatMap((item: DeckCard) => Array(item.count).fill(item.card.id));
   return cardIds.join("/");
 };
 
@@ -37,7 +35,7 @@ export const encodeDeckCode = (deck: readonly DeckCard[]): string => {
  */
 export const decodeDeckCode = (
   code: string,
-  availableCards: readonly Card[]
+  availableCards: readonly Card[],
 ): Result<DeckCard[], DeckCodeDecodeError> => {
   // 空文字列の場合は早期リターン
   if (!code || code.trim() === "") {
