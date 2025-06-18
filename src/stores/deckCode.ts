@@ -36,7 +36,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
       logger.debug("デッキカード数:", sortedDeck.length);
       logger.debug(
         "デッキ内容:",
-        sortedDeck.map((item: DeckCard) => `${item.card.id} x${item.count}`)
+        sortedDeck.map((item: DeckCard) => `${item.card.id} x${item.count}`),
       );
       showDeckCodeModal.value = true;
     } catch (e) {
@@ -62,7 +62,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
         }
         await navigator.clipboard.writeText(text);
       },
-      (error: unknown) => error
+      (error: unknown) => error,
     );
 
     const result = await safeClipboardWrite(deckCode.value);
@@ -103,11 +103,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
     }
 
     // 空文字列や無効な文字が含まれていないかチェック
-    if (
-      trimmedCode.includes("//") ||
-      trimmedCode.startsWith("/") ||
-      trimmedCode.endsWith("/")
-    ) {
+    if (trimmedCode.includes("//") || trimmedCode.startsWith("/") || trimmedCode.endsWith("/")) {
       const warningMessage = "無効なデッキコード形式です";
       logger.warn(warningMessage);
       error.value = { type: "validation", message: warningMessage };
@@ -131,7 +127,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
       logger.debug("利用可能カード数:", availableCards.length);
       logger.debug(
         "利用可能カード(最初の5件):",
-        availableCards.slice(0, 5).map((c) => c.id)
+        availableCards.slice(0, 5).map((c) => c.id),
       );
 
       const decodeResult = decodeDeckCode(trimmedCode, availableCards);
@@ -143,9 +139,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
           deckStore.setDeckCards(importedCards);
           importDeckCode.value = "";
           showDeckCodeModal.value = false;
-          logger.info(
-            `デッキをインポートしました（${importedCards.length}種類のカード）`
-          );
+          logger.info(`デッキをインポートしました（${importedCards.length}種類のカード）`);
         } else {
           const warningMessage =
             "有効なカードが見つかりませんでした。カードIDが正しいか確認してください。";
@@ -165,7 +159,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
             break;
           case "cardNotFound":
             errorMessage = `一部のカードが見つかりませんでした: ${decodeResult.error.notFoundIds.join(
-              ", "
+              ", ",
             )}`;
             break;
           default:

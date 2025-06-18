@@ -11,10 +11,7 @@ export const generateFileName = (deckName: string): string => {
 /**
  * キャンバスをダウンロード
  */
-export const downloadCanvas = (
-  canvas: HTMLCanvasElement,
-  filename: string
-): void => {
+export const downloadCanvas = (canvas: HTMLCanvasElement, filename: string): void => {
   const link = document.createElement("a");
   link.download = filename;
   link.href = canvas.toDataURL("image/png");

@@ -1,13 +1,5 @@
 import { defineStore } from "pinia";
-import {
-  ref,
-  computed,
-  watch,
-  readonly,
-  shallowRef,
-  onMounted,
-  onBeforeUnmount,
-} from "vue";
+import { ref, computed, watch, readonly, shallowRef, onMounted, onBeforeUnmount } from "vue";
 import type { Card, DeckCard } from "../types";
 import {
   saveDeckToLocalStorage,
@@ -73,10 +65,7 @@ export const useDeckStore = defineStore("deck", () => {
    * Vue 3.5最適化: デッキの合計枚数
    */
   const totalDeckCards = computed(() => {
-    return deckCards.value.reduce(
-      (sum: number, item: DeckCard) => sum + item.count,
-      0
-    );
+    return deckCards.value.reduce((sum: number, item: DeckCard) => sum + item.count, 0);
   });
 
   /**
@@ -113,9 +102,7 @@ export const useDeckStore = defineStore("deck", () => {
     if (result.isOk()) {
       updateDeckCards([...result.value]);
     } else {
-      errorHandler.value.handleValidationError(
-        `カードの追加に失敗しました: ${result.error.type}`
-      );
+      errorHandler.value.handleValidationError(`カードの追加に失敗しました: ${result.error.type}`);
     }
   };
 
@@ -132,7 +119,7 @@ export const useDeckStore = defineStore("deck", () => {
       updateDeckCards([...result.value]);
     } else {
       errorHandler.value.handleValidationError(
-        `カード枚数の増加に失敗しました: ${result.error.type}`
+        `カード枚数の増加に失敗しました: ${result.error.type}`,
       );
     }
   };
@@ -150,7 +137,7 @@ export const useDeckStore = defineStore("deck", () => {
       updateDeckCards([...result.value]);
     } else {
       errorHandler.value.handleValidationError(
-        `カード枚数の減少に失敗しました: ${result.error.type}`
+        `カード枚数の減少に失敗しました: ${result.error.type}`,
       );
     }
   };
@@ -167,9 +154,7 @@ export const useDeckStore = defineStore("deck", () => {
     if (result.isOk()) {
       updateDeckCards([...result.value]);
     } else {
-      errorHandler.value.handleValidationError(
-        `カードの削除に失敗しました: ${result.error.type}`
-      );
+      errorHandler.value.handleValidationError(`カードの削除に失敗しました: ${result.error.type}`);
     }
   };
 
@@ -180,10 +165,7 @@ export const useDeckStore = defineStore("deck", () => {
     const loadDeckResult = loadDeckFromLocalStorage(availableCards);
     if (loadDeckResult.isErr()) {
       updateDeckCards([]);
-      errorHandler.value.handleRuntimeError(
-        "デッキの読み込みに失敗しました",
-        loadDeckResult.error
-      );
+      errorHandler.value.handleRuntimeError("デッキの読み込みに失敗しました", loadDeckResult.error);
     } else {
       updateDeckCards(loadDeckResult.value);
     }
@@ -193,7 +175,7 @@ export const useDeckStore = defineStore("deck", () => {
       deckName.value = "新しいデッキ";
       errorHandler.value.handleRuntimeError(
         "デッキ名の読み込みに失敗しました",
-        loadNameResult.error
+        loadNameResult.error,
       );
     } else {
       deckName.value = loadNameResult.value;
@@ -237,7 +219,7 @@ export const useDeckStore = defineStore("deck", () => {
       saveDeckToLocalStorage(cards);
     },
     500,
-    { maxWait: 2000 }
+    { maxWait: 2000 },
   );
 
   const debouncedSaveName = useDebounceFn(
@@ -245,7 +227,7 @@ export const useDeckStore = defineStore("deck", () => {
       saveDeckName(name);
     },
     500,
-    { maxWait: 2000 }
+    { maxWait: 2000 },
   );
 
   // Vue 3.5最適化: watchEffect for better side effect management
@@ -254,7 +236,7 @@ export const useDeckStore = defineStore("deck", () => {
     (newCards) => {
       debouncedSave(newCards);
     },
-    { deep: false, flush: "post" } // shallowRefなので浅い監視で十分
+    { deep: false, flush: "post" }, // shallowRefなので浅い監視で十分
   );
 
   watch(deckName, (newName) => {
@@ -281,10 +263,7 @@ export const useDeckStore = defineStore("deck", () => {
       // コンポーネント破棄時にも保存を実行
       handleBeforeUnload();
     });
-  } else if (
-    typeof window !== "undefined" &&
-    isBeforeUnloadListenerRegistered
-  ) {
+  } else if (typeof window !== "undefined" && isBeforeUnloadListenerRegistered) {
     // 既にリスナーが登録されている場合は、アンマウント時の処理のみ追加
     onBeforeUnmount(() => {
       // コンポーネント破棄時にも保存を実行

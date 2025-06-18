@@ -80,7 +80,7 @@ watch(
     if (newSrc) {
       isImageLoading.value = true;
     }
-  }
+  },
 );
 
 // スワイプ関連の状態
@@ -181,9 +181,7 @@ const imageAltText = computed(() => {
 
   const cardInfo = props.currentCard.name;
   const positionInfo =
-    props.cardIndex !== null &&
-    props.cardIndex !== undefined &&
-    props.totalCards
+    props.cardIndex !== null && props.cardIndex !== undefined && props.totalCards
       ? ` (${props.cardIndex + 1}/${props.totalCards})`
       : "";
 
@@ -241,7 +239,7 @@ watch(
     } else {
       restoreFocus();
     }
-  }
+  },
 );
 
 // ライフサイクルフック

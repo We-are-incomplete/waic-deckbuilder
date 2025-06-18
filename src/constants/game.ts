@@ -5,12 +5,7 @@ export const GAME_CONSTANTS = {
 } as const;
 
 // カード種別とタイプの定数
-export const CARD_KINDS: readonly string[] = [
-  "Artist",
-  "Song",
-  "Magic",
-  "Direction",
-] as const;
+export const CARD_KINDS: readonly string[] = ["Artist", "Song", "Magic", "Direction"] as const;
 
 export const CARD_TYPES: readonly string[] = [
   "赤",
