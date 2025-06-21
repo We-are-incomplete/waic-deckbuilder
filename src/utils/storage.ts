@@ -47,31 +47,35 @@ export const deserializeDeckCards = (
 };
 
 // useLocalStorage を使用してデッキカードを管理
-const deckCardsStorage = useLocalStorage<readonly { id: string; count: number }[]>(
-  STORAGE_KEYS.DECK_CARDS,
-  [],
-  {
-    serializer: {
-      read: (raw: string): readonly { id: string; count: number }[] => {
-        try {
-          return JSON.parse(raw);
-        } catch (e) {
-          logger.error("Failed to parse deck cards from local storage", e);
-          return [];
-        }
-      },
-      write: (value: readonly { id: string; count: number }[]) => JSON.stringify(value),
+const deckCardsStorage = useLocalStorage<
+  readonly { id: string; count: number }[]
+>(STORAGE_KEYS.DECK_CARDS, [], {
+  serializer: {
+    read: (raw: string): readonly { id: string; count: number }[] => {
+      try {
+        return JSON.parse(raw);
+      } catch (e) {
+        logger.error("Failed to parse deck cards from local storage", e);
+        return [];
+      }
     },
+    write: (value: readonly { id: string; count: number }[]) =>
+      JSON.stringify(value),
   },
-);
+});
 
 // useLocalStorage を使用してデッキ名を管理
-const deckNameStorage = useLocalStorage<string>(STORAGE_KEYS.DECK_NAME, "新しいデッキ");
+const deckNameStorage = useLocalStorage<string>(
+  STORAGE_KEYS.DECK_NAME,
+  "新しいデッキ",
+);
 
 /**
  * デッキをローカルストレージに保存
  */
-export const saveDeckToLocalStorage = (deck: readonly DeckCard[]): Result<void, StorageError> => {
+export const saveDeckToLocalStorage = (
+  deck: readonly DeckCard[],
+): Result<void, StorageError> => {
   if (!deck) {
     return err({
       type: "invalidData",
@@ -160,7 +164,10 @@ export const loadDeckName = (): Result<string, StorageError> => {
 /**
  * デッキカードをローカルストレージから削除
  */
-export const removeDeckCardsFromLocalStorage = (): Result<void, StorageError> => {
+export const removeDeckCardsFromLocalStorage = (): Result<
+  void,
+  StorageError
+> => {
   try {
     deckCardsStorage.value = [];
     return ok(undefined);
@@ -173,7 +180,10 @@ export const removeDeckCardsFromLocalStorage = (): Result<void, StorageError> =>
 /**
  * デッキ名をローカルストレージから削除
  */
-export const removeDeckNameFromLocalStorage = (): Result<void, StorageError> => {
+export const removeDeckNameFromLocalStorage = (): Result<
+  void,
+  StorageError
+> => {
   try {
     deckNameStorage.value = "新しいデッキ";
     return ok(undefined);

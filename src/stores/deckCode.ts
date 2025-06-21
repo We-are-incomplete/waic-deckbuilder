@@ -103,7 +103,11 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
     }
 
     // 空文字列や無効な文字が含まれていないかチェック
-    if (trimmedCode.includes("//") || trimmedCode.startsWith("/") || trimmedCode.endsWith("/")) {
+    if (
+      trimmedCode.includes("//") ||
+      trimmedCode.startsWith("/") ||
+      trimmedCode.endsWith("/")
+    ) {
       const warningMessage = "無効なデッキコード形式です";
       logger.warn(warningMessage);
       error.value = { type: "validation", message: warningMessage };
@@ -139,7 +143,9 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
           deckStore.setDeckCards(importedCards);
           importDeckCode.value = "";
           showDeckCodeModal.value = false;
-          logger.info(`デッキをインポートしました（${importedCards.length}種類のカード）`);
+          logger.info(
+            `デッキをインポートしました（${importedCards.length}種類のカード）`,
+          );
         } else {
           const warningMessage =
             "有効なカードが見つかりませんでした。カードIDが正しいか確認してください。";

@@ -41,7 +41,9 @@ export const createCard = (
 
   // タグ検証
   let finalTags: readonly string[] | undefined = undefined;
-  const processedTags = tags?.map((tag) => tag.trim()).filter((tag) => tag.length > 0);
+  const processedTags = tags
+    ?.map((tag) => tag.trim())
+    .filter((tag) => tag.length > 0);
 
   if (processedTags && processedTags.length > 0) {
     const uniqueTags = new Set(processedTags);
@@ -66,7 +68,10 @@ export const hasTag = (card: Card, tag: string): boolean => {
 };
 
 // カード名による検索
-export const searchCardsByName = (cards: readonly Card[], searchText: string): readonly Card[] => {
+export const searchCardsByName = (
+  cards: readonly Card[],
+  searchText: string,
+): readonly Card[] => {
   if (!searchText || searchText.trim().length === 0) {
     return cards;
   }

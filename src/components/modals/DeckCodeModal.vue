@@ -64,7 +64,7 @@ const emit = defineEmits<Emits>();
             @input="
               emit(
                 'updateImportCode',
-                ($event.target as HTMLInputElement).value
+                ($event.target as HTMLInputElement).value,
               )
             "
             @contextmenu.stop
