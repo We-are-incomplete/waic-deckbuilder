@@ -28,7 +28,9 @@ export const useExportStore = defineStore("export", () => {
   /**
    * すべての画像の読み込み完了を待つ
    */
-  const waitForImagesLoaded = (container: HTMLElement): Promise<Result<void, ExportError>> => {
+  const waitForImagesLoaded = (
+    container: HTMLElement,
+  ): Promise<Result<void, ExportError>> => {
     return new Promise((resolve) => {
       const images = container.querySelectorAll("img");
 

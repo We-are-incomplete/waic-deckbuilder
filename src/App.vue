@@ -26,7 +26,8 @@ const appStore = useAppStore();
 const { cardsStore, deckStore, filterStore, deckCodeStore } = appStore;
 
 // Vue 3.5の新機能: useTemplateRef でテンプレート参照を管理
-const deckSectionRef = useTemplateRef<InstanceType<typeof DeckSection>>("deckSection");
+const deckSectionRef =
+  useTemplateRef<InstanceType<typeof DeckSection>>("deckSection");
 
 // アプリケーションの初期化
 onMounted(appStore.initializeApp);
@@ -120,7 +121,9 @@ const memoizedDeckCards = computed<readonly DeckCard[]>(() => {
 });
 
 // Vue 3.5の新機能: より効率的な状態更新
-const updateImageModalState = (updates: Partial<typeof imageModalState.value>) => {
+const updateImageModalState = (
+  updates: Partial<typeof imageModalState.value>,
+) => {
   Object.assign(imageModalState.value, updates);
   triggerRef(imageModalState); // 手動でリアクティブ更新をトリガー
 };
@@ -211,7 +214,9 @@ watchEffect(() => {
 // 条件付きレンダリングのための計算プロパティ（Vue 3.5の改善されたreactivity）
 const shouldShowFilterModal = computed(() => filterStore.isFilterModalOpen);
 const shouldShowDeckCodeModal = computed(() => deckCodeStore.showDeckCodeModal);
-const shouldShowResetConfirmModal = computed(() => appStore.showResetConfirmModal);
+const shouldShowResetConfirmModal = computed(
+  () => appStore.showResetConfirmModal,
+);
 const shouldShowImageModal = computed(() => imageModalState.value.isVisible);
 
 // デッキセクションのプロパティを計算（Vue 3.5の最適化されたcomputed）

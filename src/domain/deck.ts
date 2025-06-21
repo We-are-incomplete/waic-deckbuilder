@@ -11,7 +11,12 @@
  */
 import { ok, err, type Result } from "neverthrow";
 import type { Card } from "../types/card";
-import type { DeckCard, DeckState, DeckOperation, DeckOperationError } from "../types/deck";
+import type {
+  DeckCard,
+  DeckState,
+  DeckOperation,
+  DeckOperationError,
+} from "../types/deck";
 
 // ドメイン定数
 const MAX_CARD_COPIES = 4;
@@ -21,7 +26,9 @@ const MAX_CARD_COPIES = 4;
 // =============================================================================
 
 // DeckCard配列をMapに変換
-const createDeckCardMap = (cards: readonly DeckCard[]): Map<string, DeckCard> => {
+const createDeckCardMap = (
+  cards: readonly DeckCard[],
+): Map<string, DeckCard> => {
   const map = new Map<string, DeckCard>();
   for (const deckCard of cards) {
     map.set(deckCard.card.id, deckCard);
@@ -43,7 +50,10 @@ const mapToDeckCards = (map: Map<string, DeckCard>): readonly DeckCard[] => {
 // =============================================================================
 
 // デッキカード作成関数
-export const createDeckCard = (card: Card, count: number): Result<DeckCard, DeckOperationError> => {
+export const createDeckCard = (
+  card: Card,
+  count: number,
+): Result<DeckCard, DeckOperationError> => {
   if (count < 1) {
     return err({ type: "invalidCardCount", cardId: card.id, count });
   }
@@ -73,7 +83,9 @@ export const calculateDeckState = (cards: readonly DeckCard[]): DeckState => {
   // カード枚数のバリデーション
   for (const deckCard of cards) {
     if (deckCard.count < 1) {
-      errors.push(`カード「${deckCard.card.name}」の枚数が無効です: ${deckCard.count}`);
+      errors.push(
+        `カード「${deckCard.card.name}」の枚数が無効です: ${deckCard.count}`,
+      );
     }
     if (deckCard.count > MAX_CARD_COPIES) {
       errors.push(

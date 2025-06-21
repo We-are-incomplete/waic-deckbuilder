@@ -26,7 +26,9 @@ export type DeckCodeDecodeError =
  * デッキコードをエンコード
  */
 export const encodeDeckCode = (deck: readonly DeckCard[]): string => {
-  const cardIds = deck.flatMap((item: DeckCard) => Array(item.count).fill(item.card.id));
+  const cardIds = deck.flatMap((item: DeckCard) =>
+    Array(item.count).fill(item.card.id),
+  );
   return cardIds.join("/");
 };
 

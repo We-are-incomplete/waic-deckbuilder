@@ -181,7 +181,9 @@ const imageAltText = computed(() => {
 
   const cardInfo = props.currentCard.name;
   const positionInfo =
-    props.cardIndex !== null && props.cardIndex !== undefined && props.totalCards
+    props.cardIndex !== null &&
+    props.cardIndex !== undefined &&
+    props.totalCards
       ? ` (${props.cardIndex + 1}/${props.totalCards})`
       : "";
 

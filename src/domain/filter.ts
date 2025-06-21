@@ -9,7 +9,12 @@
  */
 import type { Card } from "../types/card";
 import type { FilterCondition } from "../types/filter";
-import { searchCardsByName, filterCardsByKind, filterCardsByType, filterCardsByTags } from "./card";
+import {
+  searchCardsByName,
+  filterCardsByKind,
+  filterCardsByType,
+  filterCardsByTags,
+} from "./card";
 
 // フィルター条件を適用する純粋関数
 export const applyFilter = (
@@ -48,6 +53,9 @@ export const isEmptyFilter = (condition: FilterCondition): boolean => {
       return condition.values.length === 0;
 
     case "combined":
-      return condition.conditions.length === 0 || condition.conditions.every(isEmptyFilter);
+      return (
+        condition.conditions.length === 0 ||
+        condition.conditions.every(isEmptyFilter)
+      );
   }
 };

@@ -117,7 +117,11 @@ export const useDeckOperations = () => {
 
   // メモ化された検索機能（安全なキー版）
   const baseMemoizedDeckSearch = useMemoize(
-    (_searchKey: string, deckCards: readonly DeckCard[], searchText: string) => {
+    (
+      _searchKey: string,
+      deckCards: readonly DeckCard[],
+      searchText: string,
+    ) => {
       if (!searchText || searchText.trim().length === 0) {
         return deckCards;
       }
@@ -129,7 +133,10 @@ export const useDeckOperations = () => {
         const cardName = deckCard.card.name.toLowerCase();
         const cardId = deckCard.card.id.toLowerCase();
 
-        if (cardName.includes(normalizedSearchText) || cardId.includes(normalizedSearchText)) {
+        if (
+          cardName.includes(normalizedSearchText) ||
+          cardId.includes(normalizedSearchText)
+        ) {
           result.push(deckCard);
         }
       }
@@ -203,7 +210,9 @@ export const useDeckOperations = () => {
 
     switch (result.error.type) {
       case "maxCountExceeded":
-        errorHandler.handleValidationError(`カード「${card.name}」は既に最大枚数です`);
+        errorHandler.handleValidationError(
+          `カード「${card.name}」は既に最大枚数です`,
+        );
         break;
       case "deckSizeExceeded":
         errorHandler.handleValidationError("デッキサイズの上限を超えます");
@@ -338,19 +347,28 @@ export const useDeckOperations = () => {
       stats: {
         hitCount: statsHitCount,
         missCount: statsMissCount,
-        hitRatio: statsTotal > 0 ? ((statsHitCount / statsTotal) * 100).toFixed(1) : "0.0",
+        hitRatio:
+          statsTotal > 0
+            ? ((statsHitCount / statsTotal) * 100).toFixed(1)
+            : "0.0",
         total: statsTotal,
       },
       search: {
         hitCount: searchHitCount,
         missCount: searchMissCount,
-        hitRatio: searchTotal > 0 ? ((searchHitCount / searchTotal) * 100).toFixed(1) : "0.0",
+        hitRatio:
+          searchTotal > 0
+            ? ((searchHitCount / searchTotal) * 100).toFixed(1)
+            : "0.0",
         total: searchTotal,
       },
       overall: {
         hitCount: overallHits,
         missCount: statsMissCount + searchMissCount,
-        hitRatio: overallTotal > 0 ? ((overallHits / overallTotal) * 100).toFixed(1) : "0.0",
+        hitRatio:
+          overallTotal > 0
+            ? ((overallHits / overallTotal) * 100).toFixed(1)
+            : "0.0",
         total: overallTotal,
       },
     };

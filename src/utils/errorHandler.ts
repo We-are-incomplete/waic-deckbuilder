@@ -19,9 +19,18 @@ export const ERROR_MESSAGES = {
 
 // エラーハンドラーインターフェース
 export interface ErrorHandler {
-  handleValidationError: (message: string, details?: unknown) => Result<never, AppError>;
-  handleRuntimeError: (baseMessage: string, originalError: unknown) => Result<never, AppError>;
-  handleAsyncError: (baseMessage: string, originalError: unknown) => Result<never, AppError>;
+  handleValidationError: (
+    message: string,
+    details?: unknown,
+  ) => Result<never, AppError>;
+  handleRuntimeError: (
+    baseMessage: string,
+    originalError: unknown,
+  ) => Result<never, AppError>;
+  handleAsyncError: (
+    baseMessage: string,
+    originalError: unknown,
+  ) => Result<never, AppError>;
 }
 
 // ログ出力関数
@@ -64,19 +73,28 @@ export const createErrorHandler = () => {
 
   return {
     // バリデーションエラーを処理
-    handleValidationError: (message: string, details?: unknown): Result<never, AppError> => {
+    handleValidationError: (
+      message: string,
+      details?: unknown,
+    ): Result<never, AppError> => {
       const error: AppError = { type: "validation", message, details };
       logError(message, details);
       return err(error);
     },
 
     // ランタイムエラーを処理
-    handleRuntimeError: (baseMessage: string, originalError: unknown): Result<never, AppError> => {
+    handleRuntimeError: (
+      baseMessage: string,
+      originalError: unknown,
+    ): Result<never, AppError> => {
       return handleError("runtime", baseMessage, originalError);
     },
 
     // 非同期エラーを処理
-    handleAsyncError: (baseMessage: string, originalError: unknown): Result<never, AppError> => {
+    handleAsyncError: (
+      baseMessage: string,
+      originalError: unknown,
+    ): Result<never, AppError> => {
       return handleError("async", baseMessage, originalError);
     },
   };

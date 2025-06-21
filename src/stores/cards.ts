@@ -38,11 +38,19 @@ export const useCardsStore = defineStore("cards", () => {
 
   // メモ化された検索処理
   const memoizedSearch = useMemoize(
-    (params: { cards: readonly Card[]; searchText: string; version: number }) => {
+    (params: {
+      cards: readonly Card[];
+      searchText: string;
+      version: number;
+    }) => {
       return CardDomain.searchCardsByName(params.cards, params.searchText);
     },
     {
-      getKey: (params: { cards: readonly Card[]; searchText: string; version: number }) => {
+      getKey: (params: {
+        cards: readonly Card[];
+        searchText: string;
+        version: number;
+      }) => {
         // cardsVersionだけでキャッシュの無効化を確実に行う
         return `${params.searchText}_v${params.version}`;
       },
@@ -199,7 +207,9 @@ export const useCardsStore = defineStore("cards", () => {
 
     // インデックスが構築されている場合は高速検索を使用
     if (isIndexBuilt.value && cardSearchIndex.size > 0) {
-      const searchTokens = normalizedSearch.split(/\s+/).filter((token) => token.length >= 2);
+      const searchTokens = normalizedSearch
+        .split(/\s+/)
+        .filter((token) => token.length >= 2);
 
       if (searchTokens.length === 0) {
         // 短すぎる検索語の場合はフォールバック
@@ -448,7 +458,9 @@ export const useCardsStore = defineStore("cards", () => {
   // 計算プロパティ
   const cardCount = computed(() => availableCards.value.length);
   const hasCards = computed(() => cardCount.value > 0);
-  const isReady = computed(() => !isLoading.value && !error.value && hasCards.value);
+  const isReady = computed(
+    () => !isLoading.value && !error.value && hasCards.value,
+  );
 
   return {
     // リアクティブな状態
