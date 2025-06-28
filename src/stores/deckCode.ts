@@ -1,7 +1,12 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import type { Card, DeckCard } from "../types";
-import { encodeDeckCode, decodeDeckCode, logger } from "../utils";
+import {
+  encodeDeckCode,
+  decodeDeckCode,
+  decodeKcgDeckCode,
+  logger,
+} from "../utils";
 import { useDeckStore } from "./deck";
 
 import { fromAsyncThrowable } from "neverthrow";
@@ -77,7 +82,66 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
   };
 
   /**
-   * デッキコードからインポート
+   * デッキコード形式を判定
+   */
+  const detectDeckCodeFormat = (code: string): "kcg" | "slash" | "unknown" => {
+    const trimmedCode = code.trim();
+
+    // KCG形式の判定
+    if (trimmedCode.startsWith("KCG-")) {
+      return "kcg";
+    }
+
+    // スラッシュ区切り形式の判定
+    // カードIDパターンをチェック
+    const cardIdPattern = /^([A-Z]|ex|prm)(A|S|M|D)-\d+$/;
+    const cardIds = trimmedCode.split("/");
+    if (
+      cardIds.length > 0 &&
+      cardIds.every((id) => cardIdPattern.test(id.trim()))
+    ) {
+      return "slash";
+    }
+
+    return "unknown";
+  };
+
+  /**
+   * KCG形式のデッキコードをDeckCard配列に変換
+   */
+  const convertKcgCardIdsToDeckCards = (
+    cardIds: readonly string[],
+    availableCards: readonly Card[],
+  ): DeckCard[] => {
+    // availableCardsをMapに変換して高速ルックアップを可能にする
+    const availableCardsMap = new Map<string, Card>();
+    for (const card of availableCards) {
+      availableCardsMap.set(card.id, card);
+    }
+
+    const cardCounts = new Map<string, number>();
+
+    // カードIDの枚数をカウント
+    for (const id of cardIds) {
+      const trimmedId = id.trim();
+      if (trimmedId) {
+        cardCounts.set(trimmedId, (cardCounts.get(trimmedId) || 0) + 1);
+      }
+    }
+
+    const deckCards: DeckCard[] = [];
+    for (const [id, count] of cardCounts) {
+      const card = availableCardsMap.get(id);
+      if (card) {
+        deckCards.push({ card, count });
+      }
+    }
+
+    return deckCards;
+  };
+
+  /**
+   * デッキコードからインポート（統合版）
    */
   const importDeckFromCode = (availableCards: readonly Card[]): void => {
     error.value = null;
@@ -90,11 +154,10 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
       return;
     }
 
-    // 入力検証：基本的な形式チェック（カードIDを/で区切った形式）
     const trimmedCode = importDeckCode.value.trim();
 
     // デッキコードの最大長チェック
-    const MAX_DECK_CODE_LENGTH = 2000; // 例として2000文字に設定
+    const MAX_DECK_CODE_LENGTH = 2000;
     if (trimmedCode.length > MAX_DECK_CODE_LENGTH) {
       const warningMessage = `デッキコードが長すぎます（最大${MAX_DECK_CODE_LENGTH}文字）`;
       logger.warn(warningMessage);
@@ -102,83 +165,124 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
       return;
     }
 
-    // 空文字列や無効な文字が含まれていないかチェック
-    if (
-      trimmedCode.includes("//") ||
-      trimmedCode.startsWith("/") ||
-      trimmedCode.endsWith("/")
-    ) {
-      const warningMessage = "無効なデッキコード形式です";
-      logger.warn(warningMessage);
-      error.value = { type: "validation", message: warningMessage };
-      return;
-    }
-
-    // 各カードIDのフォーマット検証
-    const cardIdPattern = /^([A-Z]|ex|prm)(A|S|M|D)-\d+$/;
-    const cardIds = trimmedCode.split("/");
-    for (const cardId of cardIds) {
-      if (!cardIdPattern.test(cardId)) {
-        const warningMessage = `無効なカードID形式が含まれています: ${cardId}`;
-        logger.warn(warningMessage);
-        error.value = { type: "validation", message: warningMessage };
-        return;
-      }
-    }
+    // デッキコード形式を判定
+    const format = detectDeckCodeFormat(trimmedCode);
+    logger.debug("検出されたデッキコード形式:", format);
 
     try {
-      logger.debug("デッキコードをデコード中:", trimmedCode);
-      logger.debug("利用可能カード数:", availableCards.length);
-      logger.debug(
-        "利用可能カード(最初の5件):",
-        availableCards.slice(0, 5).map((c) => c.id),
-      );
+      if (format === "kcg") {
+        // KCG形式の処理
+        logger.debug("KCG形式のデッキコードをデコード中:", trimmedCode);
 
-      const decodeResult = decodeDeckCode(trimmedCode, availableCards);
-      logger.debug("デコード結果:", decodeResult);
+        const kcgDecodeResult = decodeKcgDeckCode(trimmedCode);
 
-      if (decodeResult.isOk()) {
-        const importedCards = decodeResult.value;
-        if (importedCards.length > 0) {
-          deckStore.setDeckCards(importedCards);
-          importDeckCode.value = "";
-          showDeckCodeModal.value = false;
-          logger.info(
-            `デッキをインポートしました（${importedCards.length}種類のカード）`,
-          );
+        if (kcgDecodeResult.isOk()) {
+          const cardIds = kcgDecodeResult.value;
+          logger.debug("KCGデコードで取得されたカードID:", cardIds);
+
+          if (cardIds.length > 0) {
+            const deckCards = convertKcgCardIdsToDeckCards(
+              cardIds,
+              availableCards,
+            );
+
+            if (deckCards.length > 0) {
+              deckStore.setDeckCards(deckCards);
+              importDeckCode.value = "";
+              showDeckCodeModal.value = false;
+              logger.info(
+                `KCG形式のデッキをインポートしました（${deckCards.length}種類のカード）`,
+              );
+            } else {
+              const warningMessage =
+                "有効なカードが見つかりませんでした。カードIDが正しいか確認してください。";
+              logger.warn(warningMessage);
+              error.value = { type: "decode", message: warningMessage };
+            }
+          } else {
+            const warningMessage =
+              "デッキコードからカード情報を取得できませんでした。";
+            logger.warn(warningMessage);
+            error.value = { type: "decode", message: warningMessage };
+          }
         } else {
-          const warningMessage =
-            "有効なカードが見つかりませんでした。カードIDが正しいか確認してください。";
+          // KCGデコードエラーの処理
+          let errorMessage: string;
+          switch (kcgDecodeResult.error.type) {
+            case "invalidFormat":
+              errorMessage = kcgDecodeResult.error.message;
+              break;
+            default:
+              errorMessage = "KCG形式のデッキコードのデコードに失敗しました";
+          }
+          logger.warn(errorMessage);
+          error.value = { type: "decode", message: errorMessage };
+        }
+      } else if (format === "slash") {
+        // スラッシュ区切り形式の処理（既存の処理）
+        logger.debug(
+          "スラッシュ区切り形式のデッキコードをデコード中:",
+          trimmedCode,
+        );
+
+        // スラッシュ区切り形式の基本的な形式チェック
+        if (
+          trimmedCode.includes("//") ||
+          trimmedCode.startsWith("/") ||
+          trimmedCode.endsWith("/")
+        ) {
+          const warningMessage = "無効なデッキコード形式です";
           logger.warn(warningMessage);
-          logger.debug("入力されたデッキコード:", trimmedCode);
-          error.value = { type: "decode", message: warningMessage };
+          error.value = { type: "validation", message: warningMessage };
+          return;
+        }
+
+        const decodeResult = decodeDeckCode(trimmedCode, availableCards);
+
+        if (decodeResult.isOk()) {
+          const importedCards = decodeResult.value;
+          if (importedCards.length > 0) {
+            deckStore.setDeckCards(importedCards);
+            importDeckCode.value = "";
+            showDeckCodeModal.value = false;
+            logger.info(
+              `スラッシュ区切り形式のデッキをインポートしました（${importedCards.length}種類のカード）`,
+            );
+          } else {
+            const warningMessage =
+              "有効なカードが見つかりませんでした。カードIDが正しいか確認してください。";
+            logger.warn(warningMessage);
+            error.value = { type: "decode", message: warningMessage };
+          }
+        } else {
+          // スラッシュ区切りデコードエラーの処理
+          let errorMessage: string;
+          switch (decodeResult.error.type) {
+            case "emptyCode":
+              errorMessage = "デッキコードが空です";
+              break;
+            case "invalidCardId":
+              errorMessage = `無効なカードIDが含まれています: ${decodeResult.error.invalidId}`;
+              break;
+            case "cardNotFound":
+              errorMessage = `一部のカードが見つかりませんでした: ${decodeResult.error.notFoundIds.join(", ")}`;
+              break;
+            default:
+              errorMessage = "デッキコードのデコードに失敗しました";
+          }
+          logger.warn(errorMessage);
+          error.value = { type: "decode", message: errorMessage };
         }
       } else {
-        // エラーの種類に応じてメッセージを設定
-        let errorMessage: string;
-        switch (decodeResult.error.type) {
-          case "emptyCode":
-            errorMessage = "デッキコードが空です";
-            break;
-          case "invalidCardId":
-            errorMessage = `無効なカードIDが含まれています: ${decodeResult.error.invalidId}`;
-            break;
-          case "cardNotFound":
-            errorMessage = `一部のカードが見つかりませんでした: ${decodeResult.error.notFoundIds.join(
-              ", ",
-            )}`;
-            break;
-          default:
-            errorMessage = "デッキコードのデコードに失敗しました";
-        }
-        logger.warn(errorMessage);
-        logger.debug("入力されたデッキコード:", trimmedCode);
-        error.value = { type: "decode", message: errorMessage };
+        // 未知の形式
+        const warningMessage =
+          "サポートされていないデッキコード形式です。スラッシュ区切り形式またはKCG形式（KCG-で始まる）を使用してください。";
+        logger.warn(warningMessage);
+        error.value = { type: "validation", message: warningMessage };
       }
     } catch (e) {
       const errorMessage = "デッキコードの復元に失敗しました";
       logger.error(errorMessage + ":", e);
-      logger.debug("入力されたデッキコード:", trimmedCode);
       error.value = { type: "decode", message: errorMessage };
     }
   };
