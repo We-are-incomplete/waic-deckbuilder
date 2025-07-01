@@ -3,28 +3,34 @@ import type { DeckCard } from "../types/deck";
 import { logger } from "./logger"; // loggerをインポート
 import { ok, err, type Result } from "neverthrow"; // Result をインポート
 
+// --- KCGデッキコード用定数（IDHolder.csの定数に対応） ---
+const CHAR_MAP =
+  "AIQYgow5BJRZhpx6CKSaiqy7DLTbjrz8EMUcks19FNVdlt2!GOWemu3?HPXfnv4/";
+const MAP1_EXPANSION = "eABCDEFGHI";
+const MAP2_EXPANSION = "pJKLMNOPQR";
+
 // デッキコードデコードエラー型
 export type DeckCodeDecodeError =
   | { readonly type: "emptyCode"; readonly message: string }
   | {
-      readonly type: "invalidCardId";
-      readonly message: string;
-      readonly invalidId: string;
-    }
+    readonly type: "invalidCardId";
+    readonly message: string;
+    readonly invalidId: string;
+  }
   | {
-      readonly type: "cardNotFound";
-      readonly message: string;
-      readonly notFoundIds: readonly string[];
-    }
+    readonly type: "cardNotFound";
+    readonly message: string;
+    readonly notFoundIds: readonly string[];
+  }
   | {
-      readonly type: "invalidFormat";
-      readonly message: string;
-    }
+    readonly type: "invalidFormat";
+    readonly message: string;
+  }
   | {
-      readonly type: "unknown";
-      readonly message: string;
-      readonly originalError: unknown;
-    };
+    readonly type: "unknown";
+    readonly message: string;
+    readonly originalError: unknown;
+  };
 
 /**
  * デッキコードをエンコード
@@ -42,7 +48,7 @@ export const encodeDeckCode = (deck: readonly DeckCard[]): string => {
 export const decodeDeckCode = (
   code: string,
   availableCards: readonly Card[],
-): Result<DeckCard[], DeckCodeDecodeError> => {
+): Result<{ deckCards: DeckCard[]; missingCardIds: string[] }, DeckCodeDecodeError> => {
   // 空文字列の場合は早期リターン
   if (!code || code.trim() === "") {
     logger.debug("デッキコードが空です");
@@ -70,31 +76,26 @@ export const decodeDeckCode = (
 
   logger.debug("カードID別枚数:", Object.fromEntries(cardCounts));
 
-  const cards: DeckCard[] = [];
+  const deckCards: DeckCard[] = [];
+  const missingCardIds: string[] = [];
   let foundCount = 0;
-  let notFoundIds: string[] = [];
 
   for (const [id, count] of cardCounts) {
     const card = availableCardsMap.get(id); // Mapから直接取得
     if (card) {
-      cards.push({ card, count });
+      deckCards.push({ card, count });
       foundCount++;
     } else {
-      notFoundIds.push(id);
+      missingCardIds.push(id);
     }
   }
 
   logger.debug(`見つかったカード: ${foundCount}/${cardCounts.size}`);
-  if (notFoundIds.length > 0) {
-    logger.warn("見つからなかったカードID:", notFoundIds);
-    return err({
-      type: "cardNotFound",
-      message: "一部のカードが見つかりませんでした",
-      notFoundIds: notFoundIds,
-    });
+  if (missingCardIds.length > 0) {
+    logger.warn("見つからなかったカードID:", missingCardIds);
   }
 
-  return ok(cards);
+  return ok({ deckCards, missingCardIds });
 };
 
 /**
@@ -106,12 +107,6 @@ export const decodeKcgDeckCode = (
   deckCode: string,
 ): Result<string[], DeckCodeDecodeError> => {
   try {
-    // --- 定数定義 (IDHolder.csの定数に対応) ---
-    const CHAR_MAP =
-      "AIQYgow5BJRZhpx6CKSaiqy7DLTbjrz8EMUcks19FNVdlt2!GOWemu3?HPXfnv4/";
-    const MAP1_EXPANSION = "eABCDEFGHI";
-    const MAP2_EXPANSION = "pJKLMNOPQR";
-
     // --- 1. 入力チェックと初期処理 ---
     if (!deckCode || !deckCode.startsWith("KCG-")) {
       logger.error("Invalid deck code format: Must start with 'KCG-'.");
@@ -140,18 +135,29 @@ export const decodeKcgDeckCode = (
       }
     }
 
-    // --- 2. キー文字を解析し、削除するビット数を計算 ---
+    // --- 2. パディングビット数の計算 ---
+    // 先頭文字のインデックスから削除するビット数を決定
     const fifthCharOriginal = rawPayloadWithVersion[0];
     const indexFifthChar = CHAR_MAP.indexOf(fifthCharOriginal) + 1;
 
     let deckCodeFifthCharQuotient = Math.floor(indexFifthChar / 8);
     const remainderFifthChar = indexFifthChar % 8;
 
+    /*
+     * パディングビット数の計算ロジック:
+     * - 6ビット文字を8ビット境界に合わせるためのパディングを計算
+     * - remainderFifthChar が 0 の場合: パディングは不要
+     * - remainderFifthChar が 0 以外の場合:
+     *   1. quotientを1増加させる（次の8ビット境界に進む）
+     *   2. 削除するビット数 = 8 - quotient
+     *      これは8ビット境界から実際のデータビット数を引いた余分なパディングビット数
+     */
     let charsToRemoveFromPayloadEnd: number;
     if (remainderFifthChar === 0) {
       charsToRemoveFromPayloadEnd = 0;
     } else {
       deckCodeFifthCharQuotient++;
+      // 8ビット境界に合わせるために追加されたパディングビットを削除
       charsToRemoveFromPayloadEnd = 8 - deckCodeFifthCharQuotient;
     }
 
