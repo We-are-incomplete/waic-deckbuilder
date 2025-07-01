@@ -69,7 +69,7 @@ const emit = defineEmits<Emits>();
             "
             @contextmenu.stop
             class="flex-grow px-3 py-2 text-sm sm:text-base rounded bg-gray-700 border border-gray-600 focus:outline-none focus:ring focus:border-blue-500"
-            placeholder="デッキコードを入力"
+            placeholder="デッキコードを入力（スラッシュ区切りとKCG形式に対応）"
           />
           <button
             @click="emit('importCode')"

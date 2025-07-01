@@ -1,6 +1,6 @@
 import { computed, type ComputedRef } from "vue";
 import type { Card } from "../types/card";
-import type { DeckCard } from "../types/deck";
+import type { DeckCard, DeckOperation } from "../types/deck";
 import * as DeckDomain from "../domain/deck";
 import { useDeckStore } from "../stores/deck";
 import { useCardsStore } from "../stores/cards";
@@ -224,13 +224,14 @@ export const useDeckOperations = () => {
   };
 
   /**
-   * カード枚数を安全に増加（最適化版）
+   * デッキ操作を安全に実行する共通ヘルパー関数
+   * 成功時はストアを更新してtrue、失敗時はエラーハンドリングしてfalseを返す
    */
-  const incrementCardCount = (cardId: string): boolean => {
-    const result = DeckDomain.executeDeckOperation(deckStore.deckCards, {
-      type: "incrementCount",
-      cardId,
-    });
+  const executeDeckOperationSafely = <T extends DeckOperation>(
+    operation: T,
+    errorMessage: string,
+  ): boolean => {
+    const result = DeckDomain.executeDeckOperation(deckStore.deckCards, operation);
 
     if (result.isOk()) {
       deckStore.setDeckCards([...result.value]);
@@ -238,73 +239,47 @@ export const useDeckOperations = () => {
     }
 
     errorHandler.handleValidationError(
-      `カード枚数の増加に失敗しました: ${result.error.type}`,
+      `${errorMessage}: ${result.error.type}`,
       result.error,
     );
     return false;
   };
+
+  /**
+   * カード枚数を安全に増加（最適化版）
+   */
+  const incrementCardCount = (cardId: string): boolean =>
+    executeDeckOperationSafely(
+      { type: "incrementCount", cardId },
+      "カード枚数の増加に失敗しました",
+    );
 
   /**
    * カード枚数を安全に減少（最適化版）
    */
-  const decrementCardCount = (cardId: string): boolean => {
-    const result = DeckDomain.executeDeckOperation(deckStore.deckCards, {
-      type: "decrementCount",
-      cardId,
-    });
-
-    if (result.isOk()) {
-      deckStore.setDeckCards([...result.value]);
-      return true;
-    }
-
-    errorHandler.handleValidationError(
-      `カード枚数の減少に失敗しました: ${result.error.type}`,
-      result.error,
+  const decrementCardCount = (cardId: string): boolean =>
+    executeDeckOperationSafely(
+      { type: "decrementCount", cardId },
+      "カード枚数の減少に失敗しました",
     );
-    return false;
-  };
 
   /**
    * カードをデッキから安全に削除（最適化版）
    */
-  const removeCardFromDeck = (cardId: string): boolean => {
-    const result = DeckDomain.executeDeckOperation(deckStore.deckCards, {
-      type: "removeCard",
-      cardId,
-    });
-
-    if (result.isOk()) {
-      deckStore.setDeckCards([...result.value]);
-      return true;
-    }
-
-    errorHandler.handleValidationError(
-      `カードの削除に失敗しました: ${result.error.type}`,
-      result.error,
+  const removeCardFromDeck = (cardId: string): boolean =>
+    executeDeckOperationSafely(
+      { type: "removeCard", cardId },
+      "カードの削除に失敗しました",
     );
-    return false;
-  };
 
   /**
    * デッキを安全にクリア（最適化版）
    */
-  const clearDeck = (): boolean => {
-    const result = DeckDomain.executeDeckOperation(deckStore.deckCards, {
-      type: "clear",
-    });
-
-    if (result.isOk()) {
-      deckStore.setDeckCards([...result.value]);
-      return true;
-    }
-
-    errorHandler.handleValidationError(
-      `デッキのクリアに失敗しました: ${result.error.type}`,
-      result.error,
+  const clearDeck = (): boolean =>
+    executeDeckOperationSafely(
+      { type: "clear" },
+      "デッキのクリアに失敗しました",
     );
-    return false;
-  };
 
   /**
    * カードIDから詳細情報を取得（最適化版）
