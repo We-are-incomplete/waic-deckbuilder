@@ -1907,6 +1907,27 @@
     "tags": ["【登場】魔力α生成", "ノイズ除去", "「神椿市」", "此処", "SR"]
   },
   {
+    "id": "HA-1",
+    "name": "【再見】CHINO",
+    "kind": "Artist",
+    "type": "白",
+    "tags": ["【登場】魔力β生成", "魔力β消費", "EXターン", "サイコロ", "CHINO"]
+  },
+  {
+    "id": "HA-2",
+    "name": "【あなたを描くの】CHINO",
+    "kind": "Artist",
+    "type": "白",
+    "tags": ["【登場】魔力β生成", "速攻", "サイコロ", "CHINO"]
+  },
+  {
+    "id": "HA-13",
+    "name": "【This is】VALIS",
+    "kind": "Artist",
+    "type": "白",
+    "tags": ["進化", "【登場】VOL獲得", "【能力】VOL獲得", "魔力Ω消費", "VALIS"]
+  },
+  {
     "id": "exA-1",
     "name": "【現象】V.W.P",
     "kind": "Artist",
@@ -3152,6 +3173,20 @@
     ]
   },
   {
+    "id": "HS-1",
+    "name": "【敢えて謂うわ愛も夢も】DRESS.",
+    "kind": "Song",
+    "type": "白",
+    "tags": ["バウンス", "サイコロ", "【能力】VOL獲得", "CHINO"]
+  },
+  {
+    "id": "HS-8",
+    "name": "【今夜は盛大なワンシーン】残響ヴァンデラー",
+    "kind": "Song",
+    "type": "全",
+    "tags": ["ドロー", "サイコロ"]
+  },
+  {
     "id": "prmS-1",
     "name": "【大丈夫】台風の子",
     "kind": "Song",
@@ -3865,6 +3900,13 @@
     "tags": ["ハンデス", "魔力β参照"]
   },
   {
+    "id": "HM-1",
+    "name": "フローズンサーベル",
+    "kind": "Magic",
+    "type": "装備",
+    "tags": ["VOL消失", "魔力β消費"]
+  },
+  {
     "id": "exM-1",
     "name": "KAMITSUBAKI FES\u002724 type-R",
     "kind": "Magic",
@@ -4304,10 +4346,24 @@
     "tags": ["【能力】魔力α生成", "魔力β参照", "手札消費"]
   },
   {
+    "id": "HD-3",
+    "name": "Intellogence By Aces",
+    "kind": "Direction",
+    "type": "設置",
+    "tags": ["ドロー", "魔力α参照"]
+  },
+  {
     "id": "exD-1",
     "name": "KAMITSUBAKI FES\u002724 type-S",
     "kind": "Direction",
     "type": "設置",
     "tags": "ドロー"
+  },
+  {
+    "id": "exD-2",
+    "name": "IMAGINARY BASE AKIHABARA",
+    "kind": "Direction",
+    "type": "設置",
+    "tags": ["ドロー", "山札消費"]
   }
 ]

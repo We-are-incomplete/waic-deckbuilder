@@ -208,14 +208,18 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
               if (result.missingCardIds.length > 0) {
                 const missingCardsMessage = `見つからないカードID: ${result.missingCardIds.join(", ")}`;
                 logger.warn(missingCardsMessage);
-                error.value = { type: "decode", message: `KCG形式のデッキをインポートしました（${result.deckCards.length}種類のカード）。\n${missingCardsMessage}` };
+                error.value = {
+                  type: "decode",
+                  message: `KCG形式のデッキをインポートしました（${result.deckCards.length}種類のカード）。\n${missingCardsMessage}`,
+                };
               } else {
                 logger.info(
                   `KCG形式のデッキをインポートしました（${result.deckCards.length}種類のカード）`,
                 );
               }
             } else {
-              let warningMessage = "有効なカードが見つかりませんでした。カードIDが正しいか確認してください。";
+              let warningMessage =
+                "有効なカードが見つかりませんでした。カードIDが正しいか確認してください。";
               if (result.missingCardIds.length > 0) {
                 warningMessage += `\n見つからないカードID: ${result.missingCardIds.join(", ")}`;
               }
@@ -263,7 +267,8 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
         const decodeResult = decodeDeckCode(trimmedCode, availableCards);
 
         if (decodeResult.isOk()) {
-          const { deckCards: importedCards, missingCardIds } = decodeResult.value;
+          const { deckCards: importedCards, missingCardIds } =
+            decodeResult.value;
           if (importedCards.length > 0) {
             deckStore.setDeckCards(importedCards);
             importDeckCode.value = "";
@@ -273,14 +278,18 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
             if (missingCardIds.length > 0) {
               const missingCardsMessage = `見つからないカードID: ${missingCardIds.join(", ")}`;
               logger.warn(missingCardsMessage);
-              error.value = { type: "decode", message: `スラッシュ区切り形式のデッキをインポートしました（${importedCards.length}種類のカード）。\n${missingCardsMessage}` };
+              error.value = {
+                type: "decode",
+                message: `スラッシュ区切り形式のデッキをインポートしました（${importedCards.length}種類のカード）。\n${missingCardsMessage}`,
+              };
             } else {
               logger.info(
                 `スラッシュ区切り形式のデッキをインポートしました（${importedCards.length}種類のカード）`,
               );
             }
           } else {
-            let warningMessage = "有効なカードが見つかりませんでした。カードIDが正しいか確認してください。";
+            let warningMessage =
+              "有効なカードが見つかりませんでした。カードIDが正しいか確認してください。";
             if (missingCardIds.length > 0) {
               warningMessage += `\n見つからないカードID: ${missingCardIds.join(", ")}`;
             }
@@ -336,4 +345,3 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
     setImportDeckCode,
   };
 });
-
