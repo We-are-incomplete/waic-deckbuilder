@@ -231,7 +231,10 @@ export const useDeckOperations = () => {
     operation: T,
     errorMessage: string,
   ): boolean => {
-    const result = DeckDomain.executeDeckOperation(deckStore.deckCards, operation);
+    const result = DeckDomain.executeDeckOperation(
+      deckStore.deckCards,
+      operation,
+    );
 
     if (result.isOk()) {
       deckStore.setDeckCards([...result.value]);

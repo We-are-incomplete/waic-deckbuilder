@@ -13,24 +13,24 @@ const MAP2_EXPANSION = "pJKLMNOPQR";
 export type DeckCodeDecodeError =
   | { readonly type: "emptyCode"; readonly message: string }
   | {
-    readonly type: "invalidCardId";
-    readonly message: string;
-    readonly invalidId: string;
-  }
+      readonly type: "invalidCardId";
+      readonly message: string;
+      readonly invalidId: string;
+    }
   | {
-    readonly type: "cardNotFound";
-    readonly message: string;
-    readonly notFoundIds: readonly string[];
-  }
+      readonly type: "cardNotFound";
+      readonly message: string;
+      readonly notFoundIds: readonly string[];
+    }
   | {
-    readonly type: "invalidFormat";
-    readonly message: string;
-  }
+      readonly type: "invalidFormat";
+      readonly message: string;
+    }
   | {
-    readonly type: "unknown";
-    readonly message: string;
-    readonly originalError: unknown;
-  };
+      readonly type: "unknown";
+      readonly message: string;
+      readonly originalError: unknown;
+    };
 
 /**
  * デッキコードをエンコード
@@ -48,7 +48,10 @@ export const encodeDeckCode = (deck: readonly DeckCard[]): string => {
 export const decodeDeckCode = (
   code: string,
   availableCards: readonly Card[],
-): Result<{ deckCards: DeckCard[]; missingCardIds: string[] }, DeckCodeDecodeError> => {
+): Result<
+  { deckCards: DeckCard[]; missingCardIds: string[] },
+  DeckCodeDecodeError
+> => {
   // 空文字列の場合は早期リターン
   if (!code || code.trim() === "") {
     logger.debug("デッキコードが空です");
