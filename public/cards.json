@@ -1921,6 +1921,34 @@
     "tags": ["【登場】魔力β生成", "速攻", "サイコロ", "CHINO"]
   },
   {
+    "id": "HA-3",
+    "name": "【再見】MYU",
+    "kind": "Artist",
+    "type": "赤",
+    "tags": ["【能力】魔力β生成", "サイコロ", "MYU"]
+  },
+  {
+    "id": "HA-4",
+    "name": "【最愛にて喝采を】MYU",
+    "kind": "Artist",
+    "type": "赤",
+    "tags": ["【登場】魔力β生成", "Standby化", "サイコロ", "MYU"]
+  },
+  {
+    "id": "HA-5",
+    "name": "【再見】NEFFY",
+    "kind": "Artist",
+    "type": "黒",
+    "tags": ["【登場】魔力β生成", "ハンデス", "サイコロ", "NEFFY"]
+  },
+  {
+    "id": "HA-6",
+    "name": "【Stay by my side】NEFFY",
+    "kind": "Artist",
+    "type": "黒",
+    "tags": ["【登場】魔力α生成", "移動", "NEFFY"]
+  },
+  {
     "id": "HA-13",
     "name": "【This is】VALIS",
     "kind": "Artist",
@@ -3180,6 +3208,20 @@
     "tags": ["バウンス", "サイコロ", "【能力】VOL獲得", "CHINO"]
   },
   {
+    "id": "HS-2",
+    "name": "【眩しく咲いた希望が】変異体",
+    "kind": "Song",
+    "type": "赤",
+    "tags": ["Lo", "サイコロ", "【能力】VOL獲得", "MYU"]
+  },
+  {
+    "id": "HS-3",
+    "name": "【いらっしゃいませ】猫愛的ショータイム",
+    "kind": "Song",
+    "type": "黒",
+    "tags": ["ドロー", "山札消費", "【能力】VOL獲得", "NEFFY"]
+  },
+  {
     "id": "HS-8",
     "name": "【今夜は盛大なワンシーン】残響ヴァンデラー",
     "kind": "Song",
@@ -3905,6 +3947,20 @@
     "kind": "Magic",
     "type": "装備",
     "tags": ["VOL消失", "魔力β消費"]
+  },
+  {
+    "id": "HM-2",
+    "name": "熱愛の洗脳",
+    "kind": "Magic",
+    "type": "即時",
+    "tags": ["Active化", "魔力α消費", "色メタ【黒】"]
+  },
+  {
+    "id": "HM-3",
+    "name": "リコンストラクション",
+    "kind": "Magic",
+    "type": "即時",
+    "tags": ["破壊", "魔力β消費"]
   },
   {
     "id": "exM-1",
