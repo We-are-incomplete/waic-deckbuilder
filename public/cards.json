@@ -1949,11 +1949,67 @@
     "tags": ["【登場】魔力α生成", "移動", "NEFFY"]
   },
   {
+    "id": "HA-7",
+    "name": "【再見】RARA",
+    "kind": "Artist",
+    "type": "黒",
+    "tags": ["【登場】魔力α生成", "出目干渉", "魔力α参照", "RARA"]
+  },
+  {
+    "id": "HA-8",
+    "name": "【全開の愛情モード】RARA",
+    "kind": "Artist",
+    "type": "黒",
+    "tags": ["【登場】魔力β生成", "ドロー", "サイコロ", "RARA"]
+  },
+  {
+    "id": "HA-9",
+    "name": "【再見】VITTE",
+    "kind": "Artist",
+    "type": "青",
+    "tags": ["破壊", "サイコロ", "VITTE"]
+  },
+  {
+    "id": "HA-10",
+    "name": "【キュートな意趣返し】VITTE",
+    "kind": "Artist",
+    "type": "青",
+    "tags": ["【登場】魔力β生成", "【能力】魔力β生成", "魔力α消失", "VITTE"]
+  },
+  {
+    "id": "HA-11",
+    "name": "【早く遠く目を開けて】VALIS",
+    "kind": "Artist",
+    "type": "赤",
+    "tags": [
+      "進化",
+      "【登場】VOL獲得",
+      "【能力】魔力β生成",
+      "魔力β消費",
+      "サイコロ",
+      "VALIS"
+    ]
+  },
+  {
+    "id": "HA-12",
+    "name": "【Can\u0027t stop me】VALIS",
+    "kind": "Artist",
+    "type": "青",
+    "tags": ["進化", "【登場】VOL獲得", "出目干渉", "VALIS"]
+  },
+  {
     "id": "HA-13",
     "name": "【This is】VALIS",
     "kind": "Artist",
     "type": "白",
     "tags": ["進化", "【登場】VOL獲得", "【能力】VOL獲得", "魔力Ω消費", "VALIS"]
+  },
+  {
+    "id": "HA-14",
+    "name": "【今始まるゼノパレード】VALIS",
+    "kind": "Artist",
+    "type": "黒",
+    "tags": ["進化", "【登場】VOL獲得", "バウンス", "サイコロVALIS"]
   },
   {
     "id": "exA-1",
@@ -3222,6 +3278,44 @@
     "tags": ["ドロー", "山札消費", "【能力】VOL獲得", "NEFFY"]
   },
   {
+    "id": "HS-4",
+    "name": "【燦々と照らすからね】月輪迷宮",
+    "kind": "Song",
+    "type": "黒",
+    "tags": ["ノイズ干渉", "【能力】VOL獲得", "NEFFY"]
+  },
+  {
+    "id": "HS-5",
+    "name": "【ララルラリラ】狂愛レゾナンス",
+    "kind": "Song",
+    "type": "青",
+    "tags": ["ハンデス", "サイコロ", "【能力】VOL獲得", "VITTE"]
+  },
+  {
+    "id": "HS-6",
+    "name": "【すべてを注いで】無窮プラトニック",
+    "kind": "Song",
+    "type": "全",
+    "tags": ["ノイズ自傷", "【能力】魔力α生成", "【能力】魔力β生成"]
+  },
+  {
+    "id": "HS-7",
+    "name": "【忘れられないほどの】幻想アンヴェール",
+    "kind": "Song",
+    "type": "全",
+    "tags": [
+      "【能力】魔力β生成",
+      "山札消費",
+      "ドロー",
+      "CHINO",
+      "MYU",
+      "NEFFY",
+      "RARA",
+      "VITTE",
+      "VALIS"
+    ]
+  },
+  {
     "id": "HS-8",
     "name": "【今夜は盛大なワンシーン】残響ヴァンデラー",
     "kind": "Song",
@@ -3963,6 +4057,20 @@
     "tags": ["破壊", "魔力β消費"]
   },
   {
+    "id": "HM-4",
+    "name": "偶像の蝶",
+    "kind": "Magic",
+    "type": "即時",
+    "tags": ["ドロー", "魔力α消費", "サイコロ"]
+  },
+  {
+    "id": "HM-5",
+    "name": "ナイトメアマスク",
+    "kind": "Magic",
+    "type": "装備",
+    "tags": ["Active化", "魔力β参照"]
+  },
+  {
     "id": "exM-1",
     "name": "KAMITSUBAKI FES\u002724 type-R",
     "kind": "Magic",
@@ -4400,6 +4508,20 @@
     "kind": "Direction",
     "type": "設置",
     "tags": ["【能力】魔力α生成", "魔力β参照", "手札消費"]
+  },
+  {
+    "id": "HD-1",
+    "name": "ハッピーキャットデイ",
+    "kind": "Direction",
+    "type": "設置",
+    "tags": "【能力】VOL獲得"
+  },
+  {
+    "id": "HD-2",
+    "name": "セレブレーションパーティ",
+    "kind": "Direction",
+    "type": "設置",
+    "tags": ["Active化", "サイコロ", "VALIS"]
   },
   {
     "id": "HD-3",
