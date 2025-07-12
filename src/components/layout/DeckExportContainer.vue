@@ -19,7 +19,7 @@ const EXPORT_CONTAINER_WIDTH = 3840; // エクスポート用のコンテナ幅
 const EXPORT_CONTAINER_PADDING = "298px 242px 297px 241px"; // エクスポート用のコンテナのパディング
 
 // カード幅計算に使用する定数
-const TWO_RAWS_THRESHOLD = 20;
+const TWO_ROWS_THRESHOLD = 20;
 const CARD_COUNT_THRESHOLD = 30;
 const CARDS_PER_ROW_SMALL = 10;
 const CARDS_PER_ROW_LARGE = 15;
@@ -31,7 +31,7 @@ const MARGIN_LARGE = GRID_GAP * (CARDS_PER_ROW_LARGE - 1);
  * カード枚数に基づいてエクスポート用のコンテナ高さを計算
  */
 const calculateContainerHeight = (cardCount: number): number => {
-  if (cardCount <= TWO_RAWS_THRESHOLD) {
+  if (cardCount <= TWO_ROWS_THRESHOLD) {
     return 1636;
   }
   return 2160;
@@ -51,7 +51,7 @@ const calculateCardWidth = (cardCount: number): string => {
  * カード枚数に基づいて背景画像のURLを返す
  */
 const getBackgroundImageUrl = (cardCount: number): string => {
-  if (cardCount <= TWO_RAWS_THRESHOLD) {
+  if (cardCount <= TWO_ROWS_THRESHOLD) {
     return `${import.meta.env.BASE_URL}sheet2.avif`;
   } else if (cardCount <= CARD_COUNT_THRESHOLD) {
     return `${import.meta.env.BASE_URL}sheet.avif`;
