@@ -2061,6 +2061,48 @@
     "tags": ["【登場】VOL獲得", "サルベージ", "V.I.P", "SR"]
   },
   {
+    "id": "exA-8",
+    "name": "【改変】御莉姫",
+    "kind": "Artist",
+    "type": "赤",
+    "tags": ["ドロー", "御莉姫"]
+  },
+  {
+    "id": "exA-9",
+    "name": "【改変】佳鏡院",
+    "kind": "Artist",
+    "type": "青",
+    "tags": ["ドロー", "佳鏡院"]
+  },
+  {
+    "id": "exA-10",
+    "name": "【改変】硝子宮",
+    "kind": "Artist",
+    "type": "黒",
+    "tags": ["ドロー", "硝子宮"]
+  },
+  {
+    "id": "exA-11",
+    "name": "【改変】氷夏至",
+    "kind": "Artist",
+    "type": "白",
+    "tags": ["ドロー", "氷夏至"]
+  },
+  {
+    "id": "exA-12",
+    "name": "【改変】美古途",
+    "kind": "Artist",
+    "type": "青",
+    "tags": ["ドロー", "美古途"]
+  },
+  {
+    "id": "exA-13",
+    "name": "【改変】夕凪機",
+    "kind": "Artist",
+    "type": "黄",
+    "tags": ["ドロー", "夕凪機"]
+  },
+  {
     "id": "prmA-1",
     "name": "【向き合えたら】可不",
     "kind": "Artist",
@@ -4543,5 +4585,12 @@
     "kind": "Direction",
     "type": "設置",
     "tags": ["ドロー", "山札消費"]
+  },
+  {
+    "id": "exD-3",
+    "name": "ヲモヒノカタチ",
+    "kind": "Direction",
+    "type": "設置",
+    "tags": ["ドロー", "魔力α参照"]
   }
 ]
