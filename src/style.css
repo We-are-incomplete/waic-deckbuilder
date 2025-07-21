@@ -1,6 +1,6 @@
-@import url("https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@200..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@700&display=swap");
 @import "tailwindcss";
 
 @theme {
-  --font-exdeck: "Noto Serif JP", "serif", "sans-serif";
+  --font-exdeck: "Shippori Mincho", "serif", "sans-serif";
 }
