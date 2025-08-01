@@ -15,6 +15,6 @@ export interface Card {
   readonly id: string;
   readonly name: string;
   readonly kind: CardKind;
-  readonly type: CardType;
+  readonly type: readonly CardType[];
   readonly tags?: readonly string[];
 }
