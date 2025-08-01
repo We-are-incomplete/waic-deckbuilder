@@ -256,14 +256,9 @@ export const useFilterStore = defineStore("filter", () => {
       const card = cards[i];
       let hasMatchingType = false;
 
-      if (Array.isArray(card.type)) {
-        const cardTypeCount = card.type.length;
-        for (let j = 0; j < cardTypeCount && !hasMatchingType; j++) {
-          hasMatchingType = typeSet.has(card.type[j]);
-        }
-      } else {
-        // Fallback for single string type (should not happen if types are always arrays)
-        hasMatchingType = typeSet.has(card.type);
+      const cardTypeCount = card.type.length;
+      for (let j = 0; j < cardTypeCount && !hasMatchingType; j++) {
+        hasMatchingType = typeSet.has(card.type[j]);
       }
 
       if (hasMatchingType) {
