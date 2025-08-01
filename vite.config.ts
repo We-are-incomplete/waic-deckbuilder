@@ -15,6 +15,7 @@ export default defineConfig({
       manifest: {
         name: "KCGデッキメーカー",
         short_name: "KCG Maker",
+        theme_color: "#000000",
         icons: [
           {
             src: "favicon.png",

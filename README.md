@@ -29,26 +29,26 @@
 ## 開発コマンド
 
 - **Linterの実行**:
-    ```bash
-    pnpm lint
-    ```
+  ```bash
+  pnpm lint
+  ```
 - **Formatterの実行**:
-    ```bash
-    pnpm format
-    ```
+  ```bash
+  pnpm format
+  ```
 - **テストの実行**:
-    ```bash
-    pnpm test
-    ```
+  ```bash
+  pnpm test
+  ```
 - **開発サーバーの起動**:
-    ```bash
-    pnpm dev
-    ```
+  ```bash
+  pnpm dev
+  ```
 - **アプリケーションのビルド**:
-    ```bash
-    pnpm build
-    ```
+  ```bash
+  pnpm build
+  ```
 - **ビルドされたアプリケーションのプレビュー**:
-    ```bash
-    pnpm preview
-    ```
+  ```bash
+  pnpm preview
+  ```

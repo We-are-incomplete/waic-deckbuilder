@@ -237,7 +237,8 @@ const cardListSectionProps = computed(() => ({
 // デッキコードモーダルのプロパティを計算（Vue 3.5の最適化されたcomputed）
 const deckCodeModalProps = computed(() => ({
   isVisible: deckCodeStore.showDeckCodeModal,
-  deckCode: deckCodeStore.deckCode,
+  slashDeckCode: deckCodeStore.slashDeckCode,
+  kcgDeckCode: deckCodeStore.kcgDeckCode,
   importDeckCode: deckCodeStore.importDeckCode,
   error: deckCodeStore.error?.message || null,
 }));
@@ -294,7 +295,8 @@ const cardImageModalProps = computed(() => ({
       v-bind="deckCodeModalProps"
       @close="deckCodeStore.showDeckCodeModal = false"
       @update-import-code="deckCodeStore.setImportDeckCode"
-      @copy-code="deckCodeStore.copyDeckCode"
+      @copy-slash-code="deckCodeStore.copyDeckCode('slash')"
+      @copy-kcg-code="deckCodeStore.copyDeckCode('kcg')"
       @import-code="appStore.importDeckFromCode"
     />
 

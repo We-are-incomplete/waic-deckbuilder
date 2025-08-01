@@ -1,4 +1,5 @@
 ## コードベースの概略構造
+
 - `src/App.vue`: メインのVueコンポーネント。
 - `src/main.ts`: アプリケーションのエントリーポイント。
 - `src/components`: Vueコンポーネント。`layout`と`modals`にサブディレクトリがある。

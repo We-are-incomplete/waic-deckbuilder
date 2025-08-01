@@ -274,16 +274,24 @@ export const decodeKcgDeckCode = (
       } else if (c5 >= 6 && c5 <= 9) {
         expansionMap = MAP2_EXPANSION;
       } else {
-        continue; // 無効なC5値
+        // 無効なC5値の場合はスキップ
+        continue;
       }
 
-      if (c1 >= expansionMap.length) continue; // 無効なC1インデックス
+      if (c1 >= expansionMap.length) {
+        // 無効なC1インデックスの場合はスキップ
+        continue;
+      }
       const selectedCharFromMap = expansionMap[c1];
 
       let expansion: string;
-      if (selectedCharFromMap === "e") expansion = "ex";
-      else if (selectedCharFromMap === "p") expansion = "prm";
-      else expansion = selectedCharFromMap;
+      if (selectedCharFromMap === "e") {
+        expansion = "ex";
+      } else if (selectedCharFromMap === "p") {
+        expansion = "prm";
+      } else {
+        expansion = selectedCharFromMap;
+      }
 
       let type: string;
       switch (c2) {
@@ -300,11 +308,15 @@ export const decodeKcgDeckCode = (
           type = "D";
           break;
         default:
-          continue; // 無効なC2値
+          // 無効なC2値の場合はスキップ
+          continue;
       }
 
       const numberPartInt = c3 * 10 + c4;
-      if (numberPartInt < 1 || numberPartInt > 50) continue; // 無効な番号
+      if (numberPartInt < 1 || numberPartInt > 50) {
+        // 無効な番号の場合はスキップ
+        continue;
+      }
 
       const cardIdPart = `${expansion}${type}-${numberPartInt}`;
       decodedEntries.push({ cardIdPart, originalC5Value: c5 });
@@ -329,4 +341,107 @@ export const decodeKcgDeckCode = (
       originalError: error,
     });
   }
+};
+
+/**
+ * KCG形式のデッキコードをエンコード
+ * @param cardIds カードIDの配列
+ * @returns エンコードされたKCGデッキコード文字列
+ */
+export const encodeKcgDeckCode = (cardIds: string[]): string => {
+  const cardCounts: { [key: string]: number } = {};
+  cardIds.forEach((id) => {
+    cardCounts[id] = (cardCounts[id] || 0) + 1;
+  });
+
+  let numericString = "";
+  const O: { [key: string]: string } = {
+    ex: "0",
+    A: "1",
+    B: "2",
+    C: "3",
+    D: "4",
+    E: "5",
+    F: "6",
+    G: "7",
+    H: "8",
+    I: "9",
+    prm: "10",
+    J: "11",
+    K: "12",
+    L: "13",
+    M: "14",
+    N: "15",
+    O: "16",
+    P: "17",
+    Q: "18",
+    R: "19",
+  };
+  const D: { [key: string]: string } = { A: "1", S: "2", M: "3", D: "4" };
+  const F: { [key: string]: string } = {};
+  for (let r = 1; r <= 9; r++) F[r.toString()] = "0" + r;
+
+  for (const [id, count] of Object.entries(cardCounts)) {
+    const [prefix, numberPart] = id.split("-");
+    const expansion = prefix.slice(0, -1);
+    const type = prefix.slice(-1);
+
+    let c1 = "";
+    let isExpansionOver9 = false;
+    if (O[expansion]) {
+      if (parseInt(O[expansion]) >= 10) {
+        isExpansionOver9 = true;
+        c1 = (parseInt(O[expansion]) - 10).toString();
+      } else {
+        c1 = O[expansion];
+      }
+    }
+
+    const c2 = D[type];
+    const c3c4 = F[numberPart] || numberPart;
+    const c5 = isExpansionOver9 ? count + 5 : count;
+
+    numericString += `${c1}${c2}${c3c4}${c5}`;
+  }
+
+  let r: number[] = [];
+  for (let d = 0; d < numericString.length; d += 3) {
+    r.push(parseInt(numericString.substr(d, 3)));
+  }
+  r = r.map((e) => 500 - e);
+
+  let binaryString = r
+    .map((e) => (e < 0 ? 1024 + e : e).toString(2).padStart(10, "0"))
+    .join("");
+
+  let paddingZeros = 0;
+  while (binaryString.length % 6 !== 0) {
+    binaryString += "0";
+    paddingZeros++;
+  }
+
+  const o = binaryString.match(/.{1,3}/g);
+  if (!o) throw new Error("Binary string matching failed."); // エラーハンドリングを追加
+  const i = o.map((e) => parseInt(e, 2));
+
+  let u = "";
+  const U = [
+    ["A", "I", "Q", "Y", "g", "o", "w", "5"],
+    ["B", "J", "R", "Z", "h", "p", "x", "6"],
+    ["C", "K", "S", "a", "i", "q", "y", "7"],
+    ["D", "L", "T", "b", "j", "r", "z", "8"],
+    ["E", "M", "U", "c", "k", "s", "1", "9"],
+    ["F", "N", "V", "d", "l", "t", "2", "!"],
+    ["G", "O", "W", "e", "m", "u", "3", "?"],
+    ["H", "P", "X", "f", "n", "v", "4", "/"],
+  ];
+
+  for (let d = 0; d < i.length; d += 2) {
+    u += U[i[d]][i[d + 1]];
+  }
+
+  const s = 7 - paddingZeros;
+  const c = 7 - (o.filter((e) => e === "000").length % 8);
+
+  return `KCG-${U[s][c]}${u}`;
 };
