@@ -1,34 +1,54 @@
 # Waic Deckbuilder
 
-## 開発環境
+神椿TCGデッキ構築支援アプリ
 
-- Node.js v24.5.0
-- pnpm v10.14.0
+## 機能
 
-## インストールとセットアップ
-
-1.  **リポジトリをクローンする**:
-
-    ```bash
-    git clone https://github.com/suika-lunch/waic-deckbuilder.git
-    cd waic-deckbuilder
-    ```
-
-2.  **依存関係をインストールする**:
-
-    ```bash
-    pnpm i
-    ```
-
-3.  **開発サーバーを起動する**:
-    ```bash
-    pnpm dev
-    ```
+- カードの検索と表示
+- デッキの作成、編集、画像保存
+- デッキコードの表示
 
 ## 技術スタック
 
-- Vue.js
-- Vite
-- TypeScript
-- Tailwind CSS
-- Pinia
+- **フロントエンド**: Vue.js (TypeScript)
+- **ビルドツール**: Vite
+- **パッケージマネージャー**: pnpm
+
+## 開発環境のセットアップ
+
+1.  リポジトリのクローン
+    ```bash
+    git clone https://github.com/We-are-incomplete/waic-deckbuilder.git
+    cd waic-deckbuilder
+    ```
+2.  依存関係のインストール
+    ```bash
+    pnpm install
+    ```
+
+## 開発コマンド
+
+- **Linterの実行**:
+    ```bash
+    pnpm lint
+    ```
+- **Formatterの実行**:
+    ```bash
+    pnpm format
+    ```
+- **テストの実行**:
+    ```bash
+    pnpm test
+    ```
+- **開発サーバーの起動**:
+    ```bash
+    pnpm dev
+    ```
+- **アプリケーションのビルド**:
+    ```bash
+    pnpm build
+    ```
+- **ビルドされたアプリケーションのプレビュー**:
+    ```bash
+    pnpm preview
+    ```
