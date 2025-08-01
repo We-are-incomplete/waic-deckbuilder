@@ -26,7 +26,7 @@ export const createCard = (
   id: string,
   name: string,
   kind: CardKind,
-  type: CardType,
+  type: readonly CardType[],
   tags?: readonly string[],
 ): Result<Card, CardValidationError> => {
   // ID検証
@@ -106,7 +106,7 @@ export const filterCardsByType = (
   }
 
   return cards.filter((card) => {
-    return types.some((filterType) => card.type === filterType);
+    return types.some((filterType) => card.type.includes(filterType));
   });
 };
 

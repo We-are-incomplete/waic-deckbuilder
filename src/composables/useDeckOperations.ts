@@ -98,7 +98,7 @@ export const useDeckOperations = () => {
         const { card, count } = deckCard;
         totalCards += count;
         kindStats.set(card.kind, (kindStats.get(card.kind) || 0) + count);
-        const typeString = card.type;
+        const typeString = card.type.join(',');
         typeStats.set(typeString, (typeStats.get(typeString) || 0) + count);
       }
 
