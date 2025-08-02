@@ -5,7 +5,7 @@ import {
   encodeDeckCode,
   decodeDeckCode,
   decodeKcgDeckCode,
-  encodeKcgDeckCode, // encodeKcgDeckCodeをインポート
+  encodeKcgDeckCode,
   logger,
 } from "../utils";
 import { GAME_CONSTANTS } from "../constants";
@@ -20,12 +20,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
   const importDeckCode = ref<string>("");
   const isGeneratingCode = ref<boolean>(false);
   const showDeckCodeModal = ref<boolean>(false);
-  // デッキコードストア専用のエラー型
-  type DeckCodeError =
-    | { readonly type: "generation"; readonly message: string }
-    | { readonly type: "copy"; readonly message: string }
-    | { readonly type: "validation"; readonly message: string }
-    | { readonly type: "decode"; readonly message: string };
+  
 
   const error = ref<DeckCodeError | null>(null);
   const deckStore = useDeckStore();
