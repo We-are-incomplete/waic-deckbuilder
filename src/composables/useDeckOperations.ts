@@ -1,3 +1,8 @@
+/**
+ * デッキ操作に関するComposable
+ * デッキへのカード追加、削除、検索、統計計算などの機能を提供
+ * メモ化による最適化とエラーハンドリングを含む
+ */
 import { computed, type ComputedRef } from "vue";
 import type { Card } from "../types/card";
 import type { DeckCard, DeckOperation } from "../types/deck";
@@ -98,7 +103,7 @@ export const useDeckOperations = () => {
         const { card, count } = deckCard;
         totalCards += count;
         kindStats.set(card.kind, (kindStats.get(card.kind) || 0) + count);
-        const typeString = card.type.join(',');
+        const typeString = card.type.join(",");
         typeStats.set(typeString, (typeStats.get(typeString) || 0) + count);
       }
 

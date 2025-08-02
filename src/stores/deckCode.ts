@@ -5,6 +5,7 @@ import {
   encodeDeckCode,
   decodeDeckCode,
   decodeKcgDeckCode,
+  encodeKcgDeckCode, // encodeKcgDeckCodeをインポート
   logger,
 } from "../utils";
 import { GAME_CONSTANTS } from "../constants";
@@ -14,7 +15,8 @@ import { fromAsyncThrowable } from "neverthrow";
 import { sortDeckCards } from "../domain/sort";
 
 export const useDeckCodeStore = defineStore("deckCode", () => {
-  const deckCode = ref<string>("");
+  const slashDeckCode = ref<string>(""); // スラッシュ区切りコード
+  const kcgDeckCode = ref<string>(""); // KCG形式コード
   const importDeckCode = ref<string>("");
   const isGeneratingCode = ref<boolean>(false);
   const showDeckCodeModal = ref<boolean>(false);
@@ -35,15 +37,40 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
     isGeneratingCode.value = true;
     error.value = null;
     try {
-      // デッキカードをソートしてからエンコード
-      const sortedDeck = sortDeckCards(deckStore.deckCards);
-      deckCode.value = encodeDeckCode(sortedDeck);
-      logger.debug("生成されたデッキコード:", deckCode.value);
-      logger.debug("デッキカード数:", sortedDeck.length);
-      logger.debug(
-        "デッキ内容:",
-        sortedDeck.map((item: DeckCard) => `${item.card.id} x${item.count}`),
-      );
+      if (deckStore.deckCards.length === 0) {
+        slashDeckCode.value = "";
+        kcgDeckCode.value = "";
+        logger.debug("デッキが空のため、空のデッキコードを生成しました。");
+      } else {
+        // デッキカードをソートしてからエンコード
+        const sortedDeck = sortDeckCards(deckStore.deckCards);
+        const cardIds = sortedDeck.flatMap((item: DeckCard) =>
+          Array(item.count).fill(item.card.id),
+        );
+
+        slashDeckCode.value = encodeDeckCode(sortedDeck);
+        const kcgEncodeResult = encodeKcgDeckCode(cardIds);
+        if (kcgEncodeResult.isOk()) {
+          kcgDeckCode.value = kcgEncodeResult.value;
+        } else {
+          const errorMessage = "KCG形式デッキコードの生成に失敗しました";
+          logger.error(errorMessage + ":", kcgEncodeResult.error);
+          error.value = { type: "generation", message: errorMessage };
+          isGeneratingCode.value = false;
+          return;
+        }
+
+        logger.debug(
+          "生成されたスラッシュ区切りデッキコード:",
+          slashDeckCode.value,
+        );
+        logger.debug("生成されたKCG形式デッキコード:", kcgDeckCode.value);
+        logger.debug("デッキカード数:", sortedDeck.length);
+        logger.debug(
+          "デッキ内容:",
+          sortedDeck.map((item: DeckCard) => `${item.card.id} x${item.count}`),
+        );
+      }
       showDeckCodeModal.value = true;
     } catch (e) {
       const errorMessage = "デッキコードの生成に失敗しました";
@@ -56,9 +83,12 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
 
   /**
    * デッキコードをクリップボードにコピー
+   * @param codeType コピーするコードの種類 ('slash' or 'kcg')
    */
-  const copyDeckCode = async (): Promise<void> => {
+  const copyDeckCode = async (codeType: "slash" | "kcg"): Promise<void> => {
     error.value = null;
+    const codeToCopy =
+      codeType === "slash" ? slashDeckCode.value : kcgDeckCode.value;
 
     // Clipboard APIを安全にラップ
     const safeClipboardWrite = fromAsyncThrowable(
@@ -71,12 +101,14 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
       (error: unknown) => error,
     );
 
-    const result = await safeClipboardWrite(deckCode.value);
+    const result = await safeClipboardWrite(codeToCopy);
 
     if (result.isOk()) {
-      logger.info("デッキコードをコピーしました");
+      logger.info(
+        `${codeType === "slash" ? "スラッシュ区切り" : "KCG形式"}デッキコードをコピーしました`,
+      );
     } else {
-      const errorMessage = "デッキコードのコピーに失敗しました";
+      const errorMessage = `${codeType === "slash" ? "スラッシュ区切り" : "KCG形式"}デッキコードのコピーに失敗しました`;
       logger.error(errorMessage + ":", result.error);
       error.value = { type: "copy", message: errorMessage };
     }
@@ -334,7 +366,8 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
   };
 
   return {
-    deckCode,
+    slashDeckCode,
+    kcgDeckCode,
     importDeckCode,
     isGeneratingCode,
     showDeckCodeModal,

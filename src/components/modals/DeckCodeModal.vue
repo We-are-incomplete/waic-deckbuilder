@@ -1,7 +1,8 @@
 <script setup lang="ts">
 interface Props {
   isVisible: boolean;
-  deckCode: string;
+  slashDeckCode: string; // スラッシュ区切りのデッキコード
+  kcgDeckCode: string; // KCG形式のデッキコード
   importDeckCode: string;
   error?: string | null;
 }
@@ -9,7 +10,8 @@ interface Props {
 interface Emits {
   (e: "close"): void;
   (e: "updateImportCode", code: string): void;
-  (e: "copyCode"): void;
+  (e: "copySlashCode"): void; // スラッシュ区切りコードのコピーイベント
+  (e: "copyKcgCode"): void; // KCGコードのコピーイベント
   (e: "importCode"): void;
 }
 
@@ -34,18 +36,41 @@ const emit = defineEmits<Emits>();
         </button>
       </div>
 
+      <!-- スラッシュ区切りデッキコード表示 -->
       <div class="mb-4">
+        <h4 class="text-sm font-medium mb-2">スラッシュ区切りデッキコード</h4>
         <div
           class="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-2"
         >
           <input
             type="text"
-            :value="deckCode"
+            :value="slashDeckCode"
             readonly
             class="flex-grow px-3 py-2 text-sm rounded bg-gray-700 border border-gray-600"
           />
           <button
-            @click="emit('copyCode')"
+            @click="emit('copySlashCode')"
+            class="px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition duration-200 whitespace-nowrap min-w-24"
+          >
+            コピー
+          </button>
+        </div>
+      </div>
+
+      <!-- KCG形式デッキコード表示 -->
+      <div class="mb-4">
+        <h4 class="text-sm font-medium mb-2">KCG形式デッキコード</h4>
+        <div
+          class="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-2"
+        >
+          <input
+            type="text"
+            :value="kcgDeckCode"
+            readonly
+            class="flex-grow px-3 py-2 text-sm rounded bg-gray-700 border border-gray-600"
+          />
+          <button
+            @click="emit('copyKcgCode')"
             class="px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition duration-200 whitespace-nowrap min-w-24"
           >
             コピー
@@ -69,7 +94,7 @@ const emit = defineEmits<Emits>();
             "
             @contextmenu.stop
             class="flex-grow px-3 py-2 text-sm sm:text-base rounded bg-gray-700 border border-gray-600 focus:outline-none focus:ring focus:border-blue-500"
-            placeholder="デッキコードを入力（スラッシュ区切りとKCG形式に対応）"
+            placeholder="デッキコードを入力"
           />
           <button
             @click="emit('importCode')"
