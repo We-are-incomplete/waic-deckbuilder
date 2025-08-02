@@ -20,7 +20,6 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
   const importDeckCode = ref<string>("");
   const isGeneratingCode = ref<boolean>(false);
   const showDeckCodeModal = ref<boolean>(false);
-  
 
   const error = ref<DeckCodeError | null>(null);
   const deckStore = useDeckStore();
