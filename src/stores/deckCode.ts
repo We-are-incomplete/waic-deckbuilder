@@ -49,7 +49,16 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
         );
 
         slashDeckCode.value = encodeDeckCode(sortedDeck);
-        kcgDeckCode.value = encodeKcgDeckCode(cardIds);
+        const kcgEncodeResult = encodeKcgDeckCode(cardIds);
+        if (kcgEncodeResult.isOk()) {
+          kcgDeckCode.value = kcgEncodeResult.value;
+        } else {
+          const errorMessage = "KCG形式デッキコードの生成に失敗しました";
+          logger.error(errorMessage + ":", kcgEncodeResult.error);
+          error.value = { type: "generation", message: errorMessage };
+          isGeneratingCode.value = false;
+          return;
+        }
 
         logger.debug(
           "生成されたスラッシュ区切りデッキコード:",

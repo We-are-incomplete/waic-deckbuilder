@@ -1,3 +1,7 @@
+/**
+ * KCG形式デッキコードのエンコード・デコード機能のテスト
+ * ラウンドトリップ（エンコード→デコード→エンコード）の一貫性を検証
+ */
 import { describe, it, expect } from "vitest";
 import { encodeKcgDeckCode, decodeKcgDeckCode } from "../deckCode";
 
