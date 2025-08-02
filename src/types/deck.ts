@@ -45,6 +45,13 @@ export type DeckOperationError =
     }
   | { readonly type: "unknown"; readonly message: string };
 
+// デッキコードエラー型
+export type DeckCodeError =
+  | { readonly type: "generation"; readonly message: string }
+  | { readonly type: "copy"; readonly message: string }
+  | { readonly type: "validation"; readonly message: string }
+  | { readonly type: "decode"; readonly message: string };
+
 // デッキ変更操作の型
 export type DeckOperation =
   | { readonly type: "addCard"; readonly card: Card }

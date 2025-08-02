@@ -21,9 +21,9 @@ describe("KCG Deck Code Roundtrip", () => {
         const decodedCardIds = decodedResult.value;
         const reEncodedCodeResult = encodeKcgDeckCode(decodedCardIds);
         expect(reEncodedCodeResult.isOk()).toBe(true);
-        if (reEncodedCodeResult.isOk()) {
-          expect(reEncodedCodeResult.value).toBe(originalCode);
-        }
+        if (!reEncodedCodeResult.isOk()) return;
+
+        expect(reEncodedCodeResult.value).toBe(originalCode);
       }
     });
   });

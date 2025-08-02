@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import type { Card, DeckCard } from "../types";
+import type { Card, DeckCard, DeckCodeError } from "../types";
 import {
   encodeDeckCode,
   decodeDeckCode,
