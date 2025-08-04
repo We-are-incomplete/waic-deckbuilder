@@ -6,6 +6,7 @@ import { safeAsyncOperation } from "../utils/errorHandler";
 import * as CardDomain from "../domain/card";
 import { fromAsyncThrowable, ok, err, type Result } from "neverthrow";
 import { useMemoize } from "@vueuse/core";
+import { loadCardsFromCsv } from "../utils/cardDataConverter";
 
 // カードストア専用のエラー型
 type CardStoreError =
@@ -63,19 +64,8 @@ export const useCardsStore = defineStore("cards", () => {
   const fetchCardData = async (): Promise<Result<Card[], unknown>> => {
     const safeFetch = fromAsyncThrowable(
       async (): Promise<Card[]> => {
-        const response = await fetch(`${import.meta.env.BASE_URL}cards.json`);
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        if (!Array.isArray(data)) {
-          throw new Error("カードデータの形式が不正です");
-        }
-
-        return data;
+        const cards = await loadCardsFromCsv("https://docs.google.com/spreadsheets/d/e/2PACX-1vSBSkAVMH16J4iOgia3JKSwgpNG9gIWGu5a7OzdnuPmM2lvYW0MjchCBvy1i4ZS8aJJEPooubEivEfc/pub?gid=113188942&single=true&output=csv");
+        return cards;
       },
       (error: unknown) => error,
     );
