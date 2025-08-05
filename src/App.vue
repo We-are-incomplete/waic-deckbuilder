@@ -20,7 +20,11 @@ import {
   DeckManagementModal,
 } from "./components";
 import type { Card, DeckCard } from "./types";
-import { getCardImageUrlSafe, safeSyncOperation, cleanupStaleEntries } from "./utils";
+import {
+  getCardImageUrlSafe,
+  safeSyncOperation,
+  cleanupStaleEntries,
+} from "./utils";
 import { useIntervalFn } from "@vueuse/core";
 import { CACHE_CLEANUP_INTERVAL } from "./utils/image";
 

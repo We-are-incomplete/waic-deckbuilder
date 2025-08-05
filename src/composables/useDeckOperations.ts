@@ -12,8 +12,6 @@ import { useCardsStore } from "../stores/cards";
 import { useMemoize } from "@vueuse/core";
 import { createErrorHandler } from "../utils/errorHandler"; // createErrorHandler を追加
 
-
-
 /**
  * 安全なハッシュ関数（64bitバージョン）
  * 32bitハッシュの衝突リスクを大幅に削減
@@ -43,8 +41,6 @@ export const useDeckOperations = () => {
 
   // エラーハンドリング設定
   const errorHandler = createErrorHandler();
-
-  
 
   // メモ化された統計計算（安全なキー版）
   const baseMemoizedStatsCalculation = useMemoize(
@@ -263,8 +259,6 @@ export const useDeckOperations = () => {
     return memoizedStatsCalculation(deckHash, deckStore.sortedDeckCards);
   };
 
-  
-
   return {
     // 計算プロパティ
     deckState,
@@ -280,7 +274,5 @@ export const useDeckOperations = () => {
     getCardDetails,
     searchDeckCards,
     getDeckStatistics,
-
-    
   };
 };

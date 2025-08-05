@@ -24,7 +24,6 @@ import { useDebounceFn } from "@vueuse/core";
 
 // beforeunloadイベントリスナーの重複登録を防ぐフラグ
 
-
 /**
  * デッキの軽量ハッシュを生成する純粋関数
  * 巨大なオブジェクトの代わりに軽量なキーを使用してメモ化を最適化
@@ -272,12 +271,11 @@ export const useDeckStore = defineStore("deck", () => {
   if (typeof window !== "undefined") {
     onMounted(() => {
       window.addEventListener("beforeunload", handleBeforeUnload);
-      
     });
 
     onBeforeUnmount(() => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
-      
+
       // コンポーネント破棄時にも保存を実行
       handleBeforeUnload();
     });

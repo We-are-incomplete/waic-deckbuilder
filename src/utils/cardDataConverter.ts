@@ -15,7 +15,9 @@ export async function loadCardsFromCsv(
 ): Promise<Result<Card[], Error>> {
   console.log("Attempting to fetch CSV from:", csvPath); // デバッグログ
 
-  const { data, error, isFetching } = useFetch(csvPath, { refetch: true }).text();
+  const { data, error, isFetching } = useFetch(csvPath, {
+    refetch: true,
+  }).text();
 
   // useFetchはリアクティブな参照を返すため、Promiseとして扱うためにawaitで解決
   await new Promise<void>((resolve) => {
