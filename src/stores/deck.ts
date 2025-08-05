@@ -23,7 +23,6 @@ import { sortDeckCards } from "../domain/sort";
 import { useDebounceFn } from "@vueuse/core";
 
 // beforeunloadイベントリスナーの重複登録を防ぐフラグ
-let isBeforeUnloadListenerRegistered = false;
 
 /**
  * デッキの軽量ハッシュを生成する純粋関数
@@ -269,24 +268,13 @@ export const useDeckStore = defineStore("deck", () => {
   };
 
   // ブラウザ環境でのみイベントリスナーを設定
-  if (typeof window !== "undefined" && !isBeforeUnloadListenerRegistered) {
+  if (typeof window !== "undefined") {
     onMounted(() => {
       window.addEventListener("beforeunload", handleBeforeUnload);
-      isBeforeUnloadListenerRegistered = true;
     });
 
     onBeforeUnmount(() => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
-      isBeforeUnloadListenerRegistered = false;
-      // コンポーネント破棄時にも保存を実行
-      handleBeforeUnload();
-    });
-  } else if (
-    typeof window !== "undefined" &&
-    isBeforeUnloadListenerRegistered
-  ) {
-    // 既にリスナーが登録されている場合は、アンマウント時の処理のみ追加
-    onBeforeUnmount(() => {
       // コンポーネント破棄時にも保存を実行
       handleBeforeUnload();
     });

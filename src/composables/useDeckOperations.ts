@@ -13,15 +13,6 @@ import { useMemoize } from "@vueuse/core";
 import { createErrorHandler } from "../utils/errorHandler"; // createErrorHandler を追加
 
 /**
- * メモ化最適化: パフォーマンステスト用のカウンター
- * 実測でヒット率を確認するためのデバッグ機能
- */
-let statsHitCount = 0;
-let statsMissCount = 0;
-let searchHitCount = 0;
-let searchMissCount = 0;
-
-/**
  * 安全なハッシュ関数（64bitバージョン）
  * 32bitハッシュの衝突リスクを大幅に削減
  * 2つの異なる32bitハッシュを組み合わせて64bitハッシュを生成
@@ -50,47 +41,6 @@ export const useDeckOperations = () => {
 
   // エラーハンドリング設定
   const errorHandler = createErrorHandler();
-
-  /**
-   * メモ化関数の統一ラッパー
-   * キャッシュキーを事前にチェックしてヒット/ミスを正確にカウント
-   */
-  const createMemoizationWrapper = <TArgs extends readonly unknown[], TReturn>(
-    memoizedFn: (...args: TArgs) => TReturn,
-    getKey: (...args: TArgs) => string,
-    statsType: "stats" | "search",
-  ) => {
-    return (...args: TArgs): TReturn => {
-      // キャッシュキーを生成
-      const cacheKey = getKey(...args);
-
-      // キャッシュに既にキーが存在するかチェック
-      const cache = (memoizedFn as any).cache || (memoizedFn as any)._cache;
-      const isHit = cache && cache.has && cache.has(cacheKey);
-
-      const result = memoizedFn(...args);
-
-      if (statsType === "stats") {
-        if (isHit) {
-          statsHitCount++;
-          console.debug(`Stats cache HIT`);
-        } else {
-          statsMissCount++;
-          console.debug(`Stats cache MISS`);
-        }
-      } else {
-        if (isHit) {
-          searchHitCount++;
-          console.debug(`Search cache HIT`);
-        } else {
-          searchMissCount++;
-          console.debug(`Search cache MISS`);
-        }
-      }
-
-      return result;
-    };
-  };
 
   // メモ化された統計計算（安全なキー版）
   const baseMemoizedStatsCalculation = useMemoize(
@@ -155,17 +105,9 @@ export const useDeckOperations = () => {
   );
 
   // 統一ラッパーでラップしたメモ化関数
-  const memoizedStatsCalculation = createMemoizationWrapper(
-    baseMemoizedStatsCalculation,
-    (deckHash: string) => createSafeHash(deckHash),
-    "stats",
-  );
+  const memoizedStatsCalculation = baseMemoizedStatsCalculation;
 
-  const memoizedDeckSearch = createMemoizationWrapper(
-    baseMemoizedDeckSearch,
-    (searchKey: string) => createSafeHash(searchKey),
-    "search",
-  );
+  const memoizedDeckSearch = baseMemoizedDeckSearch;
 
   /**
    * デッキ状態を計算（最適化版）
@@ -317,61 +259,6 @@ export const useDeckOperations = () => {
     return memoizedStatsCalculation(deckHash, deckStore.sortedDeckCards);
   };
 
-  /**
-   * メモ化パフォーマンス統計を取得（デバッグ用）
-   */
-  const getMemoizationStats = () => {
-    const statsTotal = statsHitCount + statsMissCount;
-    const searchTotal = searchHitCount + searchMissCount;
-    const overallTotal = statsTotal + searchTotal;
-    const overallHits = statsHitCount + searchHitCount;
-
-    return {
-      stats: {
-        hitCount: statsHitCount,
-        missCount: statsMissCount,
-        hitRatio:
-          statsTotal > 0
-            ? ((statsHitCount / statsTotal) * 100).toFixed(1)
-            : "0.0",
-        total: statsTotal,
-      },
-      search: {
-        hitCount: searchHitCount,
-        missCount: searchMissCount,
-        hitRatio:
-          searchTotal > 0
-            ? ((searchHitCount / searchTotal) * 100).toFixed(1)
-            : "0.0",
-        total: searchTotal,
-      },
-      overall: {
-        hitCount: overallHits,
-        missCount: statsMissCount + searchMissCount,
-        hitRatio:
-          overallTotal > 0
-            ? ((overallHits / overallTotal) * 100).toFixed(1)
-            : "0.0",
-        total: overallTotal,
-      },
-    };
-  };
-
-  /**
-   * メモ化統計をリセット（デバッグ用）
-   * 統計カウンターとメモ化キャッシュの両方をクリア
-   */
-  const resetMemoizationStats = () => {
-    statsHitCount = 0;
-    statsMissCount = 0;
-    searchHitCount = 0;
-    searchMissCount = 0;
-
-    // メモ化キャッシュもクリア
-    baseMemoizedStatsCalculation.clear?.();
-    baseMemoizedDeckSearch.clear?.();
-  };
-
   return {
     // 計算プロパティ
     deckState,
@@ -387,9 +274,5 @@ export const useDeckOperations = () => {
     getCardDetails,
     searchDeckCards,
     getDeckStatistics,
-
-    // デバッグ機能（開発時のパフォーマンス測定用）
-    getMemoizationStats,
-    resetMemoizationStats,
   };
 };

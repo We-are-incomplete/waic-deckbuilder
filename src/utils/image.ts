@@ -4,7 +4,7 @@ import { logger } from "./logger";
 
 // LRUキャッシュの設定
 const MAX_CACHE_SIZE = 200; // 最大キャッシュサイズ
-const CACHE_CLEANUP_INTERVAL = 5 * 60 * 1000; // 5分間隔でクリーンアップ
+export const CACHE_CLEANUP_INTERVAL = 5 * 60 * 1000; // 5分間隔でクリーンアップ
 
 // LRUキャッシュエントリー
 interface CacheEntry {
@@ -88,7 +88,7 @@ const evictIfNecessary = (): void => {
 /**
  * 古いエントリーをクリーンアップ
  */
-const cleanupStaleEntries = (): void => {
+export const cleanupStaleEntries = (): void => {
   const now = Date.now();
   const staleThreshold = 30 * 60 * 1000; // 30分間未使用のエントリーを削除
 
@@ -114,22 +114,9 @@ const cleanupStaleEntries = (): void => {
 };
 
 /**
- * 定期的なクリーンアップを開始
- */
-const startPeriodicCleanup = (): void => {
-  if (cacheState.cleanupTimer) {
-    return; // 既に開始済み
-  }
-
-  cacheState.cleanupTimer = setInterval(() => {
-    cleanupStaleEntries();
-  }, CACHE_CLEANUP_INTERVAL);
-};
-
-/**
  * キャッシュをクリア
  */
-const clearCache = (): void => {
+export const clearCache = (): void => {
   cacheState.cache.clear();
   cacheState.accessOrder = [];
 };
@@ -137,7 +124,7 @@ const clearCache = (): void => {
 /**
  * キャッシュの統計情報を取得
  */
-const getCacheStats = (): { size: number; maxSize: number } => {
+export const getCacheStats = (): { size: number; maxSize: number } => {
   return {
     size: cacheState.cache.size,
     maxSize: MAX_CACHE_SIZE,
@@ -147,16 +134,13 @@ const getCacheStats = (): { size: number; maxSize: number } => {
 /**
  * クリーンアップタイマーを停止
  */
-const destroyCache = (): void => {
+export const destroyCache = (): void => {
   if (cacheState.cleanupTimer) {
     clearInterval(cacheState.cleanupTimer);
     cacheState.cleanupTimer = null;
   }
   clearCache();
 };
-
-// 初期化
-startPeriodicCleanup();
 
 /**
  * カード画像URLを取得
