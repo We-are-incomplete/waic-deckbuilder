@@ -6,25 +6,40 @@
  */
 
 import type { Card, CardKind, CardType } from "../types/card";
-import { fromAsyncThrowable, type Result } from "neverthrow";
+import { type Result, ok, err } from "neverthrow";
+import { useFetch } from "@vueuse/core";
+import { watchEffect } from "vue";
 
 export async function loadCardsFromCsv(
   csvPath: string,
 ): Promise<Result<Card[], Error>> {
   console.log("Attempting to fetch CSV from:", csvPath); // デバッグログ
-  const safeLoad = fromAsyncThrowable(
-    async () => {
-      const response = await fetch(csvPath);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+
+  const { data, error, isFetching } = useFetch(csvPath, { refetch: true }).text();
+
+  // useFetchはリアクティブな参照を返すため、Promiseとして扱うためにawaitで解決
+  await new Promise<void>((resolve) => {
+    const stopWatch = watchEffect(() => {
+      if (!isFetching.value) {
+        stopWatch();
+        resolve();
       }
-      const csvText = await response.text();
-      return parseCsv(csvText);
-    },
-    (error: unknown) =>
-      error instanceof Error ? error : new Error(String(error)),
-  );
-  return await safeLoad();
+    });
+  });
+
+  if (error.value) {
+    return err(new Error(`HTTP error! status: ${error.value.message}`));
+  }
+
+  if (data.value === null) {
+    return err(new Error("CSVデータが取得できませんでした。"));
+  }
+
+  try {
+    return ok(parseCsv(data.value));
+  } catch (e) {
+    return err(e instanceof Error ? e : new Error(String(e)));
+  }
 }
 
 function parseCsv(csvText: string): Card[] {

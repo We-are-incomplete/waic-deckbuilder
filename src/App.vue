@@ -20,7 +20,9 @@ import {
   DeckManagementModal,
 } from "./components";
 import type { Card, DeckCard } from "./types";
-import { getCardImageUrlSafe, safeSyncOperation } from "./utils";
+import { getCardImageUrlSafe, safeSyncOperation, cleanupStaleEntries } from "./utils";
+import { useIntervalFn } from "@vueuse/core";
+import { CACHE_CLEANUP_INTERVAL } from "./utils/image";
 
 // ストア初期化
 const appStore = useAppStore();
@@ -38,6 +40,9 @@ const deckSectionRef =
 
 // アプリケーションの初期化
 onMounted(appStore.initializeApp);
+
+// 画像キャッシュの定期的なクリーンアップ
+useIntervalFn(cleanupStaleEntries, CACHE_CLEANUP_INTERVAL, { immediate: true });
 
 // Vue 3.5の新機能: shallowRef を使用したパフォーマンス最適化
 // 深い監視が不要なオブジェクトには shallowRef を使用
