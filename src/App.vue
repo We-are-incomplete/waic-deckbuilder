@@ -17,13 +17,20 @@ import {
   DeckCodeModal,
   FilterModal,
   CardImageModal,
+  DeckManagementModal,
 } from "./components";
 import type { Card, DeckCard } from "./types";
 import { getCardImageUrlSafe, safeSyncOperation } from "./utils";
 
 // ストア初期化
 const appStore = useAppStore();
-const { cardsStore, deckStore, filterStore, deckCodeStore } = appStore;
+const {
+  cardsStore,
+  deckStore,
+  filterStore,
+  deckCodeStore,
+  deckManagementStore,
+} = appStore;
 
 // Vue 3.5の新機能: useTemplateRef でテンプレート参照を管理
 const deckSectionRef =
@@ -218,6 +225,9 @@ const shouldShowResetConfirmModal = computed(
   () => appStore.showResetConfirmModal,
 );
 const shouldShowImageModal = computed(() => imageModalState.value.isVisible);
+const shouldShowDeckManagementModal = computed(
+  () => deckManagementStore.isDeckManagementModalOpen,
+);
 
 // デッキセクションのプロパティを計算（Vue 3.5の最適化されたcomputed）
 const deckSectionProps = computed(() => ({
@@ -268,6 +278,9 @@ const cardImageModalProps = computed(() => ({
         @generate-deck-code="deckCodeStore.generateAndShowDeckCode"
         @reset-deck="appStore.resetDeck"
         @open-image-modal="openImageModal"
+        @open-deck-management-modal="
+          deckManagementStore.openDeckManagementModal
+        "
         class="lg:w-1/2 lg:h-full overflow-y-auto"
       />
 
@@ -318,6 +331,9 @@ const cardImageModalProps = computed(() => ({
       @close="closeImageModal"
       @navigate="handleCardNavigation"
     />
+
+    <!-- デッキ管理モーダル -->
+    <DeckManagementModal v-if="shouldShowDeckManagementModal" />
   </div>
 </template>
 

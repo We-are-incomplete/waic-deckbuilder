@@ -5,7 +5,6 @@ import { handleImageError } from "../../utils/image";
 import { getCardImageUrlSafe } from "../../utils";
 import { useDeckOperations } from "../../composables/useDeckOperations";
 import { useDeckStore } from "../../stores/deck";
-import { useExportStore } from "../../stores/export";
 import { onLongPress } from "@vueuse/core";
 
 // Vue 3.5の新機能: 改善されたdefineProps with better TypeScript support
@@ -19,6 +18,7 @@ interface Emits {
   (e: "generateDeckCode"): void;
   (e: "resetDeck"): void;
   (e: "openImageModal", cardId: string): void;
+  (e: "openDeckManagementModal"): void;
 }
 
 const props = defineProps<Props>();
@@ -26,7 +26,6 @@ const emit = defineEmits<Emits>();
 
 // ストアとコンポーザブルの初期化
 const deckStore = useDeckStore();
-const exportStore = useExportStore();
 
 // デッキ操作のコンポーザブル
 const {
@@ -112,24 +111,11 @@ const getDeckProgressColor = (count: number) => {
   return "bg-blue-500";
 };
 
-// デッキ画像保存処理
-const saveDeckAsPng = async () => {
-  const container = exportContainer.value;
-  if (container) {
-    try {
-      await exportStore.saveDeckAsPng(deckName.value, container);
-    } catch (error) {
-      console.error("デッキ画像の保存中にエラーが発生しました:", error);
-    }
-  }
-};
-
 // エクスポート用
 defineExpose({
   exportContainer,
   decrementCard,
   resetDeck,
-  saveDeckAsPng,
   updateDeckName,
 });
 </script>
@@ -171,15 +157,12 @@ defineExpose({
         >
           <svg
             class="w-3 h-3"
-            fill="none"
+            fill="white"
             stroke="currentColor"
-            viewBox="0 0 24 24"
+            viewBox="0 -960 960 960"
           >
             <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+              d="M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z"
             ></path>
           </svg>
           <span class="hidden sm:inline">デッキコード</span>
@@ -206,48 +189,23 @@ defineExpose({
       </button>
 
       <button
-        @click="saveDeckAsPng"
-        :disabled="deckCards.length === 0 || props.isSaving"
+        @click="emit('openDeckManagementModal')"
         class="group relative flex-1 min-w-0 px-1 sm:px-2 py-0.5 sm:py-1 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded text-xs font-medium hover:from-emerald-700 hover:to-emerald-800 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-emerald-500/25"
-        title="デッキ画像を保存"
+        title="デッキの保存・読み込み"
       >
-        <span
-          v-if="!props.isSaving"
-          class="flex items-center justify-center gap-1"
-        >
+        <span class="flex items-center justify-center gap-1">
           <svg
             class="w-3 h-3"
-            fill="none"
+            fill="white"
             stroke="currentColor"
-            viewBox="0 0 24 24"
+            viewBox="0 -960 960 960"
           >
             <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              d="M840-680v480q0 33-23.5 56.5T760-120H200q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h480l160 160Zm-80 34L646-760H200v560h560v-446ZM480-240q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35ZM240-560h360v-160H240v160Zm-40-86v446-560 114Z"
             ></path>
           </svg>
-          <span class="hidden sm:inline">デッキ画像保存</span>
-          <span class="sm:hidden">画像保存</span>
-        </span>
-        <span v-else class="flex items-center justify-center gap-1">
-          <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle
-              class="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              stroke-width="4"
-            ></circle>
-            <path
-              class="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            ></path>
-          </svg>
-          保存中...
+          <span class="hidden sm:inline">デッキ保存</span>
+          <span class="sm:hidden">保存</span>
         </span>
       </button>
 
@@ -260,15 +218,12 @@ defineExpose({
         <span class="flex items-center justify-center gap-1">
           <svg
             class="w-3 h-3"
-            fill="none"
+            fill="white"
             stroke="currentColor"
-            viewBox="0 0 24 24"
+            viewBox="0 -960 960 960"
           >
             <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"
             ></path>
           </svg>
           <span class="hidden sm:inline">リセット</span>

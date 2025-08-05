@@ -25,9 +25,9 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
   const deckStore = useDeckStore();
 
   /**
-   * デッキコードを生成・表示
+   * デッキコードを生成
    */
-  const generateAndShowDeckCode = (): void => {
+  const generateDeckCodes = (): void => {
     isGeneratingCode.value = true;
     error.value = null;
     try {
@@ -65,7 +65,6 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
           sortedDeck.map((item: DeckCard) => `${item.card.id} x${item.count}`),
         );
       }
-      showDeckCodeModal.value = true;
     } catch (e) {
       const errorMessage = "デッキコードの生成に失敗しました";
       logger.error(errorMessage + ":", e);
@@ -73,6 +72,14 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
     } finally {
       isGeneratingCode.value = false;
     }
+  };
+
+  /**
+   * デッキコードを生成し、モーダルを表示
+   */
+  const generateAndShowDeckCode = (): void => {
+    generateDeckCodes();
+    showDeckCodeModal.value = true;
   };
 
   /**
@@ -366,6 +373,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
     isGeneratingCode,
     showDeckCodeModal,
     error,
+    generateDeckCodes,
     generateAndShowDeckCode,
     copyDeckCode,
     importDeckFromCode,

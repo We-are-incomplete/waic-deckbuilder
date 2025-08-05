@@ -6,6 +6,7 @@ import { useFilterStore } from "./filter";
 
 import { useDeckCodeStore } from "./deckCode";
 import { useExportStore } from "./export";
+import { useDeckManagementStore } from "./deckManagement";
 
 import type DeckSection from "../components/layout/DeckSection.vue";
 
@@ -29,8 +30,16 @@ export const useAppStore = defineStore("app", () => {
     const filterStore = useFilterStore();
     const deckCodeStore = useDeckCodeStore();
     const exportStore = useExportStore();
+    const deckManagementStore = useDeckManagementStore();
 
-    return { cardsStore, deckStore, filterStore, deckCodeStore, exportStore };
+    return {
+      cardsStore,
+      deckStore,
+      filterStore,
+      deckCodeStore,
+      exportStore,
+      deckManagementStore,
+    };
   };
 
   // 各ストアのインスタンス取得（遅延初期化）
@@ -68,6 +77,7 @@ export const useAppStore = defineStore("app", () => {
     try {
       await stores.cardsStore.loadCards();
       stores.deckStore.initializeDeck(stores.cardsStore.availableCards);
+      stores.deckCodeStore.generateDeckCodes();
     } catch (error) {
       console.error("Application initialization failed:", error);
       throw error;
