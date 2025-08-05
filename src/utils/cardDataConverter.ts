@@ -6,7 +6,7 @@
  */
 
 import type { Card, CardKind, CardType } from "../types/card";
-import { type Result, ok, err } from "neverthrow";
+import { type Result, ok, err, fromThrowable } from "neverthrow";
 import { useFetch } from "@vueuse/core";
 import { watchEffect } from "vue";
 
@@ -37,11 +37,15 @@ export async function loadCardsFromCsv(
     return err(new Error("CSVデータが取得できませんでした。"));
   }
 
-  try {
-    return ok(parseCsv(data.value));
-  } catch (e) {
-    return err(e instanceof Error ? e : new Error(String(e)));
+  if (data.value === null) {
+    return err(new Error("CSVデータが取得できませんでした。"));
   }
+
+  const parseResult = fromThrowable(() => parseCsv(data.value as string))();
+  if (parseResult.isErr()) {
+    return err(parseResult.error instanceof Error ? parseResult.error : new Error(String(parseResult.error)));
+  }
+  return ok(parseResult.value);
 }
 
 function parseCsv(csvText: string): Card[] {

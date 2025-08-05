@@ -275,13 +275,6 @@ export const useDeckStore = defineStore("deck", () => {
 
     onBeforeUnmount(() => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
-
-      // コンポーネント破棄時にも保存を実行
-      handleBeforeUnload();
-    });
-  } else if (typeof window !== "undefined") {
-    // 既にリスナーが登録されている場合は、アンマウント時の処理のみ追加
-    onBeforeUnmount(() => {
       // コンポーネント破棄時にも保存を実行
       handleBeforeUnload();
     });
