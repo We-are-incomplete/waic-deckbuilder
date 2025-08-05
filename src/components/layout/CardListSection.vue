@@ -181,16 +181,13 @@ watchEffect((onCleanup) => {
         class="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-1"
       >
         <svg
-          class="w-4 h-4 text-blue-400"
-          fill="none"
+          class="w-4 h-4"
+          fill="oklch(70.7% 0.165 254.624)"
           stroke="currentColor"
-          viewBox="0 0 24 24"
+          viewBox="0 -960 960 960"
         >
           <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+            d="M120-520v-320h320v320H120Zm0 400v-320h320v320H120Zm400-400v-320h320v320H520Zm0 400v-320h320v320H520ZM200-600h160v-160H200v160Zm400 0h160v-160H600v160Zm0 400h160v-160H600v160Zm-400 0h160v-160H200v160Zm400-400Zm0 240Zm-240 0Zm0-240Z"
           ></path>
         </svg>
         カード一覧
@@ -203,15 +200,12 @@ watchEffect((onCleanup) => {
         <span class="flex items-center gap-1">
           <svg
             class="w-3 h-3"
-            fill="none"
+            fill="white"
             stroke="currentColor"
-            viewBox="0 0 24 24"
+            viewBox="0 -960 960 960"
           >
             <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.414A1 1 0 013 6.586V4z"
+              d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"
             ></path>
           </svg>
           <span class="hidden sm:inline">検索/絞り込み</span>
