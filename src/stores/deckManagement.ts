@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 import { useCookies } from "@vueuse/integrations/useCookies";
 import { useDeckCodeStore } from "./deckCode";
+import { Result } from "neverthrow";
 
 interface SavedDeck {
   name: string;
@@ -16,12 +17,29 @@ export const useDeckManagementStore = defineStore("deckManagement", () => {
 
   // 初期化時にCookieからデッキを読み込む
   const loadDecksFromCookie = () => {
-    const storedDecks = cookies.get("savedDecks");
-    if (storedDecks && Array.isArray(storedDecks)) {
-      savedDecks.value = storedDecks;
-    } else {
-      savedDecks.value = [];
-    }
+    const storedDecksResult: Result<SavedDeck[], Error> = Result.fromThrowable(
+      () => {
+        const stored = cookies.get("savedDecks");
+        if (stored === undefined || stored === null) {
+          return [];
+        }
+        if (!Array.isArray(stored)) {
+          throw new Error("Stored decks is not an array.");
+        }
+        return stored as SavedDeck[];
+      },
+      (e) => e as Error,
+    )();
+
+    storedDecksResult.match(
+      (decks) => {
+        savedDecks.value = decks;
+      },
+      (error) => {
+        console.error("Failed to load decks from cookie:", error);
+        savedDecks.value = [];
+      },
+    );
   };
 
   // デッキをCookieに保存する
