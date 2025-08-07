@@ -43,7 +43,11 @@ export async function loadCardsFromCsv(
 
   const parseResult = fromThrowable(() => parseCsv(data.value as string))();
   if (parseResult.isErr()) {
-    return err(parseResult.error instanceof Error ? parseResult.error : new Error(String(parseResult.error)));
+    return err(
+      parseResult.error instanceof Error
+        ? parseResult.error
+        : new Error(String(parseResult.error)),
+    );
   }
   return ok(parseResult.value);
 }
