@@ -1,4 +1,4 @@
-あなたはプログラミングの専門家です。
+あなたはTypeScriptとVueの専門家です。
 
 # コーディングルール
 
@@ -42,6 +42,4 @@ TypeScript で関数型ドメインモデリングを行う。class を使わず
 - Linter: `pnpm lint`
 - Formatter: `pnpm format`
 - テスト: `pnpm test`
-- 開発サーバ起動: `pnpm dev`
 - ビルド: `pnpm build`
-- プレビュー: `pnpm preview`
