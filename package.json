@@ -24,7 +24,7 @@
   },
   "devDependencies": {
     "@mizchi/lsmcp": "^0.9.4",
-    "@typescript/native-preview": "7.0.0-dev.20250810.1",
+    "@typescript/native-preview": "7.0.0-dev.20250811.1",
     "@vitejs/plugin-vue": "^6.0.1",
     "@vue/tsconfig": "^0.7.0",
     "oxlint": "^1.11.1",
