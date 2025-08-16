@@ -13,8 +13,9 @@ export default defineConfig({
       registerType: "autoUpdate",
       injectRegister: "auto",
       manifest: {
-        name: "KCGデッキメーカー",
+        name: "神椿TCGデッキメーカー",
         short_name: "KCG Maker",
+        display: "fullscreen",
         theme_color: "#000000",
         icons: [
           {
