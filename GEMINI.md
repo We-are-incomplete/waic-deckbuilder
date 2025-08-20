@@ -157,7 +157,7 @@ Given a URL, use read_url_content_as_markdown and summary contents.
 - `pnpm build` - Build the project
 - `pnpm test` - Run all tests
 - `pnpm lint` - Run linter
-- `pnpm typecheck` - Type check with tsgo
+- `pnpm typecheck` - Type check with vue-tsc
 - `pnpm format` - Format code with Biome
 
 ## テスト駆動開発

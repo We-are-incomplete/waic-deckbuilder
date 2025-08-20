@@ -10,7 +10,7 @@
     "lint": "oxlint --silent",
     "format": "prettier . --write",
     "test": "vitest",
-    "typecheck": "tsgo"
+    "typecheck": "vue-tsc"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.12",
