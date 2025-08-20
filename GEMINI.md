@@ -4,7 +4,7 @@
 
 ### 📋 RECOMMENDED WORKFLOW
 
-```
+```text
 1. get_project_overview → Understand the codebase structure
 2. search_symbols → Find specific symbols you need
 3. get_symbol_details → Get comprehensive information about those symbols
@@ -47,7 +47,7 @@
 ### 📊 DETAILED WORKFLOW EXAMPLES
 
 **1. EXPLORING A NEW CODEBASE**
-```
+```text
 1. mcp__lsmcp__get_project_overview
    → Understand structure, main components, statistics
 2. mcp__lsmcp__search_symbols --kind "class"
@@ -57,7 +57,7 @@
 ```
 
 **2. INVESTIGATING A BUG**
-```
+```text
 1. mcp__lsmcp__search_symbols --name "problematicFunction"
    → Locate the function
 2. mcp__lsmcp__get_symbol_details --symbol "problematicFunction"
@@ -69,7 +69,7 @@
 ```
 
 **3. REFACTORING CODE**
-```
+```text
 1. mcp__lsmcp__search_symbols --name "oldMethodName"
    → Find the method to refactor
 2. mcp__lsmcp__get_symbol_details --symbol "oldMethodName"
@@ -81,7 +81,7 @@
 ```
 
 **4. ADDING NEW FEATURES**
-```
+```text
 1. mcp__lsmcp__get_project_overview
    → Understand existing architecture
 2. mcp__lsmcp__search_symbols --kind "interface"
@@ -158,7 +158,7 @@ Given a URL, use read_url_content_as_markdown and summary contents.
 - `pnpm test` - Run all tests
 - `pnpm lint` - Run linter
 - `pnpm typecheck` - Type check with vue-tsc
-- `pnpm format` - Format code with Biome
+- `pnpm format` - Format code with Prettier
 
 ## テスト駆動開発
 
