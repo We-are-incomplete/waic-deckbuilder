@@ -32,11 +32,13 @@ const {
 } = appStore;
 
 // Vue 3.5の新機能: useTemplateRef でテンプレート参照を管理
-const deckSectionRef = useTemplateRef<InstanceType<typeof DeckSection>>("deckSection");
+const deckSectionRef =
+  useTemplateRef<InstanceType<typeof DeckSection>>("deckSection");
 
 // コンポーザブルの初期化
 const sortedDeckCards = computed(() => deckStore.sortedDeckCards);
-const { memoizedDeckCards, sortedDeckCardsLength } = useDeckCards(sortedDeckCards);
+const { memoizedDeckCards, sortedDeckCardsLength } =
+  useDeckCards(sortedDeckCards);
 
 const {
   isVisible: imageModalVisible,

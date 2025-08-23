@@ -335,7 +335,5 @@ watchEffect((onCleanup) => {
         </div>
       </div>
     </div>
-
-
   </div>
 </template>

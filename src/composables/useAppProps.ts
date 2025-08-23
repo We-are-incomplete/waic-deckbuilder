@@ -1,12 +1,12 @@
 import { computed } from "vue";
-import type { 
-  useCardsStore, 
-  useDeckStore, 
-  useFilterStore, 
-  useDeckCodeStore, 
-  useExportStore, 
+import type {
+  useCardsStore,
+  useDeckStore,
+  useFilterStore,
+  useDeckCodeStore,
+  useExportStore,
   useDeckManagementStore,
-  useAppStore 
+  useAppStore,
 } from "../stores";
 
 /**

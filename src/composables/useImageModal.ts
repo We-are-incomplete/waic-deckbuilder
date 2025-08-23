@@ -59,7 +59,10 @@ export function useImageModal() {
   /**
    * カード画像を拡大表示（Vue 3.5最適化版）
    */
-  const openImageModal = async (cardId: string, deckCards: readonly DeckCard[]) => {
+  const openImageModal = async (
+    cardId: string,
+    deckCards: readonly DeckCard[],
+  ) => {
     // より効率的な検索
     const cardIndex = deckCards.findIndex((item) => item.card.id === cardId);
 

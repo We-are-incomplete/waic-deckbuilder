@@ -27,7 +27,7 @@ const allTags = computed(() => filterStore.allTags);
 const filterStats = computed(() => filterStore.filterStats);
 
 // フィルター選択ヘルパー
-const { isKindSelected, isTypeSelected, isTagSelected } = 
+const { isKindSelected, isTypeSelected, isTagSelected } =
   useFilterHelpers(filterCriteria);
 
 // フィルター操作メソッド（ストアのメソッドを直接使用）

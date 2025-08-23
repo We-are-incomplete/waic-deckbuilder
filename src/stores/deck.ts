@@ -63,7 +63,7 @@ export const useDeckStore = defineStore("deck", () => {
 
   // メモ化されたソート処理
   const memoizedSortDeckCards = createArraySortMemo(
-    (cards: readonly DeckCard[]) => readonly(sortDeckCards(cards))
+    (cards: readonly DeckCard[]) => readonly(sortDeckCards(cards)),
   );
 
   /**
@@ -96,8 +96,6 @@ export const useDeckStore = defineStore("deck", () => {
   const deckErrors = computed(() => {
     return deckState.value.type === "invalid" ? deckState.value.errors : [];
   });
-
-
 
   /**
    * Vue 3.5最適化: カードをデッキに追加

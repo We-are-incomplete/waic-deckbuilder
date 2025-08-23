@@ -5,11 +5,11 @@ import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants/game";
 import * as CardDomain from "../domain/card";
 import { useCardsStore } from "./cards";
 import { sortCards } from "../domain/sort";
-import { 
-  createArraySortMemo, 
-  createFilterMemo, 
-  ArrayKeyGenerator, 
-  createMemoizedFunction 
+import {
+  createArraySortMemo,
+  createFilterMemo,
+  ArrayKeyGenerator,
+  createMemoizedFunction,
 } from "../utils";
 
 export const useFilterStore = defineStore("filter", () => {
@@ -22,12 +22,10 @@ export const useFilterStore = defineStore("filter", () => {
   });
 
   // メモ化されたソート処理
-  const memoizedCardSorting = createArraySortMemo(
-    (cards: readonly Card[]) => {
-      if (cards.length === 0) return cards;
-      return readonly(sortCards(cards));
-    }
-  );
+  const memoizedCardSorting = createArraySortMemo((cards: readonly Card[]) => {
+    if (cards.length === 0) return cards;
+    return readonly(sortCards(cards));
+  });
 
   // より効率的なフィルタリング実装
   const memoizedFilterApplication = createFilterMemo(
@@ -38,7 +36,7 @@ export const useFilterStore = defineStore("filter", () => {
       }
 
       return applyAllFiltersOptimized(cards, criteria);
-    }
+    },
   );
 
   // タグ抽出の最適化（Set操作を効率化）
@@ -72,7 +70,7 @@ export const useFilterStore = defineStore("filter", () => {
   const arrayKeyGen = new ArrayKeyGenerator();
   const memoizedTagExtraction = createMemoizedFunction(
     extractTagsFromCards,
-    (cards) => arrayKeyGen.generateKey(cards)
+    (cards) => arrayKeyGen.generateKey(cards),
   );
 
   // 文字列正規化（シンプル版）

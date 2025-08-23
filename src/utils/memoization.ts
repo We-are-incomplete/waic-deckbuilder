@@ -18,7 +18,7 @@ export interface VersionedState {
  */
 export function createVersionedState(): VersionedState {
   const version = ref(0);
-  
+
   const incrementVersion = () => {
     version.value++;
   };
@@ -66,15 +66,10 @@ export function createVersionedMemoizedFunction<TInput, TOutput>(
   keyGenerator: (input: TInput, version: number) => string,
   versionRef: Ref<number>,
 ) {
-  return useMemoize(
-    (input: TInput) => fn(input),
-    {
-      getKey: (input: TInput) => keyGenerator(input, versionRef.value),
-    },
-  );
+  return useMemoize((input: TInput) => fn(input), {
+    getKey: (input: TInput) => keyGenerator(input, versionRef.value),
+  });
 }
-
-
 
 /**
  * Set ベースのインデックスキャッシュマネージャー
@@ -128,7 +123,7 @@ export const createArraySortMemo = <T>(
   return createMemoizedFunction(sortFn, (array) => keyGen.generateKey(array));
 };
 
-// テキスト検索用メモ化関数  
+// テキスト検索用メモ化関数
 export const createSearchMemo = <T>(
   searchFn: (items: readonly T[], query: string) => readonly T[],
   versionRef: Ref<number>,

@@ -33,8 +33,6 @@ export const useCardsStore = defineStore("cards", () => {
   const availableKindsCache = shallowRef<readonly string[] | null>(null);
   const availableTypesCache = shallowRef<readonly string[] | null>(null);
 
-
-
   // メモ化された検索処理
   const memoizedSearch = useMemoize(
     (params: {
@@ -97,8 +95,6 @@ export const useCardsStore = defineStore("cards", () => {
     }
     return ok(cards);
   };
-
-
 
   /**
    * キャッシュを更新する（最適化版）
