@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, readonly, computed, shallowRef, markRaw, triggerRef } from "vue";
+import { ref, readonly, computed, shallowRef, triggerRef } from "vue";
 import type { Card, FilterCriteria } from "../types";
 import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants/game";
 import * as CardDomain from "../domain/card";
@@ -75,42 +75,14 @@ export const useFilterStore = defineStore("filter", () => {
     (cards) => arrayKeyGen.generateKey(cards)
   );
 
-  // シンプルなMapベースの文字列正規化キャッシュ（markRawで最適化）
-  const stringNormalizationCache = markRaw(new Map<string, string>());
+  // 文字列正規化（シンプル版）
   const normalizeString = (str: string): string => {
-    const cached = stringNormalizationCache.get(str);
-    if (cached !== undefined) return cached;
-
-    const normalized = str.trim().toLowerCase();
-
-    // キャッシュサイズ制限（メモリリーク防止）
-    if (stringNormalizationCache.size >= 1000) {
-      // 古いエントリをクリア
-      stringNormalizationCache.clear();
-    }
-
-    stringNormalizationCache.set(str, normalized);
-    return normalized;
+    return str.trim().toLowerCase();
   };
 
-  // 高速なSet操作のための最適化されたキャッシュ
-  const fastSetCache = markRaw(new Map<string, Set<string>>());
+  // Set作成（シンプル版）
   const createFastSet = (items: readonly string[]): Set<string> => {
-    const key = items.join("|");
-    const cached = fastSetCache.get(key);
-    if (cached !== undefined) {
-      return cached;
-    }
-
-    const set = new Set(items);
-
-    // キャッシュサイズ制限
-    if (fastSetCache.size >= 100) {
-      fastSetCache.clear();
-    }
-
-    fastSetCache.set(key, set);
-    return set;
+    return new Set(items);
   };
 
   /**

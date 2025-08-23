@@ -33,9 +33,7 @@ export const useCardsStore = defineStore("cards", () => {
   const availableKindsCache = shallowRef<readonly string[] | null>(null);
   const availableTypesCache = shallowRef<readonly string[] | null>(null);
 
-  // インデックス化されたキャッシュ（高速検索用）
-  const cardSearchIndex = markRaw(new Map<string, Set<Card>>());
-  const isIndexBuilt = ref(false);
+
 
   // メモ化された検索処理
   const memoizedSearch = useMemoize(
@@ -100,35 +98,7 @@ export const useCardsStore = defineStore("cards", () => {
     return ok(cards);
   };
 
-  /**
-   * 検索インデックスを構築（高速検索のため）
-   */
-  const buildSearchIndex = (cards: readonly Card[]): void => {
-    cardSearchIndex.clear();
 
-    for (const card of cards) {
-      // カード名での検索インデックス
-      const nameTokens = card.name.toLowerCase().split(/\s+/);
-      for (const token of nameTokens) {
-        if (token.length >= 2) {
-          // 2文字以上のトークンのみ
-          if (!cardSearchIndex.has(token)) {
-            cardSearchIndex.set(token, new Set());
-          }
-          cardSearchIndex.get(token)!.add(card);
-        }
-      }
-
-      // フルネームでのインデックス
-      const fullName = card.name.toLowerCase();
-      if (!cardSearchIndex.has(fullName)) {
-        cardSearchIndex.set(fullName, new Set());
-      }
-      cardSearchIndex.get(fullName)!.add(card);
-    }
-
-    isIndexBuilt.value = true;
-  };
 
   /**
    * キャッシュを更新する（最適化版）
@@ -174,13 +144,10 @@ export const useCardsStore = defineStore("cards", () => {
     // 利用可能な種別・タイプのキャッシュ更新
     availableKindsCache.value = readonly(Array.from(kindSet).sort());
     availableTypesCache.value = readonly(Array.from(typeSet).sort());
-
-    // 検索インデックスの構築
-    buildSearchIndex(cards);
   };
 
   /**
-   * カードを名前で検索（インデックス利用の超高速版）
+   * カードを名前で検索（メモ化版）
    */
   const searchCardsByName = (searchText: string): readonly Card[] => {
     if (!searchText || searchText.trim().length === 0) {
@@ -188,66 +155,6 @@ export const useCardsStore = defineStore("cards", () => {
     }
 
     const normalizedSearch = searchText.trim().toLowerCase();
-
-    // インデックスが構築されている場合は高速検索を使用
-    if (isIndexBuilt.value && cardSearchIndex.size > 0) {
-      const searchTokens = normalizedSearch
-        .split(/\s+/)
-        .filter((token) => token.length >= 2);
-
-      if (searchTokens.length === 0) {
-        // 短すぎる検索語の場合はフォールバック
-        return CardDomain.searchCardsByName(availableCards.value, searchText);
-      }
-
-      let resultSets: Set<Card>[] = [];
-
-      // 各トークンにマッチするカードセットを収集
-      for (const token of searchTokens) {
-        const matchingCards = new Set<Card>();
-
-        // 完全一致
-        const exactMatch = cardSearchIndex.get(token);
-        if (exactMatch) {
-          for (const card of exactMatch) {
-            matchingCards.add(card);
-          }
-        }
-
-        // 部分一致（プレフィックス検索）
-        for (const [indexToken, cards] of cardSearchIndex) {
-          if (indexToken.includes(token) && indexToken !== token) {
-            for (const card of cards) {
-              matchingCards.add(card);
-            }
-          }
-        }
-
-        if (matchingCards.size > 0) {
-          resultSets.push(matchingCards);
-        }
-      }
-
-      if (resultSets.length === 0) {
-        return readonly([]);
-      }
-
-      // 全てのトークンにマッチするカードを見つける（積集合）
-      let intersection = resultSets[0];
-      for (let i = 1; i < resultSets.length; i++) {
-        const newIntersection = new Set<Card>();
-        for (const card of intersection) {
-          if (resultSets[i].has(card)) {
-            newIntersection.add(card);
-          }
-        }
-        intersection = newIntersection;
-      }
-
-      return readonly(Array.from(intersection));
-    }
-
-    // メモ化検索をフォールバックとして使用
     return memoizedSearch({
       cards: availableCards.value,
       searchText: normalizedSearch,
@@ -289,10 +196,8 @@ export const useCardsStore = defineStore("cards", () => {
     cardsVersion.value++;
     cardByIdCache.clear();
     cardsByKindCache.clear();
-    cardSearchIndex.clear();
     availableKindsCache.value = null;
     availableTypesCache.value = null;
-    isIndexBuilt.value = false;
     // memoizedSearchのキャッシュもクリア（防御的チェック）
     if (typeof memoizedSearch.clear === "function") {
       memoizedSearch.clear();

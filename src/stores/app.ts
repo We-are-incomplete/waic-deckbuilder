@@ -22,28 +22,13 @@ export const useAppStore = defineStore("app", () => {
   // 頻繁に変更されない状態にはshallowRefを使用
   const showResetConfirmModal = ref<boolean>(false);
 
-  // Vue 3.5の新機能: より効率的なストアインスタンス管理
-  // Store instances are created lazily and cached
-  const getStoreInstances = () => {
-    const cardsStore = useCardsStore();
-    const deckStore = useDeckStore();
-    const filterStore = useFilterStore();
-    const deckCodeStore = useDeckCodeStore();
-    const exportStore = useExportStore();
-    const deckManagementStore = useDeckManagementStore();
-
-    return {
-      cardsStore,
-      deckStore,
-      filterStore,
-      deckCodeStore,
-      exportStore,
-      deckManagementStore,
-    };
-  };
-
-  // 各ストアのインスタンス取得（遅延初期化）
-  const stores = getStoreInstances();
+  // 各ストアのインスタンス取得
+  const cardsStore = useCardsStore();
+  const deckStore = useDeckStore();
+  const filterStore = useFilterStore();
+  const deckCodeStore = useDeckCodeStore();
+  const exportStore = useExportStore();
+  const deckManagementStore = useDeckManagementStore();
 
   /**
    * Vue 3.5最適化: デッキリセット処理
@@ -53,8 +38,8 @@ export const useAppStore = defineStore("app", () => {
   };
 
   const confirmResetDeck = (): void => {
-    stores.deckStore.resetDeckCards();
-    stores.deckStore.resetDeckName();
+    deckStore.resetDeckCards();
+    deckStore.resetDeckName();
     showResetConfirmModal.value = false;
   };
 
@@ -66,7 +51,7 @@ export const useAppStore = defineStore("app", () => {
    * Vue 3.5最適化: デッキコードからインポート（カードストアとの連携）
    */
   const importDeckFromCode = (): void => {
-    stores.deckCodeStore.importDeckFromCode(stores.cardsStore.availableCards);
+    deckCodeStore.importDeckFromCode(cardsStore.availableCards);
   };
 
   /**
@@ -75,9 +60,9 @@ export const useAppStore = defineStore("app", () => {
    */
   const initializeApp = async (): Promise<void> => {
     try {
-      await stores.cardsStore.loadCards();
-      stores.deckStore.initializeDeck(stores.cardsStore.availableCards);
-      stores.deckCodeStore.generateDeckCodes();
+      await cardsStore.loadCards();
+      deckStore.initializeDeck(cardsStore.availableCards);
+      deckCodeStore.generateDeckCodes();
     } catch (error) {
       console.error("Application initialization failed:", error);
       throw error;
@@ -108,6 +93,11 @@ export const useAppStore = defineStore("app", () => {
     initializeApp,
 
     // Store instances for direct access (Vue 3.5 optimized)
-    ...stores,
+    cardsStore,
+    deckStore,
+    filterStore,
+    deckCodeStore,
+    exportStore,
+    deckManagementStore,
   };
 });
