@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { ref, watchEffect, computed, reactive } from "vue";
 import type { Card, DeckCard } from "../../types";
-import { handleImageError } from "../../utils/image";
-import { getCardImageUrlSafe } from "../../utils";
-import { CardImageModal } from "../index";
+import { handleImageError, getCardImageUrlSafe } from "../../utils";
 import { onLongPress } from "@vueuse/core";
 
 interface Props {
@@ -19,6 +17,7 @@ interface Emits {
   (e: "addCard", card: Card): void;
   (e: "incrementCard", cardId: string): void;
   (e: "decrementCard", cardId: string): void;
+  (e: "openImageModal", cardId: string): void;
 }
 
 const props = defineProps<Props>();
@@ -38,45 +37,9 @@ const getCardInDeck = (cardId: string) => {
   return deckCardMap.value.get(cardId) || 0;
 };
 
-// モーダルの状態
-const isImageModalVisible = ref(false);
-const selectedCardImage = ref<string | null>(null);
-const selectedCard = ref<Card | null>(null);
-const selectedCardIndex = ref<number | null>(null);
-
-// カード画像を拡大表示
-const openImageModal = (card: Card, cardIndex: number) => {
-  selectedCard.value = card;
-  selectedCardIndex.value = cardIndex;
-  selectedCardImage.value = getCardImageUrlSafe(card.id);
-  isImageModalVisible.value = true;
-};
-
-// モーダルを閉じる
-const closeImageModal = () => {
-  isImageModalVisible.value = false;
-  selectedCardImage.value = null;
-  selectedCard.value = null;
-  selectedCardIndex.value = null;
-};
-
-// カードナビゲーション
-const handleCardNavigation = (direction: "previous" | "next") => {
-  if (selectedCardIndex.value === null) return;
-
-  let newIndex: number;
-  if (direction === "previous") {
-    newIndex = selectedCardIndex.value - 1;
-  } else {
-    newIndex = selectedCardIndex.value + 1;
-  }
-
-  if (newIndex >= 0 && newIndex < props.sortedAndFilteredCards.length) {
-    const newCard = props.sortedAndFilteredCards[newIndex];
-    selectedCard.value = newCard;
-    selectedCardIndex.value = newIndex;
-    selectedCardImage.value = getCardImageUrlSafe(newCard.id);
-  }
+// カード画像を拡大表示（親コンポーネントに委譲）
+const openImageModal = (cardId: string) => {
+  emit("openImageModal", cardId);
 };
 
 // カードクリック処理
@@ -112,7 +75,7 @@ const setCardRef = (el: HTMLElement | null, cardId: string) => {
 };
 
 // 長押しハンドラーをバインド
-const bindLongPress = (cardId: string, cardIndex: number) => {
+const bindLongPress = (cardId: string, _cardIndex: number) => {
   const el = cardRefs.get(cardId);
   if (!el) return;
 
@@ -122,8 +85,7 @@ const bindLongPress = (cardId: string, cardIndex: number) => {
     existingStop();
   }
 
-  const card = props.sortedAndFilteredCards[cardIndex];
-  const stop = onLongPress(el, () => openImageModal(card, cardIndex), {
+  const stop = onLongPress(el, () => openImageModal(cardId), {
     delay: 500, // 500msで長押し判定
   });
   cardLongPressStops.set(cardId, stop);
@@ -374,15 +336,6 @@ watchEffect((onCleanup) => {
       </div>
     </div>
 
-    <!-- カード画像拡大モーダル -->
-    <CardImageModal
-      :is-visible="isImageModalVisible"
-      :image-src="selectedCardImage"
-      :current-card="selectedCard"
-      :card-index="selectedCardIndex"
-      :total-cards="sortedAndFilteredCards.length"
-      @close="closeImageModal"
-      @navigate="handleCardNavigation"
-    />
+
   </div>
 </template>

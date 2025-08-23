@@ -16,13 +16,13 @@ import {
   loadDeckName,
   removeDeckCardsFromLocalStorage,
   removeDeckNameFromLocalStorage,
+  createVersionedState,
+  createArraySortMemo,
 } from "../utils";
 import { createErrorHandler } from "../utils/errorHandler";
 import * as DeckDomain from "../domain/deck";
 import { sortDeckCards } from "../domain/sort";
 import { useDebounceFn } from "@vueuse/core";
-
-// beforeunloadイベントリスナーの重複登録を防ぐフラグ
 
 /**
  * デッキの軽量ハッシュを生成する純粋関数
@@ -49,7 +49,7 @@ export const useDeckStore = defineStore("deck", () => {
   const deckName = ref<string>("新しいデッキ");
 
   // メモ化最適化用のバージョン管理
-  const deckVersion = ref<number>(0);
+  const { version: deckVersion, incrementVersion } = createVersionedState();
 
   // エラーハンドラー
   const errorHandler = computed(() => createErrorHandler());
@@ -61,11 +61,16 @@ export const useDeckStore = defineStore("deck", () => {
     return generateDeckHash(deckCards.value);
   });
 
+  // メモ化されたソート処理
+  const memoizedSortDeckCards = createArraySortMemo(
+    (cards: readonly DeckCard[]) => readonly(sortDeckCards(cards))
+  );
+
   /**
    * Vue 3.5最適化: ソート済みデッキカード
    */
   const sortedDeckCards = computed(() => {
-    return readonly(sortDeckCards(deckCards.value));
+    return memoizedSortDeckCards(deckCards.value);
   });
 
   /**
@@ -97,7 +102,7 @@ export const useDeckStore = defineStore("deck", () => {
    */
   const updateDeckCards = (newCards: DeckCard[]): void => {
     deckCards.value = newCards;
-    deckVersion.value++; // バージョンを更新してメモ化キャッシュを無効化
+    incrementVersion(); // バージョンを更新してメモ化キャッシュを無効化
   };
 
   /**

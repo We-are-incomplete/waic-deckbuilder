@@ -5,7 +5,12 @@ import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants/game";
 import * as CardDomain from "../domain/card";
 import { useCardsStore } from "./cards";
 import { sortCards } from "../domain/sort";
-import { useMemoize } from "@vueuse/core";
+import { 
+  createArraySortMemo, 
+  createFilterMemo, 
+  ArrayKeyGenerator, 
+  createMemoizedFunction 
+} from "../utils";
 
 export const useFilterStore = defineStore("filter", () => {
   const isFilterModalOpen = ref<boolean>(false);
@@ -16,104 +21,58 @@ export const useFilterStore = defineStore("filter", () => {
     tags: [],
   });
 
-  // WeakMapを使って配列のメモIDを管理（Vueのリアクティビティを壊さない）
-  const arrayMemoIds = new WeakMap<readonly Card[], string>();
-
-  // 一意のキー生成のためのカウンター（テスト再現性とコリジョン回避のため）
-  let uniqueKeyCounter = 0;
-  const generateUniqueKey = (): string => `key_${++uniqueKeyCounter}`;
-
-  // メモ化されたソート処理（より効率的な実装）
-  const memoizedCardSorting = useMemoize(
+  // メモ化されたソート処理
+  const memoizedCardSorting = createArraySortMemo(
     (cards: readonly Card[]) => {
-      // 配列の参照が同じ場合は何もしない
       if (cards.length === 0) return cards;
       return readonly(sortCards(cards));
-    },
-    {
-      getKey: (cards) => {
-        // WeakMapを使用して配列参照をキーとして使用（JSON.stringifyによる高コストを回避）
-        let memoId = arrayMemoIds.get(cards);
-        if (!memoId) {
-          memoId = generateUniqueKey();
-          arrayMemoIds.set(cards, memoId);
-        }
-        return memoId;
-      },
-    },
+    }
   );
 
   // より効率的なフィルタリング実装
-  const memoizedFilterApplication = useMemoize(
-    (params: { cards: readonly Card[]; criteria: FilterCriteria }) => {
-      const { cards, criteria } = params;
-
+  const memoizedFilterApplication = createFilterMemo(
+    (cards: readonly Card[], criteria: FilterCriteria) => {
       // 早期リターンでパフォーマンス改善
       if (isEmptyFilter(criteria)) {
         return cards;
       }
 
       return applyAllFiltersOptimized(cards, criteria);
-    },
-    {
-      getKey: (params) => {
-        const { cards, criteria } = params;
-        // cardsの参照IDとcriteriaの内容ハッシュでキーを生成
-        let cardsRefId = arrayMemoIds.get(cards);
-        if (!cardsRefId) {
-          cardsRefId = generateUniqueKey();
-          arrayMemoIds.set(cards, cardsRefId);
-        }
-        const criteriaHash = [
-          criteria.text.trim(),
-          [...criteria.kind].sort().join(","),
-          [...criteria.type].sort().join(","),
-          [...criteria.tags].sort().join(","),
-        ].join("|");
-        return `${cardsRefId}:${criteriaHash}`;
-      },
-    },
+    }
   );
 
   // タグ抽出の最適化（Set操作を効率化）
-  const memoizedTagExtraction = useMemoize(
-    (cards: readonly Card[]) => {
-      if (cards.length === 0) return new Set<string>();
+  const extractTagsFromCards = (cards: readonly Card[]): Set<string> => {
+    if (cards.length === 0) return new Set<string>();
 
-      const tags = new Set<string>();
-      const cardCount = cards.length;
+    const tags = new Set<string>();
+    const cardCount = cards.length;
 
-      // より効率的なループ処理
-      for (let i = 0; i < cardCount; i++) {
-        const card = cards[i];
-        const cardTags = card.tags;
+    // より効率的なループ処理
+    for (let i = 0; i < cardCount; i++) {
+      const card = cards[i];
+      const cardTags = card.tags;
 
-        if (cardTags) {
-          if (Array.isArray(cardTags)) {
-            const tagCount = cardTags.length;
-            for (let j = 0; j < tagCount; j++) {
-              tags.add(cardTags[j]);
-            }
-          } else if (typeof cardTags === "string") {
-            // 単一の文字列タグの場合
-            tags.add(cardTags);
+      if (cardTags) {
+        if (Array.isArray(cardTags)) {
+          const tagCount = cardTags.length;
+          for (let j = 0; j < tagCount; j++) {
+            tags.add(cardTags[j]);
           }
+        } else if (typeof cardTags === "string") {
+          // 単一の文字列タグの場合
+          tags.add(cardTags);
         }
       }
+    }
 
-      return tags;
-    },
-    {
-      getKey: (cards) => {
-        // WeakMapを使用して配列参照をキーとして使用（JSON.stringifyによる高コストを回避）
-        let memoId = arrayMemoIds.get(cards);
-        if (!memoId) {
-          memoId = generateUniqueKey();
-          arrayMemoIds.set(cards, memoId);
-        }
-        return memoId;
-      },
-    },
+    return tags;
+  };
+
+  const arrayKeyGen = new ArrayKeyGenerator();
+  const memoizedTagExtraction = createMemoizedFunction(
+    extractTagsFromCards,
+    (cards) => arrayKeyGen.generateKey(cards)
   );
 
   // シンプルなMapベースの文字列正規化キャッシュ（markRawで最適化）
@@ -372,7 +331,7 @@ export const useFilterStore = defineStore("filter", () => {
 
     // フィルタリングの適用（メモ化優先）
     result = memoizedFilterApplication({
-      cards,
+      items: cards,
       criteria: currentCriteria,
     });
 
