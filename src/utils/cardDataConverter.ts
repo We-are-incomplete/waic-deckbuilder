@@ -33,7 +33,9 @@ export async function loadCardsFromCsv(
       return err(new Error("CSVデータが空です。"));
     }
 
-    console.log("CSV data fetched successfully, length:", csvText.length); // デバッグログ
+    if (import.meta.env?.DEV) {
+      console.debug("CSV data fetched successfully, length:", csvText.length);
+    }
 
     const parseResult = fromThrowable(() => parseCsv(csvText))();
     if (parseResult.isErr()) {

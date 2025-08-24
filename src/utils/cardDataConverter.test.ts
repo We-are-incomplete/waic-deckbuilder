@@ -2,11 +2,6 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { loadCardsFromCsv } from "./cardDataConverter";
 import type { Card } from "../types/card";
 
-// useFetchをモック
-vi.mock("@vueuse/core", () => ({
-  useFetch: vi.fn(),
-}));
-
 // モックデータ
 const mockCsvContent = `id,name,kind,type,tags
 AA-1,【花魁鳥】花譜,Artist,"赤",花譜/進化/【登場】VOL獲得/【能力】VOL獲得/魔力Ω消費/SD花譜
@@ -60,19 +55,15 @@ const mockJsonContent: Card[] = [
 ];
 
 describe("loadCardsFromCsv", () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
-    
-    const { useFetch } = await import("@vueuse/core");
-    
-    // useFetchのデフォルトモック
-    (useFetch as any).mockReturnValue({
-      text: () => ({
-        data: { value: mockCsvContent },
-        error: { value: null },
-        isFetching: { value: false },
-      }),
-    });
+    // fetchのデフォルトモック（成功パス）
+    vi.stubGlobal("fetch", vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      text: async () => mockCsvContent,
+    })));
   });
 
   it("CSVデータを正しくパースし、JSONデータと一致すること", async () => {
@@ -84,15 +75,13 @@ describe("loadCardsFromCsv", () => {
   });
 
   it("空のCSVコンテンツを処理できること", async () => {
-    const { useFetch } = await import("@vueuse/core");
-    
-    (useFetch as any).mockReturnValue({
-      text: () => ({
-        data: { value: "id,name,kind,type,tags\n" },
-        error: { value: null },
-        isFetching: { value: false },
-      }),
-    });
+    // 次のfetch呼び出しだけヘッダのみを返す
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      text: async () => "id,name,kind,type,tags\n",
+    } as Response);
     
     const result = await loadCardsFromCsv("/public/cards.csv");
     expect(result.isOk()).toBe(true);
@@ -102,15 +91,13 @@ describe("loadCardsFromCsv", () => {
   });
 
   it("存在しないCSVファイルを処理できること", async () => {
-    const { useFetch } = await import("@vueuse/core");
-    
-    (useFetch as any).mockReturnValue({
-      text: () => ({
-        data: { value: null },
-        error: { value: { message: "404 Not Found" } },
-        isFetching: { value: false },
-      }),
-    });
+    // 次のfetch呼び出しだけ404を返す
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      statusText: "Not Found",
+      text: async () => "",
+    } as Response);
     
     const result = await loadCardsFromCsv("/public/nonexistent.csv");
     expect(result.isErr()).toBe(true);
