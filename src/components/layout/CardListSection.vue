@@ -71,9 +71,7 @@ const setCardRef = (el: HTMLElement | null, cardId: string) => {
   if (el) {
     cardRefs.set(cardId, el);
     // 要素が設定されたら即座に長押しイベントのバインディングを試行
-    if (!cardLongPressStops.has(cardId)) {
-      bindLongPress(cardId);
-    }
+    bindLongPress(cardId);
   } else {
     cardRefs.delete(cardId);
   }

@@ -35,13 +35,14 @@ const getCacheValue = <K, V>(
   state: LRUCacheState<K, V>,
   key: K,
 ): V | undefined => {
-  const value = state.cache.get(key);
-  if (value !== undefined) {
+  if (state.cache.has(key)) {
+    const value = state.cache.get(key) as V; // has により存在は保証
     // 最後に使用されたものとして移動
     state.cache.delete(key);
     state.cache.set(key, value);
+    return value;
   }
-  return value;
+  return undefined;
 };
 
 /**
@@ -95,9 +96,12 @@ const clearCache = <K, V>(state: LRUCacheState<K, V>): void => {
 export const createLRUCache = <K, V>(
   maxSize: number = 100,
 ): LRUCacheInterface<K, V> => {
+  // 容量は 1 以上の整数に正規化（NaN/Infinity/負数対策）
+  const normalizedMaxSize =
+    Number.isFinite(maxSize) && maxSize >= 1 ? Math.floor(maxSize) : 1;
   const state: LRUCacheState<K, V> = {
     cache: new Map<K, V>(),
-    maxSize,
+    maxSize: normalizedMaxSize,
   };
 
   return {
@@ -139,7 +143,7 @@ export const createLRUCache = <K, V>(
     /**
      * キャッシュの使用率を取得（デバッグ用）
      */
-    usageRatio: () => state.cache.size / state.maxSize,
+    usageRatio: () => (state.maxSize > 0 ? state.cache.size / state.maxSize : 1),
 
     /**
      * すべてのキーを取得
@@ -162,7 +166,7 @@ export const createLRUCache = <K, V>(
  * 事前設定されたLRUキャッシュインスタンス（関数型アプローチ）
  */
 export const createImageUrlCache = () => createLRUCache<string, string>(500);
-export const createCardListCache = () => createLRUCache<string, any>(10);
+export const createCardListCache = () => createLRUCache<string, unknown>(10);
 
 /**
  * グローバルなキャッシュインスタンス（必要に応じて使用）
