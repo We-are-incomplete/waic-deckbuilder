@@ -31,7 +31,10 @@ interface LRUCacheState<K, V> {
 /**
  * キャッシュから値を取得し、使用順序を更新する純粋関数
  */
-const getCacheValue = <K, V>(state: LRUCacheState<K, V>, key: K): V | undefined => {
+const getCacheValue = <K, V>(
+  state: LRUCacheState<K, V>,
+  key: K,
+): V | undefined => {
   const value = state.cache.get(key);
   if (value !== undefined) {
     // 最後に使用されたものとして移動
@@ -44,7 +47,11 @@ const getCacheValue = <K, V>(state: LRUCacheState<K, V>, key: K): V | undefined 
 /**
  * キャッシュに値を設定し、サイズ制限を管理する純粋関数
  */
-const setCacheValue = <K, V>(state: LRUCacheState<K, V>, key: K, value: V): void => {
+const setCacheValue = <K, V>(
+  state: LRUCacheState<K, V>,
+  key: K,
+  value: V,
+): void => {
   if (state.cache.has(key)) {
     // 既存のキーの場合は削除してから再設定
     state.cache.delete(key);
@@ -68,7 +75,10 @@ const hasCacheKey = <K, V>(state: LRUCacheState<K, V>, key: K): boolean => {
 /**
  * 指定されたキーのエントリを削除する純粋関数
  */
-const deleteCacheEntry = <K, V>(state: LRUCacheState<K, V>, key: K): boolean => {
+const deleteCacheEntry = <K, V>(
+  state: LRUCacheState<K, V>,
+  key: K,
+): boolean => {
   return state.cache.delete(key);
 };
 
@@ -82,7 +92,9 @@ const clearCache = <K, V>(state: LRUCacheState<K, V>): void => {
 /**
  * 関数型アプローチによるLRUキャッシュファクトリー
  */
-export const createLRUCache = <K, V>(maxSize: number = 100): LRUCacheInterface<K, V> => {
+export const createLRUCache = <K, V>(
+  maxSize: number = 100,
+): LRUCacheInterface<K, V> => {
   const state: LRUCacheState<K, V> = {
     cache: new Map<K, V>(),
     maxSize,

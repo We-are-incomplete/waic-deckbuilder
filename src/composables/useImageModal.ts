@@ -29,12 +29,9 @@ export function useImageModal() {
    * 画像URLをキャッシュから高速取得
    */
   const getCachedImageUrl = (cardId: string): string => {
-    // キャッシュから取得をより堅牢に
-    if (globalImageUrlCache.has(cardId)) {
-      const cached = globalImageUrlCache.get(cardId);
-      if (cached) { // 空文字列でないことを確認
-        return cached;
-      }
+    const cached = globalImageUrlCache.get(cardId);
+    if (cached) {
+      return cached;
     }
 
     // getCardImageUrlSafe は内部でフォールバックを処理するため直接呼び出し
@@ -54,10 +51,7 @@ export function useImageModal() {
   /**
    * カード画像を拡大表示（Vue 3.5最適化版）
    */
-  const openImageModal = (
-    cardId: string,
-    deckCards: readonly DeckCard[],
-  ) => {
+  const openImageModal = (cardId: string, deckCards: readonly DeckCard[]) => {
     // より効率的な検索
     const cardIndex = deckCards.findIndex((item) => item.card.id === cardId);
 

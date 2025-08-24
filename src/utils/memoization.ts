@@ -1,9 +1,34 @@
 import { ref, type Ref } from "vue";
 import { useMemoize } from "@vueuse/core";
+import { fromThrowable } from "neverthrow";
 
 /**
  * 共通のメモ化とキャッシュユーティリティ
  */
+
+/**
+ * 安全なJSON.stringify（循環参照エラーに対応）
+ */
+const safeJsonStringify = fromThrowable(JSON.stringify);
+
+/**
+ * フォールバックキー生成用のカウンター
+ */
+let unserializableCounter = 0;
+
+/**
+ * 安全に基準値をシリアライズし、失敗時はフォールバックキーを返す
+ */
+function safeCriteriaSerialize<C>(criteria: C): string {
+  const result = safeJsonStringify(criteria);
+
+  if (result.isOk()) {
+    return result.value;
+  }
+
+  // シリアライゼーション失敗時のフォールバック
+  return `<UNSERIALIZABLE_CRITERIA_${++unserializableCounter}>`;
+}
 
 /**
  * バージョン管理機能付きのストア状態
@@ -33,7 +58,7 @@ export function createVersionedState(): VersionedState {
  * 配列のユニークキー生成（WeakMapベース）
  */
 export class ArrayKeyGenerator {
-  private arrayMemoIds = new WeakMap<readonly any[], string>();
+  private arrayMemoIds: WeakMap<readonly unknown[], string> = new WeakMap();
   private uniqueKeyCounter = 0;
 
   generateKey<T>(array: readonly T[]): string {
@@ -90,12 +115,22 @@ export class IndexCacheManager<K, V> {
     set.add(value);
   }
 
+  removeFromIndex(key: K, value: V): boolean {
+    const set = this.cache.get(key);
+    return set ? set.delete(value) : false;
+  }
+
   getFromIndex(key: K): Set<V> | undefined {
     return this.cache.get(key);
   }
 
   hasIndex(key: K): boolean {
     return this.cache.has(key);
+  }
+
+  hasValue(key: K, value: V): boolean {
+    const set = this.cache.get(key);
+    return !!set && set.has(value);
   }
 
   clearIndex(): void {
@@ -129,13 +164,14 @@ export const createSearchMemo = <T>(
   versionRef: Ref<number>,
 ) => {
   const keyGen = new ArrayKeyGenerator();
-  return createVersionedMemoizedFunction(
+  const memoized = createVersionedMemoizedFunction(
     ({ items, query }: { items: readonly T[]; query: string }) =>
       searchFn(items, query),
     ({ items, query }, version) =>
       `${keyGen.generateKey(items)}_${query}_v${version}`,
     versionRef,
   );
+  return (items: readonly T[], query: string) => memoized({ items, query });
 };
 
 // フィルタリング用メモ化関数
@@ -147,6 +183,6 @@ export const createFilterMemo = <T, C>(
     ({ items, criteria }: { items: readonly T[]; criteria: C }) =>
       filterFn(items, criteria),
     ({ items, criteria }) =>
-      `${keyGen.generateKey(items)}_${JSON.stringify(criteria)}`,
+      `${keyGen.generateKey(items)}_${safeCriteriaSerialize(criteria)}`,
   );
 };

@@ -39,9 +39,9 @@ const getCardInDeck = (cardId: string) => {
 
 // パフォーマンス向上のため、カードとデッキ枚数を組み合わせた配列を事前計算
 const sortedAndFilteredCardsWithCount = computed(() => {
-  return props.sortedAndFilteredCards.map(card => ({
+  return props.sortedAndFilteredCards.map((card) => ({
     ...card,
-    deckCount: getCardInDeck(card.id)
+    deckCount: getCardInDeck(card.id),
   }));
 });
 
@@ -131,7 +131,7 @@ watch(
     // 前回のカードIDsを更新
     previousCardIds.value = currentCardIds;
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 // コンポーネント終了時に全てのstop関数を呼び出し

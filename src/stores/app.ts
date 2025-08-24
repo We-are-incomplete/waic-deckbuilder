@@ -58,8 +58,12 @@ export const useAppStore = defineStore("app", () => {
    * Vue 3.5最適化: アプリケーション初期化
    * より効率的な非同期処理パターン
    */
-    const initializeApp = async (): Promise<void> => {
+  const initializeApp = async (): Promise<void> => {
     await cardsStore.loadCards();
+    // カードの読み込みに失敗した場合は後続の処理をスキップ
+    if (cardsStore.error) {
+      return;
+    }
     deckStore.initializeDeck(cardsStore.availableCards);
     deckCodeStore.generateDeckCodes();
   };

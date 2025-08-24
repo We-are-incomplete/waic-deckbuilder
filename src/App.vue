@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, computed, useTemplateRef, watchEffect } from "vue";
+import { onMounted, computed, useTemplateRef, watch } from "vue";
 import { useIntervalFn } from "@vueuse/core";
 
 import { useAppStore } from "./stores";
@@ -37,8 +37,7 @@ const deckSectionRef =
 
 // コンポーザブルの初期化
 const sortedDeckCards = computed(() => deckStore.sortedDeckCards);
-const { deckCards, sortedDeckCardsLength } =
-  useDeckCards(sortedDeckCards);
+const { deckCards } = useDeckCards(sortedDeckCards);
 
 const {
   isVisible: imageModalVisible,
@@ -73,6 +72,8 @@ useIntervalFn(cleanupStaleEntries, CACHE_CLEANUP_INTERVAL, { immediate: true });
 
 // 画像モーダルを開く（デッキカードを渡す）
 const openImageModal = (cardId: string) => {
+  // 入力ガード（空文字や未存在IDなら何もしない）
+  if (!cardId) return;
   openModal(cardId, deckCards.value);
 };
 
@@ -81,17 +82,13 @@ const navigateCard = (direction: "previous" | "next") => {
   handleCardNavigation(direction, deckCards.value);
 };
 
-// Vue 3.5の新機能: watchEffect を使用した副作用の管理
-watchEffect(() => {
-  const element = deckSectionRef.value;
-  if (element) {
-    if (appStore.deckSectionRef !== element) {
-      appStore.deckSectionRef = element;
-    }
-  } else if (appStore.deckSectionRef !== null) {
-    appStore.deckSectionRef = null;
-  }
-});
+watch(
+  deckSectionRef,
+  (el) => {
+    appStore.deckSectionRef = el ?? null;
+  },
+  { immediate: true },
+);
 
 // カード画像モーダルのプロパティを計算
 const cardImageModalProps = computed(() => ({
@@ -99,7 +96,7 @@ const cardImageModalProps = computed(() => ({
   imageSrc: selectedImage.value,
   currentCard: selectedCard.value,
   cardIndex: selectedIndex.value,
-  totalCards: sortedDeckCardsLength.value,
+  totalCards: deckCards.value.length,
 }));
 </script>
 
@@ -138,14 +135,12 @@ const cardImageModalProps = computed(() => ({
 
     <!-- フィルターモーダル -->
     <FilterModal
-      v-if="modalVisibility.filter"
       :is-visible="modalVisibility.filter"
       @close="filterStore.closeFilterModal"
     />
 
     <!-- デッキコードモーダル -->
     <DeckCodeModal
-      v-if="modalVisibility.deckCode"
       v-bind="deckCodeModalProps"
       @close="deckCodeStore.showDeckCodeModal = false"
       @update-import-code="deckCodeStore.setImportDeckCode"
@@ -156,7 +151,6 @@ const cardImageModalProps = computed(() => ({
 
     <!-- デッキリセット確認モーダル -->
     <ConfirmModal
-      v-if="modalVisibility.resetConfirm"
       :is-visible="modalVisibility.resetConfirm"
       title="デッキリセット"
       message="デッキ内容を全てリセットしてもよろしいですか？"
@@ -167,7 +161,6 @@ const cardImageModalProps = computed(() => ({
 
     <!-- カード画像拡大モーダル -->
     <CardImageModal
-      v-if="imageModalVisible"
       v-bind="cardImageModalProps"
       @close="closeImageModal"
       @navigate="navigateCard"

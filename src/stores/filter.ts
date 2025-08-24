@@ -51,15 +51,12 @@ export const useFilterStore = defineStore("filter", () => {
       const card = cards[i];
       const cardTags = card.tags;
 
-      if (cardTags) {
-        if (Array.isArray(cardTags)) {
-          const tagCount = cardTags.length;
-          for (let j = 0; j < tagCount; j++) {
-            tags.add(cardTags[j]);
-          }
-        } else if (typeof cardTags === "string") {
-          // 単一の文字列タグの場合
-          tags.add(cardTags);
+      if (!cardTags) continue;
+
+      if (Array.isArray(cardTags)) {
+        const tagCount = cardTags.length;
+        for (let j = 0; j < tagCount; j++) {
+          tags.add(cardTags[j]);
         }
       }
     }
@@ -72,16 +69,6 @@ export const useFilterStore = defineStore("filter", () => {
     extractTagsFromCards,
     (cards) => arrayKeyGen.generateKey(cards),
   );
-
-  // 文字列正規化（シンプル版）
-  const normalizeString = (str: string): string => {
-    return str.trim().toLowerCase();
-  };
-
-  // Set作成（シンプル版）
-  const createFastSet = (items: readonly string[]): Set<string> => {
-    return new Set(items);
-  };
 
   /**
    * 全タグリスト（優先タグを先頭に配置）- 最適化版
@@ -128,7 +115,7 @@ export const useFilterStore = defineStore("filter", () => {
       return cards;
     }
 
-    const normalizedText = normalizeString(text);
+    const normalizedText = text.trim().toLowerCase();
     if (normalizedText.length === 0) {
       return cards;
     }
@@ -148,7 +135,7 @@ export const useFilterStore = defineStore("filter", () => {
     }
 
     // 高速なSet を使用した効率的なルックアップ
-    const kindSet = createFastSet(kinds);
+    const kindSet = new Set(kinds);
     const result: Card[] = [];
     const cardCount = cards.length;
 
@@ -176,7 +163,7 @@ export const useFilterStore = defineStore("filter", () => {
       return cards;
     }
 
-    const typeSet = createFastSet(types);
+    const typeSet = new Set(types);
     const result: Card[] = [];
     const cardCount = cards.length;
 
@@ -209,7 +196,7 @@ export const useFilterStore = defineStore("filter", () => {
       return cards;
     }
 
-    const tagSet = createFastSet(tags);
+    const tagSet = new Set(tags);
     const result: Card[] = [];
     const cardCount = cards.length;
 
@@ -226,8 +213,6 @@ export const useFilterStore = defineStore("filter", () => {
         for (let j = 0; j < tagCount && !hasMatchingTag; j++) {
           hasMatchingTag = tagSet.has(cardTags[j]);
         }
-      } else if (typeof cardTags === "string") {
-        hasMatchingTag = tagSet.has(cardTags);
       }
 
       if (hasMatchingTag) {
