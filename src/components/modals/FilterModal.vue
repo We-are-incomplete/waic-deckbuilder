@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useFilterStore } from "../../stores/filter";
+import { useFilterHelpers } from "../../composables/useFilterHelpers";
 
 // Props（最小限に削減）
 interface Props {
@@ -25,6 +26,10 @@ const allTypes = computed(() => filterStore.allTypes);
 const allTags = computed(() => filterStore.allTags);
 const filterStats = computed(() => filterStore.filterStats);
 
+// フィルター選択ヘルパー
+const { isKindSelected, isTypeSelected, isTagSelected } =
+  useFilterHelpers(filterCriteria);
+
 // フィルター操作メソッド（ストアのメソッドを直接使用）
 const updateText = (text: string) => {
   filterStore.setTextFilter(text);
@@ -44,19 +49,6 @@ const toggleTag = (tag: string) => {
 
 const resetFilters = () => {
   filterStore.resetFilterCriteria();
-};
-
-// フィルター状態のヘルパー関数
-const isKindSelected = (kind: string) => {
-  return filterCriteria.value.kind.includes(kind);
-};
-
-const isTypeSelected = (type: string) => {
-  return filterCriteria.value.type.includes(type);
-};
-
-const isTagSelected = (tag: string) => {
-  return filterCriteria.value.tags.includes(tag);
 };
 </script>
 

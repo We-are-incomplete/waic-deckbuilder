@@ -56,19 +56,14 @@ const mockJsonContent: Card[] = [
 
 describe("loadCardsFromCsv", () => {
   beforeEach(() => {
-    // fetchをモック化
-    vi.stubGlobal(
-      "fetch",
-      vi.fn((url) => {
-        if (url.endsWith("cards.csv")) {
-          return Promise.resolve({
-            ok: true,
-            text: () => Promise.resolve(mockCsvContent),
-          });
-        }
-        return Promise.reject(new Error("not found"));
-      }),
-    );
+    vi.clearAllMocks();
+    // fetchのデフォルトモック（成功パス）
+    vi.stubGlobal("fetch", vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      text: async () => mockCsvContent,
+    })));
   });
 
   it("CSVデータを正しくパースし、JSONデータと一致すること", async () => {
@@ -80,15 +75,14 @@ describe("loadCardsFromCsv", () => {
   });
 
   it("空のCSVコンテンツを処理できること", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() =>
-        Promise.resolve({
-          ok: true,
-          text: () => Promise.resolve("id,name,kind,type,tags\n"),
-        }),
-      ),
-    );
+    // 次のfetch呼び出しだけヘッダのみを返す
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      text: async () => "id,name,kind,type,tags\n",
+    } as Response);
+    
     const result = await loadCardsFromCsv("/public/cards.csv");
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -97,22 +91,19 @@ describe("loadCardsFromCsv", () => {
   });
 
   it("存在しないCSVファイルを処理できること", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() =>
-        Promise.resolve({
-          ok: false,
-          status: 404,
-          statusText: "Not Found",
-          text: () => Promise.resolve(""),
-        }),
-      ),
-    );
+    // 次のfetch呼び出しだけ404を返す
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      statusText: "Not Found",
+      text: async () => "",
+    } as Response);
+    
     const result = await loadCardsFromCsv("/public/nonexistent.csv");
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error).toBeInstanceOf(Error);
-      expect(result.error.message).toContain("HTTP error! status: 404");
+      expect(result.error.message).toContain("HTTP error! status: 404 Not Found");
     }
   });
 });

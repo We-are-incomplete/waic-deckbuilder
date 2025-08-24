@@ -1,11 +1,16 @@
 import { defineStore } from "pinia";
-import { ref, readonly, computed, shallowRef, markRaw, triggerRef } from "vue";
+import { ref, readonly, computed, shallowRef, triggerRef } from "vue";
 import type { Card, FilterCriteria } from "../types";
 import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants/game";
 import * as CardDomain from "../domain/card";
 import { useCardsStore } from "./cards";
 import { sortCards } from "../domain/sort";
-import { useMemoize } from "@vueuse/core";
+import {
+  createArraySortMemo,
+  createFilterMemo,
+  ArrayKeyGenerator,
+  createMemoizedFunction,
+} from "../utils";
 
 export const useFilterStore = defineStore("filter", () => {
   const isFilterModalOpen = ref<boolean>(false);
@@ -16,38 +21,15 @@ export const useFilterStore = defineStore("filter", () => {
     tags: [],
   });
 
-  // WeakMapを使って配列のメモIDを管理（Vueのリアクティビティを壊さない）
-  const arrayMemoIds = new WeakMap<readonly Card[], string>();
-
-  // 一意のキー生成のためのカウンター（テスト再現性とコリジョン回避のため）
-  let uniqueKeyCounter = 0;
-  const generateUniqueKey = (): string => `key_${++uniqueKeyCounter}`;
-
-  // メモ化されたソート処理（より効率的な実装）
-  const memoizedCardSorting = useMemoize(
-    (cards: readonly Card[]) => {
-      // 配列の参照が同じ場合は何もしない
-      if (cards.length === 0) return cards;
-      return readonly(sortCards(cards));
-    },
-    {
-      getKey: (cards) => {
-        // WeakMapを使用して配列参照をキーとして使用（JSON.stringifyによる高コストを回避）
-        let memoId = arrayMemoIds.get(cards);
-        if (!memoId) {
-          memoId = generateUniqueKey();
-          arrayMemoIds.set(cards, memoId);
-        }
-        return memoId;
-      },
-    },
-  );
+  // メモ化されたソート処理
+  const memoizedCardSorting = createArraySortMemo((cards: readonly Card[]) => {
+    if (cards.length === 0) return cards;
+    return readonly(sortCards(cards));
+  });
 
   // より効率的なフィルタリング実装
-  const memoizedFilterApplication = useMemoize(
-    (params: { cards: readonly Card[]; criteria: FilterCriteria }) => {
-      const { cards, criteria } = params;
-
+  const memoizedFilterApplication = createFilterMemo(
+    (cards: readonly Card[], criteria: FilterCriteria) => {
       // 早期リターンでパフォーマンス改善
       if (isEmptyFilter(criteria)) {
         return cards;
@@ -55,104 +37,38 @@ export const useFilterStore = defineStore("filter", () => {
 
       return applyAllFiltersOptimized(cards, criteria);
     },
-    {
-      getKey: (params) => {
-        const { cards, criteria } = params;
-        // cardsの参照IDとcriteriaの内容ハッシュでキーを生成
-        let cardsRefId = arrayMemoIds.get(cards);
-        if (!cardsRefId) {
-          cardsRefId = generateUniqueKey();
-          arrayMemoIds.set(cards, cardsRefId);
-        }
-        const criteriaHash = [
-          criteria.text.trim(),
-          [...criteria.kind].sort().join(","),
-          [...criteria.type].sort().join(","),
-          [...criteria.tags].sort().join(","),
-        ].join("|");
-        return `${cardsRefId}:${criteriaHash}`;
-      },
-    },
   );
 
   // タグ抽出の最適化（Set操作を効率化）
-  const memoizedTagExtraction = useMemoize(
-    (cards: readonly Card[]) => {
-      if (cards.length === 0) return new Set<string>();
+  const extractTagsFromCards = (cards: readonly Card[]): Set<string> => {
+    if (cards.length === 0) return new Set<string>();
 
-      const tags = new Set<string>();
-      const cardCount = cards.length;
+    const tags = new Set<string>();
+    const cardCount = cards.length;
 
-      // より効率的なループ処理
-      for (let i = 0; i < cardCount; i++) {
-        const card = cards[i];
-        const cardTags = card.tags;
+    // より効率的なループ処理
+    for (let i = 0; i < cardCount; i++) {
+      const card = cards[i];
+      const cardTags = card.tags;
 
-        if (cardTags) {
-          if (Array.isArray(cardTags)) {
-            const tagCount = cardTags.length;
-            for (let j = 0; j < tagCount; j++) {
-              tags.add(cardTags[j]);
-            }
-          } else if (typeof cardTags === "string") {
-            // 単一の文字列タグの場合
-            tags.add(cardTags);
-          }
+      if (!cardTags) continue;
+
+      if (Array.isArray(cardTags)) {
+        const tagCount = cardTags.length;
+        for (let j = 0; j < tagCount; j++) {
+          tags.add(cardTags[j]);
         }
       }
+    }
 
-      return tags;
-    },
-    {
-      getKey: (cards) => {
-        // WeakMapを使用して配列参照をキーとして使用（JSON.stringifyによる高コストを回避）
-        let memoId = arrayMemoIds.get(cards);
-        if (!memoId) {
-          memoId = generateUniqueKey();
-          arrayMemoIds.set(cards, memoId);
-        }
-        return memoId;
-      },
-    },
+    return tags;
+  };
+
+  const arrayKeyGen = new ArrayKeyGenerator();
+  const memoizedTagExtraction = createMemoizedFunction(
+    extractTagsFromCards,
+    (cards) => arrayKeyGen.generateKey(cards),
   );
-
-  // シンプルなMapベースの文字列正規化キャッシュ（markRawで最適化）
-  const stringNormalizationCache = markRaw(new Map<string, string>());
-  const normalizeString = (str: string): string => {
-    const cached = stringNormalizationCache.get(str);
-    if (cached !== undefined) return cached;
-
-    const normalized = str.trim().toLowerCase();
-
-    // キャッシュサイズ制限（メモリリーク防止）
-    if (stringNormalizationCache.size >= 1000) {
-      // 古いエントリをクリア
-      stringNormalizationCache.clear();
-    }
-
-    stringNormalizationCache.set(str, normalized);
-    return normalized;
-  };
-
-  // 高速なSet操作のための最適化されたキャッシュ
-  const fastSetCache = markRaw(new Map<string, Set<string>>());
-  const createFastSet = (items: readonly string[]): Set<string> => {
-    const key = items.join("|");
-    const cached = fastSetCache.get(key);
-    if (cached !== undefined) {
-      return cached;
-    }
-
-    const set = new Set(items);
-
-    // キャッシュサイズ制限
-    if (fastSetCache.size >= 100) {
-      fastSetCache.clear();
-    }
-
-    fastSetCache.set(key, set);
-    return set;
-  };
 
   /**
    * 全タグリスト（優先タグを先頭に配置）- 最適化版
@@ -199,12 +115,12 @@ export const useFilterStore = defineStore("filter", () => {
       return cards;
     }
 
-    const normalizedText = normalizeString(text);
+    const normalizedText = text.trim().toLowerCase();
     if (normalizedText.length === 0) {
       return cards;
     }
 
-    return CardDomain.searchCardsByName(cards, text);
+    return CardDomain.searchCardsByName(cards, normalizedText);
   };
 
   /**
@@ -219,7 +135,7 @@ export const useFilterStore = defineStore("filter", () => {
     }
 
     // 高速なSet を使用した効率的なルックアップ
-    const kindSet = createFastSet(kinds);
+    const kindSet = new Set(kinds);
     const result: Card[] = [];
     const cardCount = cards.length;
 
@@ -247,7 +163,7 @@ export const useFilterStore = defineStore("filter", () => {
       return cards;
     }
 
-    const typeSet = createFastSet(types);
+    const typeSet = new Set(types);
     const result: Card[] = [];
     const cardCount = cards.length;
 
@@ -280,7 +196,7 @@ export const useFilterStore = defineStore("filter", () => {
       return cards;
     }
 
-    const tagSet = createFastSet(tags);
+    const tagSet = new Set(tags);
     const result: Card[] = [];
     const cardCount = cards.length;
 
@@ -372,7 +288,7 @@ export const useFilterStore = defineStore("filter", () => {
 
     // フィルタリングの適用（メモ化優先）
     result = memoizedFilterApplication({
-      cards,
+      items: cards,
       criteria: currentCriteria,
     });
 

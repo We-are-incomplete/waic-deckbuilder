@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import { ref, watchEffect, computed, reactive } from "vue";
+import { ref, watch, computed, onScopeDispose, nextTick } from "vue";
 import type { Card, DeckCard } from "../../types";
-import { handleImageError } from "../../utils/image";
-import { getCardImageUrlSafe } from "../../utils";
-import { CardImageModal } from "../index";
+import { handleImageError, getCardImageUrlSafe } from "../../utils";
 import { onLongPress } from "@vueuse/core";
 
 interface Props {
@@ -19,6 +17,7 @@ interface Emits {
   (e: "addCard", card: Card): void;
   (e: "incrementCard", cardId: string): void;
   (e: "decrementCard", cardId: string): void;
+  (e: "openImageModal", cardId: string): void;
 }
 
 const props = defineProps<Props>();
@@ -38,45 +37,11 @@ const getCardInDeck = (cardId: string) => {
   return deckCardMap.value.get(cardId) || 0;
 };
 
-// モーダルの状態
-const isImageModalVisible = ref(false);
-const selectedCardImage = ref<string | null>(null);
-const selectedCard = ref<Card | null>(null);
-const selectedCardIndex = ref<number | null>(null);
+// パフォーマンス向上のため、オブジェクトのコピーを避けて既存のdeckCardMapを活用
 
-// カード画像を拡大表示
-const openImageModal = (card: Card, cardIndex: number) => {
-  selectedCard.value = card;
-  selectedCardIndex.value = cardIndex;
-  selectedCardImage.value = getCardImageUrlSafe(card.id);
-  isImageModalVisible.value = true;
-};
-
-// モーダルを閉じる
-const closeImageModal = () => {
-  isImageModalVisible.value = false;
-  selectedCardImage.value = null;
-  selectedCard.value = null;
-  selectedCardIndex.value = null;
-};
-
-// カードナビゲーション
-const handleCardNavigation = (direction: "previous" | "next") => {
-  if (selectedCardIndex.value === null) return;
-
-  let newIndex: number;
-  if (direction === "previous") {
-    newIndex = selectedCardIndex.value - 1;
-  } else {
-    newIndex = selectedCardIndex.value + 1;
-  }
-
-  if (newIndex >= 0 && newIndex < props.sortedAndFilteredCards.length) {
-    const newCard = props.sortedAndFilteredCards[newIndex];
-    selectedCard.value = newCard;
-    selectedCardIndex.value = newIndex;
-    selectedCardImage.value = getCardImageUrlSafe(newCard.id);
-  }
+// カード画像を拡大表示（親コンポーネントに委譲）
+const openImageModal = (cardId: string) => {
+  emit("openImageModal", cardId);
 };
 
 // カードクリック処理
@@ -89,60 +54,62 @@ const handleCardClick = (card: Card) => {
   }
 };
 
-// 長押し機能の設定
-const cardRefs = reactive(new Map<string, HTMLElement>());
-// カードIDごとの長押しstop関数を保存
-const cardLongPressStops = reactive(new Map<string, () => void>());
+// 長押し機能の設定（メモリリーク防止のためWeakMapを使用）
+const cardRefs = new Map<string, HTMLElement>(); // カードID -> HTMLElementのマッピング
+const elementToCardId = new WeakMap<HTMLElement, string>(); // HTMLElement -> カードIDのマッピング
+const elementLongPressStops = new WeakMap<HTMLElement, () => void>(); // HTMLElement -> stop関数のマッピング
 // 前回のカードIDsを保存
 const previousCardIds = ref(new Set<string>());
 
 const setCardRef = (el: HTMLElement | null, cardId: string) => {
   if (el) {
     cardRefs.set(cardId, el);
-    // 要素が設定されたら即座に長押しイベントのバインディングを試行
-    const cardIndex = props.sortedAndFilteredCards.findIndex(
-      (card) => card.id === cardId,
-    );
-    if (cardIndex !== -1 && !cardLongPressStops.has(cardId)) {
-      bindLongPress(cardId, cardIndex);
-    }
+    elementToCardId.set(el, cardId);
+    // 長押しバインディングはwatcherで管理するため、ここでは呼び出さない
   } else {
-    cardRefs.delete(cardId);
+    // 要素が削除される場合は、cardRefsから削除
+    const existingEl = cardRefs.get(cardId);
+    if (existingEl) {
+      // WeakMapは自動的にクリーンアップされるため、明示的な削除は不要
+      cardRefs.delete(cardId);
+    }
   }
 };
 
 // 長押しハンドラーをバインド
-const bindLongPress = (cardId: string, cardIndex: number) => {
+const bindLongPress = (cardId: string) => {
   const el = cardRefs.get(cardId);
   if (!el) return;
 
   // 既存のstop関数があれば先にクリーンアップ
-  const existingStop = cardLongPressStops.get(cardId);
+  const existingStop = elementLongPressStops.get(el);
   if (existingStop) {
     existingStop();
   }
 
-  const card = props.sortedAndFilteredCards[cardIndex];
-  const stop = onLongPress(el, () => openImageModal(card, cardIndex), {
+  const stop = onLongPress(el, () => openImageModal(cardId), {
     delay: 500, // 500msで長押し判定
   });
-  cardLongPressStops.set(cardId, stop);
+  elementLongPressStops.set(el, stop);
 };
 
 // 長押しハンドラーをアンバインド
 const unbindLongPress = (cardId: string) => {
-  const stop = cardLongPressStops.get(cardId);
-  if (stop) {
-    stop();
-    cardLongPressStops.delete(cardId);
+  const el = cardRefs.get(cardId);
+  if (el) {
+    const stop = elementLongPressStops.get(el);
+    if (stop) {
+      stop();
+      // WeakMapから削除（GCに任せることもできるが、明示的に削除）
+      elementLongPressStops.delete(el);
+    }
   }
 };
 
-watchEffect((onCleanup) => {
+// 共通の初期化・更新ロジック
+const updateLongPressHandlers = async (newCards: readonly Card[]) => {
   // 現在のカードIDsを取得
-  const currentCardIds = new Set(
-    props.sortedAndFilteredCards.map((card) => card.id),
-  );
+  const currentCardIds = new Set(newCards.map((card) => card.id));
 
   // 削除されたカードの長押しハンドラーをアンバインド
   for (const prevCardId of previousCardIds.value) {
@@ -151,24 +118,43 @@ watchEffect((onCleanup) => {
     }
   }
 
+  // DOM更新を待ってから長押しハンドラーをバインド
+  await nextTick();
+  
   // 新しく追加されたカードのみに長押しハンドラーをバインド
-  props.sortedAndFilteredCards.forEach((card, index) => {
-    // 既にハンドラーが存在する場合はスキップ
-    if (!cardLongPressStops.has(card.id)) {
-      bindLongPress(card.id, index);
+  newCards.forEach((card) => {
+    const el = cardRefs.get(card.id);
+    // 要素が存在し、まだハンドラーが設定されていない場合のみバインド
+    if (el && !elementLongPressStops.has(el)) {
+      bindLongPress(card.id);
     }
   });
 
   // 前回のカードIDsを更新
   previousCardIds.value = currentCardIds;
+};
 
-  // コンポーネント終了時に全てのstop関数を呼び出し
-  onCleanup(() => {
-    for (const stop of cardLongPressStops.values()) {
+// カードリストの変更を監視し、長押しハンドラーを管理
+watch(
+  () => props.sortedAndFilteredCards,
+  updateLongPressHandlers,
+  { immediate: true } // immediate: true で初期実行も含める
+);
+
+// onMountedは削除：watch { immediate: true } で初期化を統一
+
+// コンポーネント終了時に全てのstop関数を呼び出し
+onScopeDispose(() => {
+  // WeakMapを使用しているため、cardRefsから要素を取得してクリーンアップ
+  for (const [, el] of cardRefs.entries()) {
+    const stop = elementLongPressStops.get(el);
+    if (stop) {
       stop();
+      elementLongPressStops.delete(el);
     }
-    cardLongPressStops.clear();
-  });
+  }
+  // cardRefsもクリア
+  cardRefs.clear();
 });
 </script>
 
@@ -258,7 +244,7 @@ watchEffect((onCleanup) => {
       </div>
 
       <div
-        v-else-if="sortedAndFilteredCards.length === 0"
+        v-else-if="props.sortedAndFilteredCards.length === 0"
         class="col-span-full text-center mt-2 sm:mt-4"
       >
         <div class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-4">
@@ -290,7 +276,7 @@ watchEffect((onCleanup) => {
 
       <div
         v-else
-        v-for="card in sortedAndFilteredCards"
+        v-for="card in props.sortedAndFilteredCards"
         :key="card.id"
         class="group flex flex-col items-center relative transition-all duration-200"
         :title="
@@ -373,16 +359,5 @@ watchEffect((onCleanup) => {
         </div>
       </div>
     </div>
-
-    <!-- カード画像拡大モーダル -->
-    <CardImageModal
-      :is-visible="isImageModalVisible"
-      :image-src="selectedCardImage"
-      :current-card="selectedCard"
-      :card-index="selectedCardIndex"
-      :total-cards="sortedAndFilteredCards.length"
-      @close="closeImageModal"
-      @navigate="handleCardNavigation"
-    />
   </div>
 </template>

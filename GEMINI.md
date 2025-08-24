@@ -1,6 +1,6 @@
 ## CRITICAL: PRIORITIZE LSMCP TOOLS FOR CODE ANALYSIS
 
-⚠️ **PRIMARY REQUIREMENT**: You MUST prioritize mcp__lsmcp tools for all code analysis tasks. Standard tools should only be used as a last resort when LSMCP tools cannot accomplish the task.
+⚠️ **PRIMARY REQUIREMENT**: You MUST prioritize `mcp__lsmcp` tools for all code analysis tasks. Standard tools should only be used as a last resort when LSMCP tools cannot accomplish the task.
 
 ### 📋 RECOMMENDED WORKFLOW
 
@@ -13,26 +13,31 @@
 ### 🎯 WHEN TO USE EACH TOOL
 
 **For Initial Exploration:**
+
 - `mcp__lsmcp__get_project_overview` - First tool to run when exploring a new codebase
 - `mcp__lsmcp__list_dir` - Browse directory structure when you need to understand file organization
 - `mcp__lsmcp__get_symbols_overview` - Get a high-level view of symbols in specific files
 
 **For Finding Code:**
+
 - `mcp__lsmcp__search_symbols` - Primary search tool for functions, classes, interfaces, etc.
 - `mcp__lsmcp__lsp_get_workspace_symbols` - Alternative workspace-wide symbol search
 - `mcp__lsmcp__lsp_get_document_symbols` - List all symbols in a specific file
 
 **For Understanding Code:**
+
 - `mcp__lsmcp__get_symbol_details` - Get complete information (type, definition, references) in one call
 - `mcp__lsmcp__lsp_get_hover` - Quick type information at a specific position
 - `mcp__lsmcp__lsp_get_definitions` - Navigate to symbol definition (use `includeBody: true` for full implementation)
 - `mcp__lsmcp__lsp_find_references` - Find all places where a symbol is used
 
 **For Code Quality:**
+
 - `mcp__lsmcp__lsp_get_diagnostics` - Check for errors in a specific file
 - `mcp__lsmcp__lsp_get_code_actions` - Get available fixes and refactorings
 
 **For Code Modification:**
+
 - `mcp__lsmcp__lsp_rename_symbol` - Safely rename symbols across the codebase
 - `mcp__lsmcp__lsp_format_document` - Format code according to language conventions
 - `mcp__lsmcp__replace_range` - Make precise text replacements
@@ -40,6 +45,7 @@
 - `mcp__lsmcp__lsp_delete_symbol` - Remove symbols and their references
 
 **For Developer Assistance:**
+
 - `mcp__lsmcp__lsp_get_completion` - Get code completion suggestions
 - `mcp__lsmcp__lsp_get_signature_help` - Get function parameter hints
 - `mcp__lsmcp__lsp_check_capabilities` - Check what LSP features are available
@@ -47,6 +53,7 @@
 ### 📊 DETAILED WORKFLOW EXAMPLES
 
 **1. EXPLORING A NEW CODEBASE**
+
 ```text
 1. mcp__lsmcp__get_project_overview
    → Understand structure, main components, statistics
@@ -57,6 +64,7 @@
 ```
 
 **2. INVESTIGATING A BUG**
+
 ```text
 1. mcp__lsmcp__search_symbols --name "problematicFunction"
    → Locate the function
@@ -69,6 +77,7 @@
 ```
 
 **3. REFACTORING CODE**
+
 ```text
 1. mcp__lsmcp__search_symbols --name "oldMethodName"
    → Find the method to refactor
@@ -81,6 +90,7 @@
 ```
 
 **4. ADDING NEW FEATURES**
+
 ```text
 1. mcp__lsmcp__get_project_overview
    → Understand existing architecture
