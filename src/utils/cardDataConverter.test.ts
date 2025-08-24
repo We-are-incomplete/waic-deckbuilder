@@ -2,6 +2,11 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { loadCardsFromCsv } from "./cardDataConverter";
 import type { Card } from "../types/card";
 
+// useFetchをモック
+vi.mock("@vueuse/core", () => ({
+  useFetch: vi.fn(),
+}));
+
 // モックデータ
 const mockCsvContent = `id,name,kind,type,tags
 AA-1,【花魁鳥】花譜,Artist,"赤",花譜/進化/【登場】VOL獲得/【能力】VOL獲得/魔力Ω消費/SD花譜
@@ -55,20 +60,19 @@ const mockJsonContent: Card[] = [
 ];
 
 describe("loadCardsFromCsv", () => {
-  beforeEach(() => {
-    // fetchをモック化
-    vi.stubGlobal(
-      "fetch",
-      vi.fn((url) => {
-        if (url.endsWith("cards.csv")) {
-          return Promise.resolve({
-            ok: true,
-            text: () => Promise.resolve(mockCsvContent),
-          });
-        }
-        return Promise.reject(new Error("not found"));
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    
+    const { useFetch } = await import("@vueuse/core");
+    
+    // useFetchのデフォルトモック
+    (useFetch as any).mockReturnValue({
+      text: () => ({
+        data: { value: mockCsvContent },
+        error: { value: null },
+        isFetching: { value: false },
       }),
-    );
+    });
   });
 
   it("CSVデータを正しくパースし、JSONデータと一致すること", async () => {
@@ -80,15 +84,16 @@ describe("loadCardsFromCsv", () => {
   });
 
   it("空のCSVコンテンツを処理できること", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() =>
-        Promise.resolve({
-          ok: true,
-          text: () => Promise.resolve("id,name,kind,type,tags\n"),
-        }),
-      ),
-    );
+    const { useFetch } = await import("@vueuse/core");
+    
+    (useFetch as any).mockReturnValue({
+      text: () => ({
+        data: { value: "id,name,kind,type,tags\n" },
+        error: { value: null },
+        isFetching: { value: false },
+      }),
+    });
+    
     const result = await loadCardsFromCsv("/public/cards.csv");
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -97,22 +102,21 @@ describe("loadCardsFromCsv", () => {
   });
 
   it("存在しないCSVファイルを処理できること", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() =>
-        Promise.resolve({
-          ok: false,
-          status: 404,
-          statusText: "Not Found",
-          text: () => Promise.resolve(""),
-        }),
-      ),
-    );
+    const { useFetch } = await import("@vueuse/core");
+    
+    (useFetch as any).mockReturnValue({
+      text: () => ({
+        data: { value: null },
+        error: { value: { message: "404 Not Found" } },
+        isFetching: { value: false },
+      }),
+    });
+    
     const result = await loadCardsFromCsv("/public/nonexistent.csv");
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error).toBeInstanceOf(Error);
-      expect(result.error.message).toContain("HTTP error! status: 404");
+      expect(result.error.message).toContain("HTTP error! status: 404 Not Found");
     }
   });
 });

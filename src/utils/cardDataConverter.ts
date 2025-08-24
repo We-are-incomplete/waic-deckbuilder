@@ -7,49 +7,47 @@
 
 import type { Card, CardKind, CardType } from "../types/card";
 import { type Result, ok, err, fromThrowable } from "neverthrow";
-import { useFetch } from "@vueuse/core";
-import { watchEffect } from "vue";
 
 export async function loadCardsFromCsv(
   csvPath: string,
 ): Promise<Result<Card[], Error>> {
   console.log("Attempting to fetch CSV from:", csvPath); // デバッグログ
 
-  const { data, error, isFetching } = useFetch(csvPath, {
-    refetch: true,
-  }).text();
-
-  // useFetchはリアクティブな参照を返すため、Promiseとして扱うためにawaitで解決
-  await new Promise<void>((resolve) => {
-    const stopWatch = watchEffect(() => {
-      if (!isFetching.value) {
-        stopWatch();
-        resolve();
-      }
+  try {
+    // 通常のfetch APIを使用（useFetchの代わり）
+    const response = await fetch(csvPath, {
+      method: 'GET',
+      headers: {
+        'Accept': 'text/csv,text/plain,*/*',
+        'Cache-Control': 'no-cache',
+      },
     });
-  });
 
-  if (error.value) {
-    return err(new Error(`HTTP error! status: ${error.value.message}`));
-  }
+    if (!response.ok) {
+      return err(new Error(`HTTP error! status: ${response.status} ${response.statusText}`));
+    }
 
-  if (data.value === null) {
-    return err(new Error("CSVデータが取得できませんでした。"));
-  }
+    const csvText = await response.text();
+    
+    if (!csvText || csvText.trim().length === 0) {
+      return err(new Error("CSVデータが空です。"));
+    }
 
-  if (data.value === null) {
-    return err(new Error("CSVデータが取得できませんでした。"));
-  }
+    console.log("CSV data fetched successfully, length:", csvText.length); // デバッグログ
 
-  const parseResult = fromThrowable(() => parseCsv(data.value as string))();
-  if (parseResult.isErr()) {
-    return err(
-      parseResult.error instanceof Error
-        ? parseResult.error
-        : new Error(String(parseResult.error)),
-    );
+    const parseResult = fromThrowable(() => parseCsv(csvText))();
+    if (parseResult.isErr()) {
+      return err(
+        parseResult.error instanceof Error
+          ? parseResult.error
+          : new Error(String(parseResult.error)),
+      );
+    }
+    return ok(parseResult.value);
+  } catch (error) {
+    console.error("Fetch error:", error); // デバッグログ
+    return err(new Error(`ネットワークエラー: ${error instanceof Error ? error.message : String(error)}`));
   }
-  return ok(parseResult.value);
 }
 
 function parseCsv(csvText: string): Card[] {

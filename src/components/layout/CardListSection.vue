@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed, reactive, onScopeDispose } from "vue";
+import { ref, watch, computed, onScopeDispose, onMounted, nextTick } from "vue";
 import type { Card, DeckCard } from "../../types";
 import { handleImageError, getCardImageUrlSafe } from "../../utils";
 import { onLongPress } from "@vueuse/core";
@@ -61,17 +61,16 @@ const handleCardClick = (card: Card) => {
 };
 
 // 長押し機能の設定
-const cardRefs = reactive(new Map<string, HTMLElement>());
+const cardRefs = new Map<string, HTMLElement>();
 // カードIDごとの長押しstop関数を保存
-const cardLongPressStops = reactive(new Map<string, () => void>());
+const cardLongPressStops = new Map<string, () => void>();
 // 前回のカードIDsを保存
 const previousCardIds = ref(new Set<string>());
 
 const setCardRef = (el: HTMLElement | null, cardId: string) => {
   if (el) {
     cardRefs.set(cardId, el);
-    // 要素が設定されたら即座に長押しイベントのバインディングを試行
-    bindLongPress(cardId);
+    // 長押しバインディングはwatcherとonMountedで管理するため、ここでは呼び出さない
   } else {
     cardRefs.delete(cardId);
   }
@@ -105,11 +104,9 @@ const unbindLongPress = (cardId: string) => {
 
 watch(
   () => sortedAndFilteredCardsWithCount.value,
-  () => {
-    // 現在のカードIDsを取得
-    const currentCardIds = new Set(
-      sortedAndFilteredCardsWithCount.value.map((card) => card.id),
-    );
+  async (newCards) => {
+    // 現在のカードIDsを取得（watcherの引数から取得）
+    const currentCardIds = new Set(newCards.map((card) => card.id));
 
     // 削除されたカードの長押しハンドラーをアンバインド
     for (const prevCardId of previousCardIds.value) {
@@ -118,8 +115,11 @@ watch(
       }
     }
 
+    // DOM更新を待ってから長押しハンドラーをバインド
+    await nextTick();
+    
     // 新しく追加されたカードのみに長押しハンドラーをバインド
-    sortedAndFilteredCardsWithCount.value.forEach((card) => {
+    newCards.forEach((card) => {
       // 既にハンドラーが存在する場合はスキップ
       if (!cardLongPressStops.has(card.id)) {
         bindLongPress(card.id);
@@ -129,8 +129,24 @@ watch(
     // 前回のカードIDsを更新
     previousCardIds.value = currentCardIds;
   },
-  { immediate: true },
+  { immediate: false }, // immediate を false に変更して初期実行を防ぐ
 );
+
+// 初期設定処理（onMountedで一度だけ実行）
+onMounted(async () => {
+  // DOM更新を待ってから初期設定を実行
+  await nextTick();
+  
+  // 初期状態のカードリストに対して長押しハンドラーを設定
+  const initialCards = sortedAndFilteredCardsWithCount.value;
+  const initialCardIds = new Set(initialCards.map((card) => card.id));
+  
+  initialCards.forEach((card) => {
+    bindLongPress(card.id);
+  });
+  
+  previousCardIds.value = initialCardIds;
+});
 
 // コンポーネント終了時に全てのstop関数を呼び出し
 onScopeDispose(() => {
