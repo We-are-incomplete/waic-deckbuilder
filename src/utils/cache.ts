@@ -1,114 +1,156 @@
 /**
- * 汎用LRUキャッシュの実装
+ * 汎用LRUキャッシュの関数型実装
  * 最近最少使用（Least Recently Used）アルゴリズムに基づくキャッシュシステム
  */
-export class LRUCache<K, V> {
-  private cache = new Map<K, V>();
-  private readonly maxSize: number;
 
-  constructor(maxSize: number = 100) {
-    this.maxSize = maxSize;
-  }
-
-  /**
-   * キャッシュから値を取得し、使用順序を更新
-   */
-  get(key: K): V | undefined {
-    const value = this.cache.get(key);
-    if (value !== undefined) {
-      // 最後に使用されたものとして移動
-      this.cache.delete(key);
-      this.cache.set(key, value);
-    }
-    return value;
-  }
-
-  /**
-   * キャッシュに値を設定し、サイズ制限を管理
-   */
-  set(key: K, value: V): void {
-    if (this.cache.has(key)) {
-      // 既存のキーの場合は削除してから再設定
-      this.cache.delete(key);
-    } else if (this.cache.size >= this.maxSize) {
-      // サイズ制限に達している場合、最も古いエントリを削除
-      const firstKey = this.cache.keys().next().value;
-      if (firstKey !== undefined) {
-        this.cache.delete(firstKey);
-      }
-    }
-    this.cache.set(key, value);
-  }
-
-  /**
-   * 指定されたキーが存在するかチェック
-   */
-  has(key: K): boolean {
-    return this.cache.has(key);
-  }
-
-  /**
-   * 指定されたキーのエントリを削除
-   */
-  delete(key: K): boolean {
-    return this.cache.delete(key);
-  }
-
-  /**
-   * キャッシュをクリア
-   */
-  clear(): void {
-    this.cache.clear();
-  }
-
-  /**
-   * 現在のキャッシュサイズを取得
-   */
-  get size(): number {
-    return this.cache.size;
-  }
-
-  /**
-   * 最大キャッシュサイズを取得
-   */
-  get maxCacheSize(): number {
-    return this.maxSize;
-  }
-
-  /**
-   * キャッシュの使用率を取得（デバッグ用）
-   */
-  get usageRatio(): number {
-    return this.cache.size / this.maxSize;
-  }
-
-  /**
-   * すべてのキーを取得
-   */
-  keys(): IterableIterator<K> {
-    return this.cache.keys();
-  }
-
-  /**
-   * すべての値を取得
-   */
-  values(): IterableIterator<V> {
-    return this.cache.values();
-  }
-
-  /**
-   * すべてのエントリを取得
-   */
-  entries(): IterableIterator<[K, V]> {
-    return this.cache.entries();
-  }
+/**
+ * LRUキャッシュのインターフェース
+ */
+export interface LRUCacheInterface<K, V> {
+  get(key: K): V | undefined;
+  set(key: K, value: V): void;
+  has(key: K): boolean;
+  delete(key: K): boolean;
+  clear(): void;
+  size(): number;
+  maxCacheSize(): number;
+  usageRatio(): number;
+  keys(): IterableIterator<K>;
+  values(): IterableIterator<V>;
+  entries(): IterableIterator<[K, V]>;
 }
 
 /**
- * 事前設定されたLRUキャッシュインスタンス
+ * LRUキャッシュの内部状態
  */
-export const createImageUrlCache = () => new LRUCache<string, string>(500);
-export const createCardListCache = () => new LRUCache<string, any>(10);
+interface LRUCacheState<K, V> {
+  readonly cache: Map<K, V>;
+  readonly maxSize: number;
+}
+
+/**
+ * キャッシュから値を取得し、使用順序を更新する純粋関数
+ */
+const getCacheValue = <K, V>(state: LRUCacheState<K, V>, key: K): V | undefined => {
+  const value = state.cache.get(key);
+  if (value !== undefined) {
+    // 最後に使用されたものとして移動
+    state.cache.delete(key);
+    state.cache.set(key, value);
+  }
+  return value;
+};
+
+/**
+ * キャッシュに値を設定し、サイズ制限を管理する純粋関数
+ */
+const setCacheValue = <K, V>(state: LRUCacheState<K, V>, key: K, value: V): void => {
+  if (state.cache.has(key)) {
+    // 既存のキーの場合は削除してから再設定
+    state.cache.delete(key);
+  } else if (state.cache.size >= state.maxSize) {
+    // サイズ制限に達している場合、最も古いエントリを削除
+    const firstKey = state.cache.keys().next().value;
+    if (firstKey !== undefined) {
+      state.cache.delete(firstKey);
+    }
+  }
+  state.cache.set(key, value);
+};
+
+/**
+ * 指定されたキーが存在するかチェックする純粋関数
+ */
+const hasCacheKey = <K, V>(state: LRUCacheState<K, V>, key: K): boolean => {
+  return state.cache.has(key);
+};
+
+/**
+ * 指定されたキーのエントリを削除する純粋関数
+ */
+const deleteCacheEntry = <K, V>(state: LRUCacheState<K, V>, key: K): boolean => {
+  return state.cache.delete(key);
+};
+
+/**
+ * キャッシュをクリアする純粋関数
+ */
+const clearCache = <K, V>(state: LRUCacheState<K, V>): void => {
+  state.cache.clear();
+};
+
+/**
+ * 関数型アプローチによるLRUキャッシュファクトリー
+ */
+export const createLRUCache = <K, V>(maxSize: number = 100): LRUCacheInterface<K, V> => {
+  const state: LRUCacheState<K, V> = {
+    cache: new Map<K, V>(),
+    maxSize,
+  };
+
+  return {
+    /**
+     * キャッシュから値を取得し、使用順序を更新
+     */
+    get: (key: K) => getCacheValue(state, key),
+
+    /**
+     * キャッシュに値を設定し、サイズ制限を管理
+     */
+    set: (key: K, value: V) => setCacheValue(state, key, value),
+
+    /**
+     * 指定されたキーが存在するかチェック
+     */
+    has: (key: K) => hasCacheKey(state, key),
+
+    /**
+     * 指定されたキーのエントリを削除
+     */
+    delete: (key: K) => deleteCacheEntry(state, key),
+
+    /**
+     * キャッシュをクリア
+     */
+    clear: () => clearCache(state),
+
+    /**
+     * 現在のキャッシュサイズを取得
+     */
+    size: () => state.cache.size,
+
+    /**
+     * 最大キャッシュサイズを取得
+     */
+    maxCacheSize: () => state.maxSize,
+
+    /**
+     * キャッシュの使用率を取得（デバッグ用）
+     */
+    usageRatio: () => state.cache.size / state.maxSize,
+
+    /**
+     * すべてのキーを取得
+     */
+    keys: () => state.cache.keys(),
+
+    /**
+     * すべての値を取得
+     */
+    values: () => state.cache.values(),
+
+    /**
+     * すべてのエントリを取得
+     */
+    entries: () => state.cache.entries(),
+  };
+};
+
+/**
+ * 事前設定されたLRUキャッシュインスタンス（関数型アプローチ）
+ */
+export const createImageUrlCache = () => createLRUCache<string, string>(500);
+export const createCardListCache = () => createLRUCache<string, any>(10);
 
 /**
  * グローバルなキャッシュインスタンス（必要に応じて使用）

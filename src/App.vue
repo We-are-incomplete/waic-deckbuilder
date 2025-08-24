@@ -37,7 +37,7 @@ const deckSectionRef =
 
 // コンポーザブルの初期化
 const sortedDeckCards = computed(() => deckStore.sortedDeckCards);
-const { memoizedDeckCards, sortedDeckCardsLength } =
+const { deckCards, sortedDeckCardsLength } =
   useDeckCards(sortedDeckCards);
 
 const {
@@ -73,12 +73,12 @@ useIntervalFn(cleanupStaleEntries, CACHE_CLEANUP_INTERVAL, { immediate: true });
 
 // 画像モーダルを開く（デッキカードを渡す）
 const openImageModal = (cardId: string) => {
-  openModal(cardId, memoizedDeckCards.value);
+  openModal(cardId, deckCards.value);
 };
 
 // カードナビゲーション（デッキカードを渡す）
 const navigateCard = (direction: "previous" | "next") => {
-  handleCardNavigation(direction, memoizedDeckCards.value);
+  handleCardNavigation(direction, deckCards.value);
 };
 
 // Vue 3.5の新機能: watchEffect を使用した副作用の管理

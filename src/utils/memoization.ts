@@ -66,7 +66,7 @@ export function createVersionedMemoizedFunction<TInput, TOutput>(
   keyGenerator: (input: TInput, version: number) => string,
   versionRef: Ref<number>,
 ) {
-  return useMemoize((input: TInput) => fn(input), {
+  return useMemoize(fn, {
     getKey: (input: TInput) => keyGenerator(input, versionRef.value),
   });
 }
@@ -128,10 +128,12 @@ export const createSearchMemo = <T>(
   searchFn: (items: readonly T[], query: string) => readonly T[],
   versionRef: Ref<number>,
 ) => {
+  const keyGen = new ArrayKeyGenerator();
   return createVersionedMemoizedFunction(
     ({ items, query }: { items: readonly T[]; query: string }) =>
       searchFn(items, query),
-    ({ query }, version) => `${query}_v${version}`,
+    ({ items, query }, version) =>
+      `${keyGen.generateKey(items)}_${query}_v${version}`,
     versionRef,
   );
 };

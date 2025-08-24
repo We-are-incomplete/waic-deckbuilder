@@ -1,6 +1,6 @@
-import { shallowRef, computed, nextTick, triggerRef } from "vue";
+import { shallowRef, computed, triggerRef } from "vue";
 import type { Card, DeckCard } from "../types";
-import { getCardImageUrlSafe, safeSyncOperation } from "../utils";
+import { getCardImageUrlSafe } from "../utils";
 import { globalImageUrlCache } from "../utils/cache";
 
 /**
@@ -29,23 +29,18 @@ export function useImageModal() {
    * 画像URLをキャッシュから高速取得
    */
   const getCachedImageUrl = (cardId: string): string => {
-    const cached = globalImageUrlCache.get(cardId);
-    if (cached) {
-      return cached;
+    // キャッシュから取得をより堅牢に
+    if (globalImageUrlCache.has(cardId)) {
+      const cached = globalImageUrlCache.get(cardId);
+      if (cached) { // 空文字列でないことを確認
+        return cached;
+      }
     }
 
-    const result = safeSyncOperation(
-      () => getCardImageUrlSafe(cardId),
-      `Failed to get image URL for card ${cardId}`,
-    );
-
-    if (result.isOk()) {
-      globalImageUrlCache.set(cardId, result.value);
-      return result.value;
-    }
-
-    // エラーログは safeSyncOperation 内で処理済み
-    return `${import.meta.env.BASE_URL}placeholder.avif`; // フォールバック
+    // getCardImageUrlSafe は内部でフォールバックを処理するため直接呼び出し
+    const imageUrl = getCardImageUrlSafe(cardId);
+    globalImageUrlCache.set(cardId, imageUrl);
+    return imageUrl;
   };
 
   /**
@@ -59,7 +54,7 @@ export function useImageModal() {
   /**
    * カード画像を拡大表示（Vue 3.5最適化版）
    */
-  const openImageModal = async (
+  const openImageModal = (
     cardId: string,
     deckCards: readonly DeckCard[],
   ) => {
@@ -68,9 +63,6 @@ export function useImageModal() {
 
     if (cardIndex !== -1) {
       const deckCard = deckCards[cardIndex];
-
-      // 次の更新まで待つ
-      await nextTick();
 
       // Vue 3.5の新機能を使用した状態更新
       updateImageModalState({
@@ -99,7 +91,7 @@ export function useImageModal() {
   /**
    * カードナビゲーション（Vue 3.5最適化版）
    */
-  const handleCardNavigation = async (
+  const handleCardNavigation = (
     direction: "previous" | "next",
     deckCards: readonly DeckCard[],
   ) => {
@@ -121,9 +113,6 @@ export function useImageModal() {
 
     const newDeckCard = deckCards[newIndex];
 
-    // 次の更新まで待つ
-    await nextTick();
-
     // Vue 3.5の新機能を使用した状態更新
     updateImageModalState({
       selectedCard: newDeckCard.card,
@@ -140,7 +129,6 @@ export function useImageModal() {
 
   return {
     // 状態
-    imageModalState: imageModalState.value,
     isVisible,
     selectedCard,
     selectedImage,

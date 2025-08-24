@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watchEffect, computed, reactive } from "vue";
+import { ref, watch, computed, reactive, onScopeDispose } from "vue";
 import type { Card, DeckCard } from "../../types";
 import { handleImageError, getCardImageUrlSafe } from "../../utils";
 import { onLongPress } from "@vueuse/core";
@@ -37,6 +37,14 @@ const getCardInDeck = (cardId: string) => {
   return deckCardMap.value.get(cardId) || 0;
 };
 
+// パフォーマンス向上のため、カードとデッキ枚数を組み合わせた配列を事前計算
+const sortedAndFilteredCardsWithCount = computed(() => {
+  return props.sortedAndFilteredCards.map(card => ({
+    ...card,
+    deckCount: getCardInDeck(card.id)
+  }));
+});
+
 // カード画像を拡大表示（親コンポーネントに委譲）
 const openImageModal = (cardId: string) => {
   emit("openImageModal", cardId);
@@ -63,11 +71,8 @@ const setCardRef = (el: HTMLElement | null, cardId: string) => {
   if (el) {
     cardRefs.set(cardId, el);
     // 要素が設定されたら即座に長押しイベントのバインディングを試行
-    const cardIndex = props.sortedAndFilteredCards.findIndex(
-      (card) => card.id === cardId,
-    );
-    if (cardIndex !== -1 && !cardLongPressStops.has(cardId)) {
-      bindLongPress(cardId, cardIndex);
+    if (!cardLongPressStops.has(cardId)) {
+      bindLongPress(cardId);
     }
   } else {
     cardRefs.delete(cardId);
@@ -75,7 +80,7 @@ const setCardRef = (el: HTMLElement | null, cardId: string) => {
 };
 
 // 長押しハンドラーをバインド
-const bindLongPress = (cardId: string, _cardIndex: number) => {
+const bindLongPress = (cardId: string) => {
   const el = cardRefs.get(cardId);
   if (!el) return;
 
@@ -100,37 +105,41 @@ const unbindLongPress = (cardId: string) => {
   }
 };
 
-watchEffect((onCleanup) => {
-  // 現在のカードIDsを取得
-  const currentCardIds = new Set(
-    props.sortedAndFilteredCards.map((card) => card.id),
-  );
+watch(
+  () => sortedAndFilteredCardsWithCount.value,
+  () => {
+    // 現在のカードIDsを取得
+    const currentCardIds = new Set(
+      sortedAndFilteredCardsWithCount.value.map((card) => card.id),
+    );
 
-  // 削除されたカードの長押しハンドラーをアンバインド
-  for (const prevCardId of previousCardIds.value) {
-    if (!currentCardIds.has(prevCardId)) {
-      unbindLongPress(prevCardId);
+    // 削除されたカードの長押しハンドラーをアンバインド
+    for (const prevCardId of previousCardIds.value) {
+      if (!currentCardIds.has(prevCardId)) {
+        unbindLongPress(prevCardId);
+      }
     }
+
+    // 新しく追加されたカードのみに長押しハンドラーをバインド
+    sortedAndFilteredCardsWithCount.value.forEach((card) => {
+      // 既にハンドラーが存在する場合はスキップ
+      if (!cardLongPressStops.has(card.id)) {
+        bindLongPress(card.id);
+      }
+    });
+
+    // 前回のカードIDsを更新
+    previousCardIds.value = currentCardIds;
+  },
+  { immediate: true }
+);
+
+// コンポーネント終了時に全てのstop関数を呼び出し
+onScopeDispose(() => {
+  for (const stop of cardLongPressStops.values()) {
+    stop();
   }
-
-  // 新しく追加されたカードのみに長押しハンドラーをバインド
-  props.sortedAndFilteredCards.forEach((card, index) => {
-    // 既にハンドラーが存在する場合はスキップ
-    if (!cardLongPressStops.has(card.id)) {
-      bindLongPress(card.id, index);
-    }
-  });
-
-  // 前回のカードIDsを更新
-  previousCardIds.value = currentCardIds;
-
-  // コンポーネント終了時に全てのstop関数を呼び出し
-  onCleanup(() => {
-    for (const stop of cardLongPressStops.values()) {
-      stop();
-    }
-    cardLongPressStops.clear();
-  });
+  cardLongPressStops.clear();
 });
 </script>
 
@@ -220,7 +229,7 @@ watchEffect((onCleanup) => {
       </div>
 
       <div
-        v-else-if="sortedAndFilteredCards.length === 0"
+        v-else-if="sortedAndFilteredCardsWithCount.length === 0"
         class="col-span-full text-center mt-2 sm:mt-4"
       >
         <div class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-4">
@@ -252,11 +261,11 @@ watchEffect((onCleanup) => {
 
       <div
         v-else
-        v-for="card in sortedAndFilteredCards"
+        v-for="card in sortedAndFilteredCardsWithCount"
         :key="card.id"
         class="group flex flex-col items-center relative transition-all duration-200"
         :title="
-          getCardInDeck(card.id) > 0
+          card.deckCount > 0
             ? '長押し: 拡大表示'
             : 'クリック: デッキに追加 / 長押し: 拡大表示'
         "
@@ -275,19 +284,19 @@ watchEffect((onCleanup) => {
             class="block w-full h-full object-cover transition-transform duration-200 select-none"
           />
           <div
-            v-if="getCardInDeck(card.id) === 0"
+            v-if="card.deckCount === 0"
             class="absolute inset-0 bg-gradient-to-t from-slate-900/50 via-transparent to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200"
           ></div>
 
           <div
-            v-if="getCardInDeck(card.id) > 0"
+            v-if="card.deckCount > 0"
             class="absolute inset-0 bg-gradient-to-t from-slate-900/50 via-transparent to-transparent pointer-events-none"
           ></div>
         </div>
 
         <!-- デッキにあるカードの場合は枚数と増減ボタンを表示 -->
         <div
-          v-if="getCardInDeck(card.id) > 0"
+          v-if="card.deckCount > 0"
           class="absolute bottom-2 w-full px-1 flex items-center justify-center gap-1"
         >
           <button
@@ -311,12 +320,12 @@ watchEffect((onCleanup) => {
           <div
             class="w-7 h-6 sm:w-9 sm:h-8 font-bold text-center flex items-center justify-center bg-slate-900/80 backdrop-blur-sm rounded-lg border border-slate-600/50 text-white text-sm sm:text-base"
           >
-            {{ getCardInDeck(card.id) }}
+            {{ card.deckCount }}
           </div>
           <button
             @click="emit('incrementCard', card.id)"
             class="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-full flex items-center justify-center leading-none transition-all duration-200 shadow-lg hover:shadow-emerald-500/25 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed"
-            :disabled="getCardInDeck(card.id) >= 4"
+            :disabled="card.deckCount >= 4"
           >
             <svg
               class="w-3 h-3 sm:w-4 sm:h-4"

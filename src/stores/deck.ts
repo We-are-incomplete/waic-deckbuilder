@@ -52,7 +52,15 @@ export const useDeckStore = defineStore("deck", () => {
   const { version: deckVersion, incrementVersion } = createVersionedState();
 
   // エラーハンドラー
-  const errorHandler = computed(() => createErrorHandler());
+  const errorHandler = createErrorHandler();
+
+  /**
+   * 成功時の共通処理：デッキカードを更新してバージョンをインクリメント
+   */
+  const updateDeckCardsWithVersion = (newCards: readonly DeckCard[]): void => {
+    deckCards.value = [...newCards];
+    incrementVersion();
+  };
 
   /**
    * Vue 3.5最適化: デッキハッシュ（メモ化キー用）
@@ -63,7 +71,7 @@ export const useDeckStore = defineStore("deck", () => {
 
   // メモ化されたソート処理
   const memoizedSortDeckCards = createArraySortMemo(
-    (cards: readonly DeckCard[]) => readonly(sortDeckCards(cards)),
+    (cards: readonly DeckCard[]): readonly DeckCard[] => sortDeckCards(cards),
   );
 
   /**
@@ -107,10 +115,9 @@ export const useDeckStore = defineStore("deck", () => {
     });
 
     if (result.isOk()) {
-      deckCards.value = [...result.value];
-      incrementVersion();
+      updateDeckCardsWithVersion(result.value);
     } else {
-      errorHandler.value.handleValidationError(
+      errorHandler.handleValidationError(
         `カードの追加に失敗しました: ${result.error.type}`,
       );
     }
@@ -126,10 +133,9 @@ export const useDeckStore = defineStore("deck", () => {
     });
 
     if (result.isOk()) {
-      deckCards.value = [...result.value];
-      incrementVersion();
+      updateDeckCardsWithVersion(result.value);
     } else {
-      errorHandler.value.handleValidationError(
+      errorHandler.handleValidationError(
         `カード枚数の増加に失敗しました: ${result.error.type}`,
       );
     }
@@ -145,10 +151,9 @@ export const useDeckStore = defineStore("deck", () => {
     });
 
     if (result.isOk()) {
-      deckCards.value = [...result.value];
-      incrementVersion();
+      updateDeckCardsWithVersion(result.value);
     } else {
-      errorHandler.value.handleValidationError(
+      errorHandler.handleValidationError(
         `カード枚数の減少に失敗しました: ${result.error.type}`,
       );
     }
@@ -164,10 +169,9 @@ export const useDeckStore = defineStore("deck", () => {
     });
 
     if (result.isOk()) {
-      deckCards.value = [...result.value];
-      incrementVersion();
+      updateDeckCardsWithVersion(result.value);
     } else {
-      errorHandler.value.handleValidationError(
+      errorHandler.handleValidationError(
         `カードの削除に失敗しました: ${result.error.type}`,
       );
     }
@@ -179,21 +183,19 @@ export const useDeckStore = defineStore("deck", () => {
   const initializeDeck = (availableCards: readonly Card[]): void => {
     const loadDeckResult = loadDeckFromLocalStorage(availableCards);
     if (loadDeckResult.isErr()) {
-      deckCards.value = [];
-      incrementVersion();
-      errorHandler.value.handleRuntimeError(
+      updateDeckCardsWithVersion([]);
+      errorHandler.handleRuntimeError(
         "デッキの読み込みに失敗しました",
         loadDeckResult.error,
       );
     } else {
-      deckCards.value = loadDeckResult.value;
-      incrementVersion();
+      updateDeckCardsWithVersion(loadDeckResult.value);
     }
 
     const loadNameResult = loadDeckName();
     if (loadNameResult.isErr()) {
       deckName.value = "新しいデッキ";
-      errorHandler.value.handleRuntimeError(
+      errorHandler.handleRuntimeError(
         "デッキ名の読み込みに失敗しました",
         loadNameResult.error,
       );
@@ -206,16 +208,14 @@ export const useDeckStore = defineStore("deck", () => {
    * Vue 3.5最適化: デッキカードを設定
    */
   const setDeckCards = (cards: DeckCard[]) => {
-    deckCards.value = cards;
-    incrementVersion();
+    updateDeckCardsWithVersion(cards);
   };
 
   /**
    * Vue 3.5最適化: デッキカードをリセット
    */
   const resetDeckCards = () => {
-    deckCards.value = [];
-    incrementVersion();
+    updateDeckCardsWithVersion([]);
     removeDeckCardsFromLocalStorage();
   };
 

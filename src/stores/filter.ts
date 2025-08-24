@@ -133,7 +133,7 @@ export const useFilterStore = defineStore("filter", () => {
       return cards;
     }
 
-    return CardDomain.searchCardsByName(cards, text);
+    return CardDomain.searchCardsByName(cards, normalizedText);
   };
 
   /**
@@ -226,6 +226,8 @@ export const useFilterStore = defineStore("filter", () => {
         for (let j = 0; j < tagCount && !hasMatchingTag; j++) {
           hasMatchingTag = tagSet.has(cardTags[j]);
         }
+      } else if (typeof cardTags === "string") {
+        hasMatchingTag = tagSet.has(cardTags);
       }
 
       if (hasMatchingTag) {
