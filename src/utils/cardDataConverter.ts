@@ -17,9 +17,9 @@ interface CsvCardRow {
   id: string;
   name: string;
   kind: string;
-  type: string; // CSVからは文字列として読み込まれるため
+  type: CardType[];
   effect: string;
-  tags: string; // CSVからは文字列として読み込まれるため
+  tags: string[];
 }
 
 // 長いトークンを優先するためにソート
@@ -138,9 +138,7 @@ export async function loadCardsFromCsv(
       return err(new Error("CSVデータが空です。"));
     }
 
-    if (import.meta.env?.DEV) {
-      if (import.meta.env?.DEV) console.debug("CSV data fetched successfully, length:", csvText.length);
-    }
+    if (import.meta.env?.DEV) console.debug("CSV data fetched successfully, length:", csvText.length);
 
     // papaparse を使用してCSVをパース
     const parseResult = parseCsv(csvText); // fromThrowableを削除し、直接Resultを処理
@@ -186,6 +184,10 @@ function parseCsv(csvText: string): Result<Card[], Error> {
     if (!isCardKind(row.kind)) {
       return err(new Error(`不正なCardKindが見つかりました: ${row.kind} (ID: ${row.id})`));
     }
+    
+    if (!row.id?.trim() || !row.name?.trim()) {
+      return err(new Error(`必須フィールド欠落: id/name が空です (ID: ${row.id ?? "N/A"})`));
+    }
 
     // CardTypeの検証
     const types: CardType[] = [];
@@ -199,18 +201,14 @@ function parseCsv(csvText: string): Result<Card[], Error> {
 
     // tagsの検証 (string[]であることを期待)
     const tags: string[] = [];
-    if (Array.isArray(row.tags)) {
-      for (const tagValue of row.tags) {
-        if (typeof tagValue === 'string') {
-          tags.push(tagValue);
-        } else {
-          return err(new Error(`不正なタグ形式が見つかりました: ${tagValue} (ID: ${row.id})`));
-        }
+    // row.tags は既に string[] なので、そのままループして追加
+    for (const tagValue of row.tags) {
+      // ここで tagValue が string であることは保証されているはずだが、念のため型ガード
+      if (typeof tagValue === 'string') {
+        tags.push(tagValue);
+      } else {
+        return err(new Error(`不正なタグ形式が見つかりました: ${tagValue} (ID: ${row.id})`));
       }
-    } else if (typeof row.tags === 'string' && row.tags.trim() === '') {
-      // 空文字列の場合は空配列として扱う
-    } else {
-      return err(new Error(`不正なタグ形式が見つかりました: ${row.tags} (ID: ${row.id})`));
     }
 
     cards.push({
