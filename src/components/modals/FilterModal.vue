@@ -187,6 +187,21 @@ const resetFilters = () => {
             </label>
           </div>
         </div>
+
+        <!-- 登場条件フィルター -->
+        <div class="mb-4">
+          <label
+            class="flex items-center cursor-pointer hover:bg-gray-700 p-1 rounded transition-colors"
+          >
+            <input
+              type="checkbox"
+              :checked="filterCriteria.hasEntryCondition"
+              @change="filterStore.toggleEntryConditionFilter()"
+              class="form-checkbox h-4 w-4 min-h-5 min-w-5 text-blue-600 bg-gray-700 border-gray-600 rounded"
+            />
+            <span class="ml-2 text-sm font-medium">【登場条件】で絞り込み</span>
+          </label>
+        </div>
       </div>
 
       <!-- タグフィルター（残りの領域を全て使用） -->

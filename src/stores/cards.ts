@@ -55,12 +55,10 @@ export const useCardsStore = defineStore("cards", () => {
   );
 
   /**
-   * カードデータを取得する純粋関数
+   * カードデータを取得する関数
    */
   const fetchCardData = async (): Promise<Result<Card[], unknown>> => {
-    const cardsResult = await loadCardsFromCsv(
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBSkAVMH16J4iOgia3JKSwgpNG9gIWGu5a7OzdnuPmM2lvYW0MjchCBvy1i4ZS8aXJEPooubEivEfc/pub?gid=113188942&single=true&output=csv",
-    );
+    const cardsResult = await loadCardsFromCsv(`${import.meta.env.BASE_URL}cards.csv`);
     if (cardsResult.isErr()) {
       return err(cardsResult.error);
     }
@@ -80,7 +78,13 @@ export const useCardsStore = defineStore("cards", () => {
         continue;
       }
 
-      validCards.push(card);
+      // effectプロパティに基づいてhasEntryConditionを設定
+      const cardWithEntryCondition: Card = {
+        ...card,
+        hasEntryCondition: card.effect?.includes("【登場条件】") || false,
+      };
+
+      validCards.push(cardWithEntryCondition);
     }
 
     return validCards;

@@ -1,5 +1,12 @@
 import { defineStore } from "pinia";
-import { ref, readonly, computed, shallowRef, triggerRef } from "vue";
+import {
+  ref,
+  readonly,
+  computed,
+  shallowRef,
+  triggerRef,
+  type ComputedRef,
+} from "vue";
 import type { Card, FilterCriteria } from "../types";
 import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants/game";
 import * as CardDomain from "../domain/card";
@@ -13,12 +20,34 @@ import {
 } from "../utils";
 
 export const useFilterStore = defineStore("filter", () => {
+  // ストアの公開APIの型定義
+  type FilterStore = {
+    isFilterModalOpen: typeof isFilterModalOpen;
+    filterCriteria: typeof filterCriteria;
+    allTags: typeof allTags;
+    sortedAndFilteredCards: typeof sortedAndFilteredCards;
+    filterStats: typeof filterStats;
+    allKinds: typeof CARD_KINDS;
+    allTypes: typeof CARD_TYPES;
+    openFilterModal: typeof openFilterModal;
+    closeFilterModal: typeof closeFilterModal;
+    updateFilterCriteria: typeof updateFilterCriteria;
+    resetFilterCriteria: typeof resetFilterCriteria;
+    setTextFilter: typeof setTextFilter;
+    toggleKindFilter: typeof toggleKindFilter;
+    toggleTypeFilter: typeof toggleTypeFilter;
+    toggleTagFilter: typeof toggleTagFilter;
+    toggleEntryConditionFilter: typeof toggleEntryConditionFilter;
+    isEmptyFilter: ComputedRef<boolean>;
+  };
+
   const isFilterModalOpen = ref<boolean>(false);
   const filterCriteria = shallowRef<FilterCriteria>({
     text: "",
     kind: [],
     type: [],
     tags: [],
+    hasEntryCondition: false, // 初期値を追加
   });
 
   // メモ化されたソート処理
@@ -237,9 +266,16 @@ export const useFilterStore = defineStore("filter", () => {
     const hasKindFilter = criteria.kind.length > 0;
     const hasTypeFilter = criteria.type.length > 0;
     const hasTagFilter = criteria.tags.length > 0;
+    const hasEntryConditionFilter = criteria.hasEntryCondition === true;
 
     // 早期リターンによる最適化
-    if (!hasTextFilter && !hasKindFilter && !hasTypeFilter && !hasTagFilter) {
+    if (
+      !hasTextFilter &&
+      !hasKindFilter &&
+      !hasTypeFilter &&
+      !hasTagFilter &&
+      !hasEntryConditionFilter
+    ) {
       return filteredCards;
     }
 
@@ -261,6 +297,11 @@ export const useFilterStore = defineStore("filter", () => {
 
     if (hasTypeFilter) {
       filteredCards = applyTypeFilter(filteredCards, criteria.type);
+      if (filteredCards.length === 0) return filteredCards; // 早期リターン
+    }
+
+    if (hasEntryConditionFilter) {
+      filteredCards = filteredCards.filter((card) => card.hasEntryCondition);
     }
 
     return filteredCards;
@@ -269,7 +310,7 @@ export const useFilterStore = defineStore("filter", () => {
   /**
    * ソート・フィルター済みカード一覧 - 最適化版（早期リターン強化）
    */
-  const sortedAndFilteredCards = computed(() => {
+  const sortedAndFilteredCards = computed<readonly Card[]>(() => {
     const cardsStore = useCardsStore();
     const cards = cardsStore.availableCards;
 
@@ -304,7 +345,12 @@ export const useFilterStore = defineStore("filter", () => {
   /**
    * フィルター結果の統計情報 - 最適化版
    */
-  const filterStats = computed(() => {
+  const filterStats = computed<{
+    totalCount: number;
+    filteredCount: number;
+    hasFilter: boolean;
+    filterRate: number;
+  }>(() => {
     const cardsStore = useCardsStore();
     const total = cardsStore.availableCards.length;
     const filtered = sortedAndFilteredCards.value.length;
@@ -321,12 +367,12 @@ export const useFilterStore = defineStore("filter", () => {
    * フィルターが空かどうか判定 - 最適化版
    */
   const isEmptyFilter = (criteria: FilterCriteria): boolean => {
-    return (
-      (!criteria.text || criteria.text.trim().length === 0) &&
-      criteria.kind.length === 0 &&
-      criteria.type.length === 0 &&
-      criteria.tags.length === 0
-    );
+  if (criteria.text && criteria.text.trim().length > 0) return false;
+  if (criteria.kind.length > 0) return false;
+  if (criteria.type.length > 0) return false;
+  if (criteria.tags.length > 0) return false;
+  if (criteria.hasEntryCondition) return false;
+  return true;
   };
 
   /**
@@ -360,6 +406,7 @@ export const useFilterStore = defineStore("filter", () => {
       kind: [],
       type: [],
       tags: [],
+      hasEntryCondition: false, // リセット時にもfalseに設定
     };
   };
 
@@ -430,6 +477,16 @@ export const useFilterStore = defineStore("filter", () => {
     };
   };
 
+  /**
+   * 【登場条件】フィルターを切り替え
+   */
+  const toggleEntryConditionFilter = (): void => {
+    filterCriteria.value = {
+      ...filterCriteria.value,
+      hasEntryCondition: !filterCriteria.value.hasEntryCondition,
+    };
+  };
+
   return {
     // リアクティブな状態
     isFilterModalOpen,
@@ -451,8 +508,9 @@ export const useFilterStore = defineStore("filter", () => {
     toggleKindFilter,
     toggleTypeFilter,
     toggleTagFilter,
+    toggleEntryConditionFilter, // 追加
 
     // ユーティリティ
     isEmptyFilter: computed(() => isEmptyFilter(filterCriteria.value)),
-  };
+  } as FilterStore;
 });
