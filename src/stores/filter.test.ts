@@ -11,7 +11,8 @@ const mockCards: Card[] = [
     name: "Card A",
     kind: "Artist",
     type: ["赤"],
-    effect: "【登場時効果】何か。【登場条件】ステージに特定のカードがある場合。",
+    effect:
+      "【登場時効果】何か。【登場条件】ステージに特定のカードがある場合。",
     hasEntryCondition: true,
   },
   {

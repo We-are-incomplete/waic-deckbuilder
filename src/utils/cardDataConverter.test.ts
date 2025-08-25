@@ -58,12 +58,15 @@ describe("loadCardsFromCsv", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // fetchのデフォルトモック（成功パス）
-    vi.stubGlobal("fetch", vi.fn(async () => ({
-      ok: true,
-      status: 200,
-      statusText: "OK",
-      text: async () => mockCsvContent,
-    })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        text: async () => mockCsvContent,
+      })),
+    );
   });
 
   it("CSVデータを正しくパースし、JSONデータと一致すること", async () => {
@@ -82,7 +85,7 @@ describe("loadCardsFromCsv", () => {
       statusText: "OK",
       text: async () => "id,name,kind,type,tags\n",
     } as Response);
-    
+
     const result = await loadCardsFromCsv("/public/cards.csv");
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -98,12 +101,14 @@ describe("loadCardsFromCsv", () => {
       statusText: "Not Found",
       text: async () => "",
     } as Response);
-    
+
     const result = await loadCardsFromCsv("/public/nonexistent.csv");
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error).toBeInstanceOf(Error);
-      expect(result.error.message).toContain("HTTP error! status: 404 Not Found");
+      expect(result.error.message).toContain(
+        "HTTP error! status: 404 Not Found",
+      );
     }
   });
 });

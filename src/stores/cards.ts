@@ -8,7 +8,6 @@ import { ok, err, type Result } from "neverthrow";
 import { useMemoize } from "@vueuse/core";
 import { loadCardsFromCsv } from "../utils/cardDataConverter";
 
-
 // カードストア専用のエラー型
 type CardStoreError =
   | {
@@ -62,9 +61,7 @@ export const useCardsStore = defineStore("cards", () => {
    * カードデータを取得する純粋関数
    */
   const fetchCardData = async (): Promise<Result<Card[], unknown>> => {
-    const cardsResult = await loadCardsFromCsv(
-      "cards.csv",
-    );
+    const cardsResult = await loadCardsFromCsv("cards.csv");
     if (cardsResult.isErr()) {
       return err(cardsResult.error);
     }

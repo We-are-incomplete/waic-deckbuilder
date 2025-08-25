@@ -120,7 +120,7 @@ const updateLongPressHandlers = async (newCards: readonly Card[]) => {
 
   // DOM更新を待ってから長押しハンドラーをバインド
   await nextTick();
-  
+
   // 新しく追加されたカードのみに長押しハンドラーをバインド
   newCards.forEach((card) => {
     const el = cardRefs.get(card.id);
@@ -138,7 +138,7 @@ const updateLongPressHandlers = async (newCards: readonly Card[]) => {
 watch(
   () => props.sortedAndFilteredCards,
   updateLongPressHandlers,
-  { immediate: true } // immediate: true で初期実行も含める
+  { immediate: true }, // immediate: true で初期実行も含める
 );
 
 // onMountedは削除：watch { immediate: true } で初期化を統一

@@ -190,7 +190,9 @@ const resetFilters = () => {
 
         <!-- 登場条件フィルター -->
         <div class="mb-4">
-          <label class="flex items-center cursor-pointer hover:bg-gray-700 p-1 rounded transition-colors">
+          <label
+            class="flex items-center cursor-pointer hover:bg-gray-700 p-1 rounded transition-colors"
+          >
             <input
               type="checkbox"
               :checked="filterCriteria.hasEntryCondition"

@@ -1,5 +1,12 @@
 import { defineStore } from "pinia";
-import { ref, readonly, computed, shallowRef, triggerRef, type ComputedRef } from "vue";
+import {
+  ref,
+  readonly,
+  computed,
+  shallowRef,
+  triggerRef,
+  type ComputedRef,
+} from "vue";
 import type { Card, FilterCriteria } from "../types";
 import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants/game";
 import * as CardDomain from "../domain/card";
@@ -262,7 +269,13 @@ export const useFilterStore = defineStore("filter", () => {
     const hasEntryConditionFilter = criteria.hasEntryCondition === true;
 
     // 早期リターンによる最適化
-    if (!hasTextFilter && !hasKindFilter && !hasTypeFilter && !hasTagFilter && !hasEntryConditionFilter) {
+    if (
+      !hasTextFilter &&
+      !hasKindFilter &&
+      !hasTypeFilter &&
+      !hasTagFilter &&
+      !hasEntryConditionFilter
+    ) {
       return filteredCards;
     }
 
@@ -332,7 +345,12 @@ export const useFilterStore = defineStore("filter", () => {
   /**
    * フィルター結果の統計情報 - 最適化版
    */
-  const filterStats = computed<{ totalCount: number; filteredCount: number; hasFilter: boolean; filterRate: number; }>(() => {
+  const filterStats = computed<{
+    totalCount: number;
+    filteredCount: number;
+    hasFilter: boolean;
+    filterRate: number;
+  }>(() => {
     const cardsStore = useCardsStore();
     const total = cardsStore.availableCards.length;
     const filtered = sortedAndFilteredCards.value.length;

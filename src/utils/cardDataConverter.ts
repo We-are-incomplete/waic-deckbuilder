@@ -17,19 +17,23 @@ export async function loadCardsFromCsv(
   try {
     // 通常のfetch APIを使用（useFetchの代わり）
     const response = await fetch(csvPath, {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'Accept': 'text/csv,text/plain,*/*',
-        'Cache-Control': 'no-cache',
+        Accept: "text/csv,text/plain,*/*",
+        "Cache-Control": "no-cache",
       },
     });
 
     if (!response.ok) {
-      return err(new Error(`HTTP error! status: ${response.status} ${response.statusText}`));
+      return err(
+        new Error(
+          `HTTP error! status: ${response.status} ${response.statusText}`,
+        ),
+      );
     }
 
     const csvText = await response.text();
-    
+
     if (!csvText || csvText.trim().length === 0) {
       return err(new Error("CSVデータが空です。"));
     }
@@ -50,7 +54,11 @@ export async function loadCardsFromCsv(
     return ok(parseResult.value);
   } catch (error) {
     console.error("Fetch error:", error); // デバッグログ
-    return err(new Error(`ネットワークエラー: ${error instanceof Error ? error.message : String(error)}`));
+    return err(
+      new Error(
+        `ネットワークエラー: ${error instanceof Error ? error.message : String(error)}`,
+      ),
+    );
   }
 }
 
