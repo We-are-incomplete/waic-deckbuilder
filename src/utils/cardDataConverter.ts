@@ -6,8 +6,9 @@
  */
 
 import type { Card, CardKind, CardType } from "../types/card";
+import { CARD_KINDS, CARD_TYPES } from "../constants/game";
 import { type Result, ok, err } from "neverthrow";
-import Papa from "papaparse"; // papaparseをインポート
+import Papa from "papaparse";
 
 /**
  * CSVの生データ行の型定義
@@ -20,21 +21,6 @@ interface CsvCardRow {
   effect: string;
   tags: string; // CSVからは文字列として読み込まれるため
 }
-
-// CardKindの有効な値を定義
-const CARD_KINDS: readonly CardKind[] = ["Artist", "Song", "Magic", "Direction"];
-// CardTypeの有効な値を定義
-const CARD_TYPES: readonly CardType[] = [
-  "赤",
-  "青",
-  "黄",
-  "白",
-  "黒",
-  "全",
-  "即時",
-  "装備",
-  "設置",
-];
 
 // 長いトークンを優先するためにソート
 const TYPE_TOKENS = [...CARD_TYPES].sort((a, b) => b.length - a.length);
@@ -126,7 +112,7 @@ function isCardType(value: string): value is CardType {
 export async function loadCardsFromCsv(
   csvPath: string,
 ): Promise<Result<Card[], Error>> {
-  console.log("Attempting to fetch CSV from:", csvPath); // デバッグログ
+  if (import.meta.env?.DEV) console.debug("Attempting to fetch CSV from:", csvPath);
 
   try {
     // 通常のfetch APIを使用（useFetchの代わり）
@@ -153,7 +139,7 @@ export async function loadCardsFromCsv(
     }
 
     if (import.meta.env?.DEV) {
-      console.debug("CSV data fetched successfully, length:", csvText.length);
+      if (import.meta.env?.DEV) console.debug("CSV data fetched successfully, length:", csvText.length);
     }
 
     // papaparse を使用してCSVをパース
@@ -173,7 +159,7 @@ export async function loadCardsFromCsv(
 }
 
 function parseCsv(csvText: string): Result<Card[], Error> {
-  console.log("Parsing CSV text with PapaParse..."); // デバッグログ
+  if (import.meta.env?.DEV) console.debug("Parsing CSV text with PapaParse...");
   const parseResult = Papa.parse<CsvCardRow>(csvText, {
     header: true, // ヘッダー行をオブジェクトのキーとして使用
     skipEmptyLines: true, // 空行をスキップ
@@ -244,6 +230,6 @@ function parseCsv(csvText: string): Result<Card[], Error> {
     });
   }
 
-  console.log("Successfully parsed cards:", cards.length); // デバッグログ
+  if (import.meta.env?.DEV) console.debug("Successfully parsed cards:", cards.length);
   return ok(cards);
 }
