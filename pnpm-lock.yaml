@@ -23,6 +23,9 @@ importers:
       neverthrow:
         specifier: ^8.2.0
         version: 8.2.0
+      papaparse:
+        specifier: ^5.5.3
+        version: 5.5.3
       pinia:
         specifier: ^3.0.3
         version: 3.0.3(typescript@5.9.2)(vue@3.5.20(typescript@5.9.2))
@@ -2278,6 +2281,9 @@ packages:
 
   package-json-from-dist@1.0.1:
     resolution: {integrity: sha512-UEZIS3/by4OC8vL3P2dTXRETpebLI2NiI5vIrjaD/5UtrkFX/tNbwjTSRAGC/+7CAo2pIcBaRgWmcBBHcsaCIw==}
+
+  papaparse@5.5.3:
+    resolution: {integrity: sha512-5QvjGxYVjxO59MGU2lHVYpRWBBtKHnlIAcSe1uNFCkkptUh63NFRj0FJQm7nR67puEruUci/ZkjmEFrjCAyP4A==}
 
   path-browserify@1.0.1:
     resolution: {integrity: sha512-b7uo2UCUOYZcnF/3ID0lulOJi/bafxa1xPe7ZPsammBSpjSWQkjNxlt635YGS2MiR9GjvuXCtz2emr3jbsz98g==}
@@ -5176,6 +5182,8 @@ snapshots:
       oxlint-tsgolint: 0.0.4
 
   package-json-from-dist@1.0.1: {}
+
+  papaparse@5.5.3: {}
 
   path-browserify@1.0.1: {}
 
