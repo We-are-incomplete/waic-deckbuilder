@@ -189,19 +189,12 @@ function parseCsv(csvText: string): Result<Card[], Error> {
 
     // CardTypeの検証
     const types: CardType[] = [];
-    // transformで配列になっていることを期待しているため、row.typeが配列であることを確認
-    if (Array.isArray(row.type)) {
-      for (const typeValue of row.type) {
-        if (typeof typeValue === 'string' && isCardType(typeValue)) {
-          types.push(typeValue);
-        } else {
-          return err(new Error(`不正なCardTypeが見つかりました: ${typeValue} (ID: ${row.id})`));
-        }
+    for (const typeValue of row.type) {
+      if (isCardType(typeValue)) {
+        types.push(typeValue);
+      } else {
+        return err(new Error(`不正なCardTypeが見つかりました: ${typeValue} (ID: ${row.id})`));
       }
-    } else if (typeof row.type === 'string' && row.type.trim() === '') {
-      // 空文字列の場合は空配列として扱う
-    } else {
-      return err(new Error(`不正なCardType形式が見つかりました: ${row.type} (ID: ${row.id})`));
     }
 
     // tagsの検証 (string[]であることを期待)
