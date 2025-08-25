@@ -24,9 +24,6 @@ export const useCardsStore = defineStore("cards", () => {
   const isLoading = ref<boolean>(true);
   const error = ref<CardStoreError | null>(null);
 
-  // フィルタリング状態
-  const filterByEntryCondition = ref<boolean>(false);
-
   // カードデータのバージョン管理（キャッシュ無効化用）
   const cardsVersion = ref<number>(0);
 
@@ -58,7 +55,7 @@ export const useCardsStore = defineStore("cards", () => {
   );
 
   /**
-   * カードデータを取得する純粋関数
+   * カードデータを取得する関数
    */
   const fetchCardData = async (): Promise<Result<Card[], unknown>> => {
     const cardsResult = await loadCardsFromCsv(`${import.meta.env.BASE_URL}cards.csv`);
@@ -358,10 +355,6 @@ export const useCardsStore = defineStore("cards", () => {
     cardCount,
     hasCards,
     isReady,
-    filterByEntryCondition, // 追加
-
-    // 計算プロパティ
-    // filteredCards は削除
 
     // アクション
     loadCards,

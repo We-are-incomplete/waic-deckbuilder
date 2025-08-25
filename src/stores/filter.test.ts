@@ -52,6 +52,7 @@ vi.mock("./cards", () => ({
 describe("filterStore", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
+    vi.clearAllMocks();
     // useCardsStoreのモックをリセット
     vi.mocked(useCardsStore).mockClear();
     vi.mocked(useCardsStore).mockReturnValue({

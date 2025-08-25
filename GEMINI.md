@@ -68,7 +68,7 @@ Format: `<type>(<scope>): <subject>`
 
 ### Example
 
-```
+```text
 feat: add hat wobble
 ^--^  ^------------^
 |     |

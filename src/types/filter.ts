@@ -17,5 +17,5 @@ export interface FilterCriteria {
   readonly kind: readonly string[];
   readonly type: readonly string[];
   readonly tags: readonly string[];
-  readonly hasEntryCondition?: boolean; // 【登場条件】で絞り込み
+  readonly hasEntryCondition: boolean; // 【登場条件】で絞り込み
 }

@@ -143,8 +143,7 @@ export const createLRUCache = <K, V>(
     /**
      * キャッシュの使用率を取得（デバッグ用）
      */
-    usageRatio: () =>
-      state.maxSize > 0 ? state.cache.size / state.maxSize : 1,
+    usageRatio: () => state.cache.size / state.maxSize,
 
     /**
      * すべてのキーを取得

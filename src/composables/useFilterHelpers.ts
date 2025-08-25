@@ -37,6 +37,7 @@ export function useFilterHelpers(filterCriteria: ComputedRef<FilterCriteria>) {
     count += criteria.kind.length;
     count += criteria.type.length;
     count += criteria.tags.length;
+    if (criteria.hasEntryCondition) count++;
 
     return count;
   });
