@@ -10,14 +10,11 @@ import { CARD_KINDS, CARD_TYPES } from "../constants/game";
 import { type Result, ok, err } from "neverthrow";
 import Papa from "papaparse";
 
-/**
- * CSVの生データ行の型定義
- */
 interface CsvCardRow {
   id: string;
   name: string;
   kind: string;
-  type: CardType[];
+  type: string[];
   effect: string;
   tags: string[];
 }
@@ -30,7 +27,7 @@ const TYPE_TOKENS = [...CARD_TYPES].sort((a, b) => b.length - a.length);
  * @param value 分割する文字列
  * @returns 分割されたCardTypeの配列
  */
-function tokenizeCardTypes(value: unknown): CardType[] {
+function tokenizeCardTypes(value: unknown): string[] {
   if (typeof value !== "string") {
     return [];
   }
@@ -45,19 +42,17 @@ function tokenizeCardTypes(value: unknown): CardType[] {
     return trimmedValue
       .split("/")
       .map((s) => s.trim())
-      .filter((s): s is CardType => isCardType(s));
+      .filter((s) => s !== "");
   }
 
-  const result: CardType[] = [];
+  const result: string[] = [];
   let remaining = trimmedValue;
 
   while (remaining.length > 0) {
     let matched = false;
     for (const token of TYPE_TOKENS) {
       if (remaining.startsWith(token)) {
-        if (isCardType(token)) {
-          result.push(token);
-        }
+        result.push(token);
         remaining = remaining.substring(token.length);
         matched = true;
         break;
@@ -66,10 +61,7 @@ function tokenizeCardTypes(value: unknown): CardType[] {
     if (!matched) {
       // どのトークンにも一致しない場合は、最初の1文字を消費して続行
       const char = remaining[0];
-      // 1文字が有効なCardTypeであるかチェック（例: "赤"）
-      if (isCardType(char)) {
-        result.push(char);
-      }
+      result.push(char);
       remaining = remaining.substring(1);
     }
   }
@@ -141,11 +133,8 @@ export async function loadCardsFromCsv(
     if (import.meta.env?.DEV) console.debug("CSV data fetched successfully, length:", csvText.length);
 
     // papaparse を使用してCSVをパース
-    const parseResult = parseCsv(csvText); // fromThrowableを削除し、直接Resultを処理
-    if (parseResult.isErr()) {
-      return err(parseResult.error);
-    }
-    return ok(parseResult.value);
+    const parseResult = parseCsv(csvText);
+    return parseResult;
   } catch (error) {
     console.error("Fetch error:", error); // デバッグログ
     return err(
@@ -199,21 +188,12 @@ function parseCsv(csvText: string): Result<Card[], Error> {
       }
     }
 
-    // tagsの検証 (string[]であることを期待)
-    const tags: string[] = [];
-    // row.tags は既に string[] なので、そのままループして追加
-    for (const tagValue of row.tags) {
-      // ここで tagValue が string であることは保証されているはずだが、念のため型ガード
-      if (typeof tagValue === 'string') {
-        tags.push(tagValue);
-      } else {
-        return err(new Error(`不正なタグ形式が見つかりました: ${tagValue} (ID: ${row.id})`));
-      }
-    }
+    // transform後は string[] で正規化済み
+    const tags: string[] = row.tags;
 
     cards.push({
-      id: row.id,
-      name: row.name,
+      id: row.id.trim(),
+      name: row.name.trim(),
       kind: row.kind, // 型ガードによりCardKindとして扱える
       type: types,
       effect: row.effect,
