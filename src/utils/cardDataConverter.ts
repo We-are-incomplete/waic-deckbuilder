@@ -36,6 +36,75 @@ const CARD_TYPES: readonly CardType[] = [
   "設置",
 ];
 
+// 長いトークンを優先するためにソート
+const TYPE_TOKENS = [...CARD_TYPES].sort((a, b) => b.length - a.length);
+
+/**
+ * カードタイプ文字列をトークンに分割する
+ * @param value 分割する文字列
+ * @returns 分割されたCardTypeの配列
+ */
+function tokenizeCardTypes(value: unknown): CardType[] {
+  if (typeof value !== "string") {
+    return [];
+  }
+
+  const trimmedValue = value.trim();
+  if (trimmedValue === "") {
+    return [];
+  }
+
+  // "/" で分割するケースを優先
+  if (trimmedValue.includes("/")) {
+    return trimmedValue
+      .split("/")
+      .map((s) => s.trim())
+      .filter((s): s is CardType => isCardType(s));
+  }
+
+  const result: CardType[] = [];
+  let remaining = trimmedValue;
+
+  while (remaining.length > 0) {
+    let matched = false;
+    for (const token of TYPE_TOKENS) {
+      if (remaining.startsWith(token)) {
+        if (isCardType(token)) {
+          result.push(token);
+        }
+        remaining = remaining.substring(token.length);
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) {
+      // どのトークンにも一致しない場合は、最初の1文字を消費して続行
+      const char = remaining[0];
+      // 1文字が有効なCardTypeであるかチェック（例: "赤"）
+      if (isCardType(char)) {
+        result.push(char);
+      }
+      remaining = remaining.substring(1);
+    }
+  }
+  return result;
+}
+
+/**
+ * タグ文字列を分割する
+ * @param value 分割する文字列
+ * @returns 分割されたタグの配列
+ */
+function splitTags(value: unknown): string[] {
+  if (typeof value !== "string") {
+    return [];
+  }
+  return value
+    .split(/[/,|、]/) // /,|、のいずれかで分割
+    .map((s) => s.trim())
+    .filter((s) => s !== "");
+}
+
 /**
  * 指定された値がCardKindのいずれかであるかを判定する型ガード
  * @param value 判定する値
@@ -111,38 +180,10 @@ function parseCsv(csvText: string): Result<Card[], Error> {
     transform: (value, field) => {
       // 各フィールドの値を変換
       if (field === "type") {
-        // 'type' フィールドは '/' で分割し、各要素をトリムして配列にする
-        // ただし、"赤青"のような複合タイプはそのまま一つの要素として扱うのではなく、
-        // "赤"と"青"に分割されるべき。
-        // CSVのデータが "赤青" のようにスペースなしで結合されている場合、
-        // それを "赤", "青" に分割するロジックを追加する。
-        if (value === "赤青") return ["赤", "青"];
-        if (value === "赤黄") return ["赤", "黄"];
-        if (value === "赤白") return ["赤", "白"];
-        if (value === "赤黒") return ["赤", "黒"];
-        if (value === "青赤") return ["青", "赤"];
-        if (value === "青黄") return ["青", "黄"];
-        if (value === "青白") return ["青", "白"];
-        if (value === "青黒") return ["青", "黒"];
-        if (value === "黄赤") return ["黄", "赤"];
-        if (value === "黄青") return ["黄", "青"];
-        if (value === "黄白") return ["黄", "白"];
-        if (value === "黄黒") return ["黄", "黒"];
-        if (value === "白赤") return ["白", "赤"];
-        if (value === "白青") return ["白", "青"];
-        if (value === "白黄") return ["白", "黄"];
-        if (value === "白黒") return ["白", "黒"];
-        if (value === "黒赤") return ["黒", "赤"];
-        if (value === "黒青") return ["黒", "青"];
-        if (value === "黒黄") return ["黒", "黄"];
-        if (value === "黒白") return ["黒", "白"];
-        // その他の複合タイプもここに追加
-        // "全" はそのまま "全" として扱う
-        // "即時", "装備", "設置" もそのまま
-        return value ? value.split("/").map((s: string) => s.trim()) : [];
+        return tokenizeCardTypes(value);
       }
       if (field === "tags") {
-        return value ? value.split("/").map((s: string) => s.trim()) : [];
+        return splitTags(value);
       }
       return value;
     },
