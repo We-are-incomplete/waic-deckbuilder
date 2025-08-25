@@ -19,6 +19,7 @@ export const useFilterStore = defineStore("filter", () => {
     kind: [],
     type: [],
     tags: [],
+    hasEntryCondition: false, // 初期値を追加
   });
 
   // メモ化されたソート処理
@@ -237,9 +238,10 @@ export const useFilterStore = defineStore("filter", () => {
     const hasKindFilter = criteria.kind.length > 0;
     const hasTypeFilter = criteria.type.length > 0;
     const hasTagFilter = criteria.tags.length > 0;
+    const hasEntryConditionFilter = criteria.hasEntryCondition === true;
 
     // 早期リターンによる最適化
-    if (!hasTextFilter && !hasKindFilter && !hasTypeFilter && !hasTagFilter) {
+    if (!hasTextFilter && !hasKindFilter && !hasTypeFilter && !hasTagFilter && !hasEntryConditionFilter) {
       return filteredCards;
     }
 
@@ -261,6 +263,11 @@ export const useFilterStore = defineStore("filter", () => {
 
     if (hasTypeFilter) {
       filteredCards = applyTypeFilter(filteredCards, criteria.type);
+      if (filteredCards.length === 0) return filteredCards; // 早期リターン
+    }
+
+    if (hasEntryConditionFilter) {
+      filteredCards = filteredCards.filter((card) => card.hasEntryCondition);
     }
 
     return filteredCards;
@@ -325,7 +332,8 @@ export const useFilterStore = defineStore("filter", () => {
       (!criteria.text || criteria.text.trim().length === 0) &&
       criteria.kind.length === 0 &&
       criteria.type.length === 0 &&
-      criteria.tags.length === 0
+      criteria.tags.length === 0 &&
+      !criteria.hasEntryCondition
     );
   };
 
@@ -360,6 +368,7 @@ export const useFilterStore = defineStore("filter", () => {
       kind: [],
       type: [],
       tags: [],
+      hasEntryCondition: false, // リセット時にもfalseに設定
     };
   };
 
@@ -430,6 +439,16 @@ export const useFilterStore = defineStore("filter", () => {
     };
   };
 
+  /**
+   * 【登場条件】フィルターを切り替え
+   */
+  const toggleEntryConditionFilter = (): void => {
+    filterCriteria.value = {
+      ...filterCriteria.value,
+      hasEntryCondition: !filterCriteria.value.hasEntryCondition,
+    };
+  };
+
   return {
     // リアクティブな状態
     isFilterModalOpen,
@@ -451,6 +470,7 @@ export const useFilterStore = defineStore("filter", () => {
     toggleKindFilter,
     toggleTypeFilter,
     toggleTagFilter,
+    toggleEntryConditionFilter, // 追加
 
     // ユーティリティ
     isEmptyFilter: computed(() => isEmptyFilter(filterCriteria.value)),

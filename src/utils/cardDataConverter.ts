@@ -81,6 +81,7 @@ function parseCsv(csvText: string): Card[] {
       name: row.name,
       kind: row.kind as CardKind,
       type: row.type as CardType[], // transformで配列になっていることを期待
+      effect: row.effect, // effectプロパティを追加
       tags: row.tags, // transformで配列になっていることを期待
     } as Card;
   });

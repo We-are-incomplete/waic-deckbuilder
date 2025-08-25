@@ -16,5 +16,7 @@ export interface Card {
   readonly name: string;
   readonly kind: CardKind;
   readonly type: readonly CardType[];
+  readonly effect?: string; // 【登場条件】などの効果テキスト
+  readonly hasEntryCondition?: boolean; // 【登場条件】を持つカードかどうか
   readonly tags?: readonly string[];
 }

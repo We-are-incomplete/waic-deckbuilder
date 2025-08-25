@@ -24,6 +24,9 @@ export const useCardsStore = defineStore("cards", () => {
   const isLoading = ref<boolean>(true);
   const error = ref<CardStoreError | null>(null);
 
+  // フィルタリング状態
+  const filterByEntryCondition = ref<boolean>(false);
+
   // カードデータのバージョン管理（キャッシュ無効化用）
   const cardsVersion = ref<number>(0);
 
@@ -80,7 +83,13 @@ export const useCardsStore = defineStore("cards", () => {
         continue;
       }
 
-      validCards.push(card);
+      // effectプロパティに基づいてhasEntryConditionを設定
+      const cardWithEntryCondition: Card = {
+        ...card,
+        hasEntryCondition: card.effect?.includes("【登場条件】") || false,
+      };
+
+      validCards.push(cardWithEntryCondition);
     }
 
     return validCards;
@@ -343,6 +352,12 @@ export const useCardsStore = defineStore("cards", () => {
     () => !isLoading.value && !error.value && hasCards.value,
   );
 
+  // フィルタリングされたカードリスト
+  const filteredCards = computed(() => {
+    const filterStore = useFilterStore();
+    return filterStore.sortedAndFilteredCards;
+  });
+
   return {
     // リアクティブな状態
     availableCards,
@@ -351,6 +366,10 @@ export const useCardsStore = defineStore("cards", () => {
     cardCount,
     hasCards,
     isReady,
+    filterByEntryCondition, // 追加
+
+    // 計算プロパティ
+    filteredCards, // 追加
 
     // アクション
     loadCards,
