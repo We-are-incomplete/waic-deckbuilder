@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, readonly, computed, shallowRef, triggerRef } from "vue";
+import { ref, readonly, computed, shallowRef, triggerRef, type ComputedRef } from "vue";
 import type { Card, FilterCriteria } from "../types";
 import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants/game";
 import * as CardDomain from "../domain/card";
@@ -13,6 +13,27 @@ import {
 } from "../utils";
 
 export const useFilterStore = defineStore("filter", () => {
+  // ストアの公開APIの型定義
+  type FilterStore = {
+    isFilterModalOpen: typeof isFilterModalOpen;
+    filterCriteria: typeof filterCriteria;
+    allTags: typeof allTags;
+    sortedAndFilteredCards: typeof sortedAndFilteredCards;
+    filterStats: typeof filterStats;
+    allKinds: typeof CARD_KINDS;
+    allTypes: typeof CARD_TYPES;
+    openFilterModal: typeof openFilterModal;
+    closeFilterModal: typeof closeFilterModal;
+    updateFilterCriteria: typeof updateFilterCriteria;
+    resetFilterCriteria: typeof resetFilterCriteria;
+    setTextFilter: typeof setTextFilter;
+    toggleKindFilter: typeof toggleKindFilter;
+    toggleTypeFilter: typeof toggleTypeFilter;
+    toggleTagFilter: typeof toggleTagFilter;
+    toggleEntryConditionFilter: typeof toggleEntryConditionFilter;
+    isEmptyFilter: ComputedRef<boolean>;
+  };
+
   const isFilterModalOpen = ref<boolean>(false);
   const filterCriteria = shallowRef<FilterCriteria>({
     text: "",
@@ -276,7 +297,7 @@ export const useFilterStore = defineStore("filter", () => {
   /**
    * ソート・フィルター済みカード一覧 - 最適化版（早期リターン強化）
    */
-  const sortedAndFilteredCards = computed(() => {
+  const sortedAndFilteredCards = computed<readonly Card[]>(() => {
     const cardsStore = useCardsStore();
     const cards = cardsStore.availableCards;
 
@@ -311,7 +332,7 @@ export const useFilterStore = defineStore("filter", () => {
   /**
    * フィルター結果の統計情報 - 最適化版
    */
-  const filterStats = computed(() => {
+  const filterStats = computed<{ totalCount: number; filteredCount: number; hasFilter: boolean; filterRate: number; }>(() => {
     const cardsStore = useCardsStore();
     const total = cardsStore.availableCards.length;
     const filtered = sortedAndFilteredCards.value.length;
@@ -474,5 +495,5 @@ export const useFilterStore = defineStore("filter", () => {
 
     // ユーティリティ
     isEmptyFilter: computed(() => isEmptyFilter(filterCriteria.value)),
-  };
+  } as FilterStore;
 });

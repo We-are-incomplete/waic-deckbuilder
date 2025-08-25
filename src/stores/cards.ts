@@ -8,6 +8,7 @@ import { ok, err, type Result } from "neverthrow";
 import { useMemoize } from "@vueuse/core";
 import { loadCardsFromCsv } from "../utils/cardDataConverter";
 
+
 // カードストア専用のエラー型
 type CardStoreError =
   | {
@@ -352,12 +353,6 @@ export const useCardsStore = defineStore("cards", () => {
     () => !isLoading.value && !error.value && hasCards.value,
   );
 
-  // フィルタリングされたカードリスト
-  const filteredCards = computed(() => {
-    const filterStore = useFilterStore();
-    return filterStore.sortedAndFilteredCards;
-  });
-
   return {
     // リアクティブな状態
     availableCards,
@@ -369,7 +364,7 @@ export const useCardsStore = defineStore("cards", () => {
     filterByEntryCondition, // 追加
 
     // 計算プロパティ
-    filteredCards, // 追加
+    // filteredCards は削除
 
     // アクション
     loadCards,

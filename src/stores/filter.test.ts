@@ -92,10 +92,10 @@ describe("filterStore", () => {
     // 【登場条件】を持つカードのみがフィルタリングされることを確認
     const filtered = store.sortedAndFilteredCards;
     expect(filtered.length).toBe(2);
-    expect(filtered.some((card) => card.id === "card1")).toBe(true);
-    expect(filtered.some((card) => card.id === "card3")).toBe(true);
-    expect(filtered.some((card) => card.id === "card2")).toBe(false);
-    expect(filtered.some((card) => card.id === "card4")).toBe(false);
+    expect(filtered.some((card: Card) => card.id === "card1")).toBe(true);
+    expect(filtered.some((card: Card) => card.id === "card3")).toBe(true);
+    expect(filtered.some((card: Card) => card.id === "card2")).toBe(false);
+    expect(filtered.some((card: Card) => card.id === "card4")).toBe(false);
   });
 
   it("should reset hasEntryCondition filter", () => {
