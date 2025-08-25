@@ -59,7 +59,7 @@ export const useCardsStore = defineStore("cards", () => {
    */
   const fetchCardData = async (): Promise<Result<Card[], unknown>> => {
     const cardsResult = await loadCardsFromCsv(
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBSkAVMH16J4iOgia3JKSwgpNG9gIWGu5a7OzdnuPmM2lvYW0MjchCBvy1i4ZS8aXJEPooubEivEfc/pub?gid=113188942&single=true&output=csv",
+      "cards.csv",
     );
     if (cardsResult.isErr()) {
       return err(cardsResult.error);
