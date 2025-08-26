@@ -58,7 +58,9 @@ export const useCardsStore = defineStore("cards", () => {
    * カードデータを取得する関数
    */
   const fetchCardData = async (): Promise<Result<Card[], unknown>> => {
-    const cardsResult = await loadCardsFromCsv(`${import.meta.env.BASE_URL}cards.csv`);
+    const cardsResult = await loadCardsFromCsv(
+      `${import.meta.env.BASE_URL}cards.csv`,
+    );
     if (cardsResult.isErr()) {
       return err(cardsResult.error);
     }

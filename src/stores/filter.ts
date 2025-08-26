@@ -367,12 +367,12 @@ export const useFilterStore = defineStore("filter", () => {
    * フィルターが空かどうか判定 - 最適化版
    */
   const isEmptyFilter = (criteria: FilterCriteria): boolean => {
-  if (criteria.text && criteria.text.trim().length > 0) return false;
-  if (criteria.kind.length > 0) return false;
-  if (criteria.type.length > 0) return false;
-  if (criteria.tags.length > 0) return false;
-  if (criteria.hasEntryCondition) return false;
-  return true;
+    if (criteria.text && criteria.text.trim().length > 0) return false;
+    if (criteria.kind.length > 0) return false;
+    if (criteria.type.length > 0) return false;
+    if (criteria.tags.length > 0) return false;
+    if (criteria.hasEntryCondition) return false;
+    return true;
   };
 
   /**
