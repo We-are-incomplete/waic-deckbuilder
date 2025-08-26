@@ -18,7 +18,6 @@ import { CACHE_CLEANUP_INTERVAL } from "./utils/image";
 // コンポーザブル
 import { useImageModal } from "./composables/useImageModal";
 import { useDeckCards } from "./composables/useDeckCards";
-import { useAppProps } from "./composables/useAppProps";
 
 // ストア初期化
 const appStore = useAppStore();
@@ -49,21 +48,6 @@ const {
   handleCardNavigation,
 } = useImageModal();
 
-const {
-  modalVisibility,
-  deckSectionProps,
-  cardListSectionProps,
-  deckCodeModalProps,
-} = useAppProps(
-  cardsStore,
-  deckStore,
-  filterStore,
-  deckCodeStore,
-  exportStore,
-  deckManagementStore,
-  appStore,
-);
-
 // アプリケーションの初期化
 onMounted(appStore.initializeApp);
 
@@ -89,6 +73,38 @@ watch(
   },
   { immediate: true },
 );
+
+// モーダル表示の条件
+const modalVisibility = computed(() => ({
+  filter: filterStore.isFilterModalOpen,
+  deckCode: deckCodeStore.showDeckCodeModal,
+  resetConfirm: appStore.showResetConfirmModal,
+  deckManagement: deckManagementStore.isDeckManagementModalOpen,
+}));
+
+// デッキセクションのプロパティ
+const deckSectionProps = computed(() => ({
+  isGeneratingCode: deckCodeStore.isGeneratingCode,
+  isSaving: exportStore.isSaving,
+}));
+
+// カード一覧セクションのプロパティ
+const cardListSectionProps = computed(() => ({
+  availableCards: cardsStore.availableCards,
+  sortedAndFilteredCards: filterStore.sortedAndFilteredCards,
+  deckCards: deckStore.deckCards,
+  isLoading: cardsStore.isLoading,
+  error: cardsStore.error?.message || null,
+}));
+
+// デッキコードモーダルのプロパティ
+const deckCodeModalProps = computed(() => ({
+  isVisible: deckCodeStore.showDeckCodeModal,
+  slashDeckCode: deckCodeStore.slashDeckCode,
+  kcgDeckCode: deckCodeStore.kcgDeckCode,
+  importDeckCode: deckCodeStore.importDeckCode,
+  error: deckCodeStore.error?.message || null,
+}));
 
 // カード画像モーダルのプロパティを計算
 const cardImageModalProps = computed(() => ({
