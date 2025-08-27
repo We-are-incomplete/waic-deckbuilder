@@ -43,7 +43,7 @@ const {
   selectedCard,
   selectedImage,
   selectedIndex,
-  openImageModal: openModal,
+  openImageModal,
   closeImageModal,
   handleCardNavigation,
 } = useImageModal(deckCards);
@@ -53,18 +53,6 @@ onMounted(appStore.initializeApp);
 
 // 画像キャッシュの定期的なクリーンアップ
 useIntervalFn(cleanupStaleEntries, CACHE_CLEANUP_INTERVAL, { immediate: true });
-
-// 画像モーダルを開く（デッキカードを渡す）
-const openImageModal = (cardId: string) => {
-  // 入力ガード（空文字や未存在IDなら何もしない）
-  if (!cardId) return;
-  openModal(cardId);
-};
-
-// カードナビゲーション（デッキカードを渡す）
-const navigateCard = (direction: "previous" | "next") => {
-  handleCardNavigation(direction);
-};
 
 watch(
   deckSectionRef,
@@ -179,7 +167,7 @@ const cardImageModalProps = computed(() => ({
     <CardImageModal
       v-bind="cardImageModalProps"
       @close="closeImageModal"
-      @navigate="navigateCard"
+      @navigate="handleCardNavigation"
     />
 
     <!-- デッキ管理モーダル -->
