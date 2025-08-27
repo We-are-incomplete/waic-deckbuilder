@@ -1,8 +1,8 @@
 /**
-+ * spec: デッキ機能のドメイン型(ADT)と不変条件を定義するモジュール。
-+ * - 例外は投げず neverthrow の Result とエラーADTを使用する。
-+ * - UI文言は保持せず、構造化エラーで表現する。
-+ */
+ * spec: デッキ機能のドメイン型(ADT)と不変条件を定義するモジュール。
+ * - 例外は投げず neverthrow の Result とエラーADTを使用する。
+ * - UI文言は保持せず、構造化エラーで表現する。
+ */
 import type { Card } from "./card";
 import type { Result } from "neverthrow";
 

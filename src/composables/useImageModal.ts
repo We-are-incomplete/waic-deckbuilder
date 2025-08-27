@@ -73,7 +73,7 @@ export function useImageModal() {
         isVisible: true,
       });
     } else {
-      console.warn(`Card with ID ${cardId} not found in store`); // ログメッセージを修正
+      console.warn(`カードID ${cardId} はストアに存在しません`);
     }
   };
 
