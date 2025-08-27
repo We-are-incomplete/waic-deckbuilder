@@ -8,6 +8,7 @@
 import type { Card, CardKind, CardType } from "../types/card";
 import { CARD_KINDS, CARD_TYPES } from "../constants/game";
 import { type Result, ok, err } from "neverthrow";
+import { logger } from "../utils";
 import Papa from "papaparse";
 
 interface CsvCardRow {
@@ -104,8 +105,7 @@ function isCardType(value: string): value is CardType {
 export async function loadCardsFromCsv(
   csvPath: string,
 ): Promise<Result<Card[], Error>> {
-  if (import.meta.env?.DEV)
-    console.debug("Attempting to fetch CSV from:", csvPath);
+  if (import.meta.env?.DEV) logger.debug("Attempting to fetch CSV from:", csvPath);
 
   try {
     // 通常のfetch APIを使用（useFetchの代わり）
@@ -131,8 +131,7 @@ export async function loadCardsFromCsv(
       return err(new Error("CSVデータが空です。"));
     }
 
-    if (import.meta.env?.DEV)
-      console.debug("CSV data fetched successfully, length:", csvText.length);
+    if (import.meta.env?.DEV) logger.debug("CSV data fetched successfully, length:", csvText.length);
 
     // papaparse を使用してCSVをパース
     const parseResult = parseCsv(csvText);
@@ -215,7 +214,6 @@ function parseCsv(csvText: string): Result<Card[], Error> {
     });
   }
 
-  if (import.meta.env?.DEV)
-    console.debug("Successfully parsed cards:", cards.length);
+  if (import.meta.env?.DEV) logger.debug("Successfully parsed cards:", cards.length);
   return ok(cards);
 }

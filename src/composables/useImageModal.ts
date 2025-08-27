@@ -3,6 +3,8 @@ import type { Card, DeckCard } from "../types";
 import { getCardImageUrlSafe } from "../utils";
 import { globalImageUrlCache } from "../utils/cache";
 import { useCardsStore } from "../stores/cards"; // useCardsStore をインポート
+import { useDeckStore } from "../stores/deck";
+
 
 /**
  * 画像モーダル状態の型定義
@@ -25,6 +27,10 @@ export function useImageModal() {
     selectedImage: null,
     selectedIndex: null,
   });
+
+  // ストアはコンポーザブル初期化時に1度だけ取得
+  const cardsStore = useCardsStore();
+  const deckStore = useDeckStore();
 
   /**
    * 画像URLをキャッシュから高速取得
@@ -50,17 +56,19 @@ export function useImageModal() {
   };
 
   /**
-   * カード画像を拡大表示（Vue 3.5最適化版）
+   * カード画像を拡大表示
    */
-  const openImageModal = (cardId: string) => { // deckCards を削除
-    const cardsStore = useCardsStore(); // useCardsStore を利用
+  const openImageModal = (cardId: string) => {
+    const card = cardsStore.getCardById(cardId);
 
-    const card = cardsStore.getCardById(cardId); // cardId から Card オブジェクトを取得
-
-    if (card) { // カードが存在する場合のみ処理
+    if (card) {
+      // デッキ内に存在すればそのインデックス、無ければnull
+      const idxInDeck = deckStore.deckCards.findIndex(
+        (dc) => dc.card.id === cardId,
+      );
       updateImageModalState({
         selectedCard: card,
-        selectedIndex: null, // デッキ外のカードなので null
+        selectedIndex: idxInDeck >= 0 ? idxInDeck : null,
         selectedImage: getCachedImageUrl(cardId),
         isVisible: true,
       });
@@ -70,7 +78,7 @@ export function useImageModal() {
   };
 
   /**
-   * モーダルを閉じる（Vue 3.5最適化版）
+   * モーダルを閉じる
    */
   const closeImageModal = () => {
     updateImageModalState({
@@ -82,7 +90,7 @@ export function useImageModal() {
   };
 
   /**
-   * カードナビゲーション（Vue 3.5最適化版）
+   * カードナビゲーション
    */
   const handleCardNavigation = (
     direction: "previous" | "next",
@@ -131,6 +139,5 @@ export function useImageModal() {
     openImageModal,
     closeImageModal,
     handleCardNavigation,
-    getCachedImageUrl,
   };
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watchEffect, computed } from "vue";
+import { reactive, watchEffect, computed } from "vue";
 import type { Card, DeckCard } from "../../types";
 import { handleImageError, getCardImageUrlSafe } from "../../utils";
 import { onLongPress } from "@vueuse/core";
@@ -54,20 +54,20 @@ const handleCardClick = (card: Card) => {
   }
 };
 
-const cardRefs = ref<Map<string, HTMLElement>>(new Map());
+const cardRefs = reactive(new Map<string, HTMLElement>());
 
 const setCardRef = (el: unknown, cardId: string) => {
   if (el instanceof HTMLElement) {
-    cardRefs.value.set(cardId, el);
+    cardRefs.set(cardId, el);
   } else {
-    cardRefs.value.delete(cardId);
+    cardRefs.delete(cardId);
   }
 };
 
 watchEffect((onCleanup) => {
   const stops: Function[] = [];
   props.sortedAndFilteredCards.forEach((card) => {
-    const el = cardRefs.value.get(card.id);
+    const el = cardRefs.get(card.id);
     if (el) {
       const stop = onLongPress(el, () => openImageModal(card.id), {
         delay: 500,
@@ -210,7 +210,7 @@ watchEffect((onCleanup) => {
       >
         <div
           class="w-full relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer active:scale-95"
-          :ref="(el) => setCardRef(el as HTMLElement, card.id)"
+          :ref="(el) => setCardRef(el, card.id)"
           @click="handleCardClick(card)"
           @contextmenu.prevent
         >

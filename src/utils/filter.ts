@@ -28,8 +28,7 @@ export const isCardMatchingType = (
   card: Card,
   typeSet: Set<CardType>,
 ): boolean => {
-  const cardTypes = Array.isArray(card.type) ? card.type : [card.type];
-  return cardTypes.some((type: CardType) => typeSet.has(type));
+  return card.type.some((t) => typeSet.has(t));
 };
 
 /**

@@ -16,6 +16,8 @@ export interface DeckCard {
  * - `empty`: デッキが空の状態。
  * - `valid`: デッキが有効な状態。カードリストと合計枚数を含む。
  * - `invalid`: デッキが無効な状態。カードリスト、合計枚数、およびエラーのリストを含む。
+ * 不変条件:
+ * - `valid`/`invalid` の `totalCount` は `cards.map(c => c.count).sum()` と一致する。
  */
 export type DeckState =
   | { readonly type: "empty" }
@@ -55,13 +57,7 @@ export type DeckOperationError =
       readonly type: "invalidCardCount";
       readonly cardId: string;
       readonly count: number;
-    }
-  | {
-      readonly type: "deckSizeExceeded";
-      readonly currentSize: number;
-      readonly maxSize: number;
-    }
-  | { readonly type: "unknown"; readonly message: string };
+    };
 
 /**
  * デッキコードの生成、コピー、検証、デコード中に発生しうるエラーを表す代数的データ型。
@@ -93,6 +89,6 @@ export type DeckOperation =
   | {
       readonly type: "setCount";
       readonly cardId: string;
-      readonly count: number;
+      readonly count: number; // 0は対象カードの削除を意味する
     }
   | { readonly type: "clear" };
