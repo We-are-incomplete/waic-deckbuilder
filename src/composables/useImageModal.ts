@@ -11,7 +11,6 @@ import { getCardImageUrlSafe } from "../utils";
 import { globalImageUrlCache } from "../utils/cache";
 import { useCardsStore } from "../stores/cards"; // useCardsStore をインポート
 
-
 /**
  * 画像モーダル状態の型定義
  */
@@ -97,9 +96,9 @@ export function useImageModal(sortedDeckCards: Ref<readonly DeckCard[]>) {
   /**
    * カードナビゲーション
    */
- const handleCardNavigation = (direction: "previous" | "next") => {
-   const deckCards = sortedDeckCards.value;   // store から直接取得
-   const currentIndex = imageModalState.value.selectedIndex;
+  const handleCardNavigation = (direction: "previous" | "next") => {
+    const deckCards = sortedDeckCards.value; // store から直接取得
+    const currentIndex = imageModalState.value.selectedIndex;
     if (currentIndex === null) return;
 
     let newIndex: number;
