@@ -46,10 +46,10 @@ const openImageModal = (cardId: string) => {
 
 // カードクリック処理
 const handleCardClick = (card: Card) => {
-  const current = getCardInDeck(card.id);
-  if (current === 0) {
+  const currentCount = getCardInDeck(card.id);
+  if (currentCount === 0) {
     emit("addCard", card);
-  } else if (current < 4) {
+  } else if (currentCount < 4) {
     emit("incrementCard", card.id);
   }
 };

@@ -84,11 +84,6 @@ watchEffect((onCleanup) => {
   });
 });
 
-// カードデクリメント処理（ハンドラークリーンアップ付き）
-const decrementCard = (cardId: string) => {
-  handleDecrementCard(cardId);
-};
-
 const resetDeck = () => {
   emit("resetDeck");
 };
@@ -114,7 +109,6 @@ const getDeckProgressColor = (count: number) => {
 // エクスポート用
 defineExpose({
   exportContainer,
-  decrementCard,
   resetDeck,
   updateDeckName,
 });
@@ -290,7 +284,7 @@ defineExpose({
           class="absolute bottom-2 w-full px-1 flex items-center justify-center gap-1"
         >
           <button
-            @click="decrementCard(item.card.id)"
+            @click="handleDecrementCard(item.card.id)"
             class="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-full flex items-center justify-center leading-none transition-all duration-200 shadow-lg hover:shadow-red-500/25"
           >
             <svg

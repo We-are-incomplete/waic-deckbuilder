@@ -46,7 +46,7 @@ const {
   openImageModal: openModal,
   closeImageModal,
   handleCardNavigation,
-} = useImageModal();
+} = useImageModal(deckCards);
 
 // アプリケーションの初期化
 onMounted(appStore.initializeApp);
