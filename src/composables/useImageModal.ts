@@ -1,3 +1,10 @@
+/**
+ * useImageModal: 画像モーダルの状態管理と（デッキ基準の）ナビゲーションを提供するコンポーザブル
+ * 仕様:
+ * - selectedIndex: デッキに存在しないカードは null
+ * - ナビゲーション対象: deckStore.deckCards（表示順に合わせる場合は sortedDeckCards を採用）
+ * - 外部I/O: 画像URLキャッシュ(globalImageUrlCache)のみ／例外は発生させない
+ */
 import { shallowRef, computed, triggerRef } from "vue";
 import type { Card } from "../types";
 import { getCardImageUrlSafe } from "../utils";
@@ -63,7 +70,7 @@ export function useImageModal() {
 
     if (card) {
       // デッキ内に存在すればそのインデックス、無ければnull
-      const idxInDeck = deckStore.deckCards.findIndex(
+      const idxInDeck = deckStore.sortedDeckCards.findIndex(
         (dc) => dc.card.id === cardId,
       );
       updateImageModalState({
@@ -73,7 +80,7 @@ export function useImageModal() {
         isVisible: true,
       });
     } else {
-      console.warn(`カードID ${cardId} はストアに存在しません`);
+      console.warn("[useImageModal] カード未検出", { cardId });
     }
   };
 
