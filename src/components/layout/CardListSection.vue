@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed, onScopeDispose, nextTick } from "vue";
+import { reactive, watchEffect, computed } from "vue";
 import type { Card, DeckCard } from "../../types";
 import { handleImageError, getCardImageUrlSafe } from "../../utils";
 import { onLongPress } from "@vueuse/core";
@@ -54,107 +54,30 @@ const handleCardClick = (card: Card) => {
   }
 };
 
-// 長押し機能の設定（メモリリーク防止のためWeakMapを使用）
-const cardRefs = new Map<string, HTMLElement>(); // カードID -> HTMLElementのマッピング
-const elementToCardId = new WeakMap<HTMLElement, string>(); // HTMLElement -> カードIDのマッピング
-const elementLongPressStops = new WeakMap<HTMLElement, () => void>(); // HTMLElement -> stop関数のマッピング
-// 前回のカードIDsを保存
-const previousCardIds = ref(new Set<string>());
+const cardRefs = reactive(new Map<string, HTMLElement>());
 
-const setCardRef = (el: HTMLElement | null, cardId: string) => {
-  if (el) {
+const setCardRef = (el: unknown, cardId: string) => {
+  if (el instanceof HTMLElement) {
     cardRefs.set(cardId, el);
-    elementToCardId.set(el, cardId);
-    // 長押しバインディングはwatcherで管理するため、ここでは呼び出さない
   } else {
-    // 要素が削除される場合は、cardRefsから削除
-    const existingEl = cardRefs.get(cardId);
-    if (existingEl) {
-      // WeakMapは自動的にクリーンアップされるため、明示的な削除は不要
-      cardRefs.delete(cardId);
-    }
+    cardRefs.delete(cardId);
   }
 };
 
-// 長押しハンドラーをバインド
-const bindLongPress = (cardId: string) => {
-  const el = cardRefs.get(cardId);
-  if (!el) return;
-
-  // 既存のstop関数があれば先にクリーンアップ
-  const existingStop = elementLongPressStops.get(el);
-  if (existingStop) {
-    existingStop();
-  }
-
-  const stop = onLongPress(el, () => openImageModal(cardId), {
-    delay: 500, // 500msで長押し判定
-  });
-  elementLongPressStops.set(el, stop);
-};
-
-// 長押しハンドラーをアンバインド
-const unbindLongPress = (cardId: string) => {
-  const el = cardRefs.get(cardId);
-  if (el) {
-    const stop = elementLongPressStops.get(el);
-    if (stop) {
-      stop();
-      // WeakMapから削除（GCに任せることもできるが、明示的に削除）
-      elementLongPressStops.delete(el);
-    }
-  }
-};
-
-// 共通の初期化・更新ロジック
-const updateLongPressHandlers = async (newCards: readonly Card[]) => {
-  // 現在のカードIDsを取得
-  const currentCardIds = new Set(newCards.map((card) => card.id));
-
-  // 削除されたカードの長押しハンドラーをアンバインド
-  for (const prevCardId of previousCardIds.value) {
-    if (!currentCardIds.has(prevCardId)) {
-      unbindLongPress(prevCardId);
-    }
-  }
-
-  // DOM更新を待ってから長押しハンドラーをバインド
-  await nextTick();
-
-  // 新しく追加されたカードのみに長押しハンドラーをバインド
-  newCards.forEach((card) => {
+watchEffect((onCleanup) => {
+  const stops: Array<() => void> = [];
+  props.sortedAndFilteredCards.forEach((card) => {
     const el = cardRefs.get(card.id);
-    // 要素が存在し、まだハンドラーが設定されていない場合のみバインド
-    if (el && !elementLongPressStops.has(el)) {
-      bindLongPress(card.id);
+    if (el) {
+      const stop = onLongPress(el, () => openImageModal(card.id), {
+        delay: 500,
+      });
+      stops.push(stop);
     }
   });
-
-  // 前回のカードIDsを更新
-  previousCardIds.value = currentCardIds;
-};
-
-// カードリストの変更を監視し、長押しハンドラーを管理
-watch(
-  () => props.sortedAndFilteredCards,
-  updateLongPressHandlers,
-  { immediate: true }, // immediate: true で初期実行も含める
-);
-
-// onMountedは削除：watch { immediate: true } で初期化を統一
-
-// コンポーネント終了時に全てのstop関数を呼び出し
-onScopeDispose(() => {
-  // WeakMapを使用しているため、cardRefsから要素を取得してクリーンアップ
-  for (const [, el] of cardRefs.entries()) {
-    const stop = elementLongPressStops.get(el);
-    if (stop) {
-      stop();
-      elementLongPressStops.delete(el);
-    }
-  }
-  // cardRefsもクリア
-  cardRefs.clear();
+  onCleanup(() => {
+    stops.forEach((stop) => stop());
+  });
 });
 </script>
 
@@ -287,7 +210,7 @@ onScopeDispose(() => {
       >
         <div
           class="w-full relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer active:scale-95"
-          :ref="(el) => setCardRef(el as HTMLElement, card.id)"
+          :ref="(el) => setCardRef(el, card.id)"
           @click="handleCardClick(card)"
           @contextmenu.prevent
         >

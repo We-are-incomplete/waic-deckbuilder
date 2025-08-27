@@ -1,3 +1,8 @@
+/**
+ * ソートユーティリティ
+ * - 自然順/種別/タイプの比較関数と合成/反転ヘルパー群
+ * - 純粋関数のみ（副作用なし）
+ */
 import type { Card, CardType } from "../types/card";
 import { CARD_KINDS, CARD_TYPES } from "../constants/game";
 
@@ -66,36 +71,34 @@ export const createKindSort = (): SortComparator<Pick<Card, "kind">> => {
  * カードタイプ別ソート関数（CARD_TYPESの並び順に従う）
  * 赤 → 青 → 黄 → 白 → 黒 → 全 → 即時 → 装備 → 設置 の順序
  */
+const TYPE_INDEX: ReadonlyMap<CardType, number> = new Map(
+  CARD_TYPES.map((t, i) => [t, i] as const),
+);
+
 export const createTypeSort = (): SortComparator<Pick<Card, "type">> => {
-  return (a: Pick<Card, "type">, b: Pick<Card, "type">): number => {
-    const getEarliestTypeIndex = (
-      cardTypes: CardType | readonly CardType[] | string | readonly string[],
-    ): number => {
-      if (!cardTypes) return CARD_TYPES.length;
-      const types: string[] = Array.isArray(cardTypes)
-        ? [...cardTypes]
-        : [cardTypes];
-
-      let minIndex = CARD_TYPES.length;
-      for (const type of types) {
-        // CARD_TYPESは ["赤", "青", "黄", "白", "黒", "全", "即時", "装備", "設置"] の順序
-        const index = CARD_TYPES.indexOf(type);
-        if (index !== -1 && index < minIndex) {
-          minIndex = index;
-        }
+  const getEarliestTypeIndex = (
+    cardTypes: CardType | readonly CardType[],
+  ): number => {
+    const types: readonly CardType[] = Array.isArray(cardTypes)
+      ? cardTypes
+      : [cardTypes];
+    let minIndex: number = CARD_TYPES.length;
+    for (const type of types) {
+      // CARD_TYPESは ["赤", "青", "黄", "白", "黒", "全", "即時", "装備", "設置"] の順序
+      const index = TYPE_INDEX.get(type) ?? CARD_TYPES.length;
+      if (index < minIndex) {
+        minIndex = index;
       }
-      return minIndex;
-    };
+    }
+    return minIndex;
+  };
 
+  return (a: Pick<Card, "type">, b: Pick<Card, "type">): number => {
     const indexA = getEarliestTypeIndex(a.type);
     const indexB = getEarliestTypeIndex(b.type);
     return indexA - indexB;
   };
 };
-
-/**
- * CardTypeから文字列表現を取得するヘルパー関数
- */
 
 /**
  * 複数のソート条件を組み合わせる高階関数

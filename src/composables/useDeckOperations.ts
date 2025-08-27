@@ -161,9 +161,6 @@ export const useDeckOperations = () => {
           `カード「${card.name}」は既に最大枚数です`,
         );
         break;
-      case "deckSizeExceeded":
-        errorHandler.handleValidationError("デッキサイズの上限を超えます");
-        break;
       default:
         errorHandler.handleValidationError("カードの追加に失敗しました");
     }

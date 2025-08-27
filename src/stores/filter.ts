@@ -8,6 +8,7 @@ import {
   type ComputedRef,
 } from "vue";
 import type { Card, FilterCriteria } from "../types";
+import type { CardKind, CardType } from "../types/card";
 import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants/game";
 import * as CardDomain from "../domain/card";
 import { useCardsStore } from "./cards";
@@ -157,14 +158,14 @@ export const useFilterStore = defineStore("filter", () => {
    */
   const applyKindFilter = (
     cards: readonly Card[],
-    kinds: readonly string[],
+    kinds: readonly CardKind[],
   ): readonly Card[] => {
     if (kinds.length === 0) {
       return cards;
     }
 
     // 高速なSet を使用した効率的なルックアップ
-    const kindSet = new Set(kinds);
+    const kindSet = new Set<CardKind>(kinds);
     const result: Card[] = [];
     const cardCount = cards.length;
 
@@ -186,13 +187,13 @@ export const useFilterStore = defineStore("filter", () => {
    */
   const applyTypeFilter = (
     cards: readonly Card[],
-    types: readonly string[],
+    types: readonly CardType[],
   ): readonly Card[] => {
     if (types.length === 0) {
       return cards;
     }
 
-    const typeSet = new Set(types);
+    const typeSet = new Set<CardType>(types);
     const result: Card[] = [];
     const cardCount = cards.length;
 
@@ -367,12 +368,12 @@ export const useFilterStore = defineStore("filter", () => {
    * フィルターが空かどうか判定 - 最適化版
    */
   const isEmptyFilter = (criteria: FilterCriteria): boolean => {
-  if (criteria.text && criteria.text.trim().length > 0) return false;
-  if (criteria.kind.length > 0) return false;
-  if (criteria.type.length > 0) return false;
-  if (criteria.tags.length > 0) return false;
-  if (criteria.hasEntryCondition) return false;
-  return true;
+    if (criteria.text && criteria.text.trim().length > 0) return false;
+    if (criteria.kind.length > 0) return false;
+    if (criteria.type.length > 0) return false;
+    if (criteria.tags.length > 0) return false;
+    if (criteria.hasEntryCondition) return false;
+    return true;
   };
 
   /**
@@ -423,8 +424,8 @@ export const useFilterStore = defineStore("filter", () => {
   /**
    * 種別フィルターを切り替え
    */
-  const toggleKindFilter = (kind: string): void => {
-    const currentKinds: string[] = [...filterCriteria.value.kind];
+  const toggleKindFilter = (kind: CardKind): void => {
+    const currentKinds: CardKind[] = [...filterCriteria.value.kind];
     const index = currentKinds.indexOf(kind);
 
     if (index > -1) {
@@ -442,8 +443,8 @@ export const useFilterStore = defineStore("filter", () => {
   /**
    * タイプフィルターを切り替え
    */
-  const toggleTypeFilter = (type: string): void => {
-    const currentTypes: string[] = [...filterCriteria.value.type];
+  const toggleTypeFilter = (type: CardType): void => {
+    const currentTypes: CardType[] = [...filterCriteria.value.type];
     const index = currentTypes.indexOf(type);
 
     if (index > -1) {

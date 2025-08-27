@@ -1,3 +1,5 @@
+import type { CardKind, CardType } from "../types/card";
+
 export const GAME_CONSTANTS = {
   // MAX_DECK_SIZE: 60, // 60枚制限を撤廃 - 無制限でカード追加可能
   MAX_CARD_COPIES: 4,
@@ -6,14 +8,14 @@ export const GAME_CONSTANTS = {
 } as const;
 
 // カード種別とタイプの定数
-export const CARD_KINDS: readonly string[] = [
+export const CARD_KINDS = [
   "Artist",
   "Song",
   "Magic",
   "Direction",
-] as const;
+] as const satisfies readonly CardKind[];
 
-export const CARD_TYPES: readonly string[] = [
+export const CARD_TYPES = [
   "赤",
   "青",
   "黄",
@@ -23,7 +25,7 @@ export const CARD_TYPES: readonly string[] = [
   "即時",
   "装備",
   "設置",
-] as const;
+] as const satisfies readonly CardType[];
 
 export const PRIORITY_TAGS: readonly string[] = [
   // --- Artist ---

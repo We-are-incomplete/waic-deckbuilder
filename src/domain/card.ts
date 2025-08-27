@@ -10,7 +10,14 @@
 import { ok, err, type Result } from "neverthrow";
 import type { Card, CardKind, CardType } from "../types/card";
 
-// カード検証エラー型
+/**
+ * カードの検証中に発生しうるエラーを表す代数的データ型。
+ * - `invalidId`: カードIDが無効。
+ * - `invalidName`: カード名が無効。
+ * - `invalidKind`: カード種別が無効。
+ * - `invalidType`: カードタイプが無効。
+ * - `duplicateTags`: 重複するタグが存在する。
+ */
 export type CardValidationError =
   | { readonly type: "invalidId"; readonly id: string }
   | { readonly type: "invalidName"; readonly name: string }

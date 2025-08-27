@@ -1,7 +1,17 @@
+/**
+ * useImageModal: 画像モーダルの状態管理と（デッキ基準の）ナビゲーションを提供するコンポーザブル
+ * 仕様:
+ * - selectedIndex: デッキに存在しないカードは null
+ * - ナビゲーション対象: deckStore.deckCards（表示順に合わせる場合は sortedDeckCards を採用）
+ * - 外部I/O: 画像URLキャッシュ(globalImageUrlCache)のみ／例外は発生させない
+ */
 import { shallowRef, computed, triggerRef } from "vue";
-import type { Card, DeckCard } from "../types";
+import type { Card } from "../types";
 import { getCardImageUrlSafe } from "../utils";
 import { globalImageUrlCache } from "../utils/cache";
+import { useCardsStore } from "../stores/cards"; // useCardsStore をインポート
+import { useDeckStore } from "../stores/deck";
+
 
 /**
  * 画像モーダル状態の型定義
@@ -24,6 +34,10 @@ export function useImageModal() {
     selectedImage: null,
     selectedIndex: null,
   });
+
+  // ストアはコンポーザブル初期化時に1度だけ取得
+  const cardsStore = useCardsStore();
+  const deckStore = useDeckStore();
 
   /**
    * 画像URLをキャッシュから高速取得
@@ -49,29 +63,29 @@ export function useImageModal() {
   };
 
   /**
-   * カード画像を拡大表示（Vue 3.5最適化版）
+   * カード画像を拡大表示
    */
-  const openImageModal = (cardId: string, deckCards: readonly DeckCard[]) => {
-    // より効率的な検索
-    const cardIndex = deckCards.findIndex((item) => item.card.id === cardId);
+  const openImageModal = (cardId: string) => {
+    const card = cardsStore.getCardById(cardId);
 
-    if (cardIndex !== -1) {
-      const deckCard = deckCards[cardIndex];
-
-      // Vue 3.5の新機能を使用した状態更新
+    if (card) {
+      // デッキ内に存在すればそのインデックス、無ければnull
+      const idxInDeck = deckStore.sortedDeckCards.findIndex(
+        (dc) => dc.card.id === cardId,
+      );
       updateImageModalState({
-        selectedCard: deckCard.card,
-        selectedIndex: cardIndex,
+        selectedCard: card,
+        selectedIndex: idxInDeck >= 0 ? idxInDeck : null,
         selectedImage: getCachedImageUrl(cardId),
         isVisible: true,
       });
     } else {
-      console.warn(`Card with ID ${cardId} not found in deck`);
+      console.warn("[useImageModal] カード未検出", { cardId });
     }
   };
 
   /**
-   * モーダルを閉じる（Vue 3.5最適化版）
+   * モーダルを閉じる
    */
   const closeImageModal = () => {
     updateImageModalState({
@@ -83,13 +97,11 @@ export function useImageModal() {
   };
 
   /**
-   * カードナビゲーション（Vue 3.5最適化版）
+   * カードナビゲーション
    */
-  const handleCardNavigation = (
-    direction: "previous" | "next",
-    deckCards: readonly DeckCard[],
-  ) => {
-    const currentIndex = imageModalState.value.selectedIndex;
+ const handleCardNavigation = (direction: "previous" | "next") => {
+   const deckCards = deckStore.deckCards;   // store から直接取得
+   const currentIndex = imageModalState.value.selectedIndex;
     if (currentIndex === null) return;
 
     let newIndex: number;
@@ -132,6 +144,5 @@ export function useImageModal() {
     openImageModal,
     closeImageModal,
     handleCardNavigation,
-    getCachedImageUrl,
   };
 }

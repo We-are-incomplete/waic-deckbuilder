@@ -8,6 +8,7 @@
 import type { Card, CardKind, CardType } from "../types/card";
 import { CARD_KINDS, CARD_TYPES } from "../constants/game";
 import { type Result, ok, err } from "neverthrow";
+import { logger } from "../utils";
 import Papa from "papaparse";
 
 interface CsvCardRow {
@@ -104,7 +105,7 @@ function isCardType(value: string): value is CardType {
 export async function loadCardsFromCsv(
   csvPath: string,
 ): Promise<Result<Card[], Error>> {
-  if (import.meta.env?.DEV) console.debug("Attempting to fetch CSV from:", csvPath);
+  if (import.meta.env?.DEV) logger.debug("Attempting to fetch CSV from:", csvPath);
 
   try {
     // 通常のfetch APIを使用（useFetchの代わり）
@@ -130,7 +131,7 @@ export async function loadCardsFromCsv(
       return err(new Error("CSVデータが空です。"));
     }
 
-    if (import.meta.env?.DEV) console.debug("CSV data fetched successfully, length:", csvText.length);
+    if (import.meta.env?.DEV) logger.debug("CSV data fetched successfully, length:", csvText.length);
 
     // papaparse を使用してCSVをパース
     const parseResult = parseCsv(csvText);
@@ -171,11 +172,19 @@ function parseCsv(csvText: string): Result<Card[], Error> {
   for (const row of parseResult.data) {
     // CardKindの検証
     if (!isCardKind(row.kind)) {
-      return err(new Error(`不正なCardKindが見つかりました: ${row.kind} (ID: ${row.id})`));
+      return err(
+        new Error(
+          `不正なCardKindが見つかりました: ${row.kind} (ID: ${row.id}). 有効な値: ${CARD_KINDS.join(", ")}`,
+        ),
+      );
     }
-    
+
     if (!row.id?.trim() || !row.name?.trim()) {
-      return err(new Error(`必須フィールド欠落: id/name が空です (ID: ${row.id ?? "N/A"})`));
+      return err(
+        new Error(
+          `必須フィールド欠落: id/name が空です (ID: ${row.id ?? "N/A"})`,
+        ),
+      );
     }
 
     // CardTypeの検証
@@ -184,7 +193,11 @@ function parseCsv(csvText: string): Result<Card[], Error> {
       if (isCardType(typeValue)) {
         types.push(typeValue);
       } else {
-        return err(new Error(`不正なCardTypeが見つかりました: ${typeValue} (ID: ${row.id})`));
+        return err(
+          new Error(
+            `不正なCardTypeが見つかりました: ${typeValue} (ID: ${row.id}). 有効な値: ${CARD_TYPES.join(", ")}`,
+          ),
+        );
       }
     }
 
@@ -201,6 +214,6 @@ function parseCsv(csvText: string): Result<Card[], Error> {
     });
   }
 
-  if (import.meta.env?.DEV) console.debug("Successfully parsed cards:", cards.length);
+  if (import.meta.env?.DEV) logger.debug("Successfully parsed cards:", cards.length);
   return ok(cards);
 }
