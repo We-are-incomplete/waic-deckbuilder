@@ -62,9 +62,9 @@ const openImageModal = (cardId: string) => {
 };
 
 // カードナビゲーション（デッキカードを渡す）
-const navigateCard = (direction: "previous" | "next") => {
-  handleCardNavigation(direction, deckCards.value);
-};
+ const navigateCard = (direction: "previous" | "next") => {
+   handleCardNavigation(direction);
+ };
 
 watch(
   deckSectionRef,

@@ -1,10 +1,15 @@
+/**
++ * spec: デッキ機能のドメイン型(ADT)と不変条件を定義するモジュール。
++ * - 例外は投げず neverthrow の Result とエラーADTを使用する。
++ * - UI文言は保持せず、構造化エラーで表現する。
++ */
 import type { Card } from "./card";
 import type { Result } from "neverthrow";
 
 /**
  * デッキ内のカードとその枚数を表すインターフェース。
  * @property card - デッキに含まれるカードオブジェクト。
- * @property count - そのカードの枚数。
+ * @property count - そのカードの枚数（1以上の整数。0は DeckOperation.setCount 側で削除を意味）。
  */
 export interface DeckCard {
   readonly card: Card;
@@ -43,8 +48,6 @@ export type DeckOperationResult<T> = Result<T, DeckOperationError>;
  * - `cardNotFound`: 指定されたカードが見つからない。
  * - `maxCountExceeded`: カードの最大枚数制限を超過した。
  * - `invalidCardCount`: 不正なカード枚数が指定された。
- * - `deckSizeExceeded`: デッキの合計枚数制限を超過した。
- * - `unknown`: その他の不明なエラー。
  */
 export type DeckOperationError =
   | { readonly type: "cardNotFound"; readonly cardId: string }

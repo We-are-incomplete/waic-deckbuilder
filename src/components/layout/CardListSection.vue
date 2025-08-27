@@ -65,7 +65,7 @@ const setCardRef = (el: unknown, cardId: string) => {
 };
 
 watchEffect((onCleanup) => {
-  const stops: Function[] = [];
+  const stops: Array<() => void> = [];
   props.sortedAndFilteredCards.forEach((card) => {
     const el = cardRefs.get(card.id);
     if (el) {

@@ -174,7 +174,7 @@ function parseCsv(csvText: string): Result<Card[], Error> {
     if (!isCardKind(row.kind)) {
       return err(
         new Error(
-          `不正なCardKindが見つかりました: ${row.kind} (ID: ${row.id})`,
+          `不正なCardKindが見つかりました: ${row.kind} (ID: ${row.id}). 有効な値: ${CARD_KINDS.join(", ")}`,
         ),
       );
     }
@@ -195,7 +195,7 @@ function parseCsv(csvText: string): Result<Card[], Error> {
       } else {
         return err(
           new Error(
-            `不正なCardTypeが見つかりました: ${typeValue} (ID: ${row.id})`,
+            `不正なCardTypeが見つかりました: ${typeValue} (ID: ${row.id}). 有効な値: ${CARD_TYPES.join(", ")}`,
           ),
         );
       }

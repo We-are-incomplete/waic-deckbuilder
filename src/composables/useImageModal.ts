@@ -1,5 +1,5 @@
 import { shallowRef, computed, triggerRef } from "vue";
-import type { Card, DeckCard } from "../types";
+import type { Card } from "../types";
 import { getCardImageUrlSafe } from "../utils";
 import { globalImageUrlCache } from "../utils/cache";
 import { useCardsStore } from "../stores/cards"; // useCardsStore をインポート
@@ -92,11 +92,9 @@ export function useImageModal() {
   /**
    * カードナビゲーション
    */
-  const handleCardNavigation = (
-    direction: "previous" | "next",
-    deckCards: readonly DeckCard[],
-  ) => {
-    const currentIndex = imageModalState.value.selectedIndex;
+ const handleCardNavigation = (direction: "previous" | "next") => {
+   const deckCards = deckStore.deckCards;   // store から直接取得
+   const currentIndex = imageModalState.value.selectedIndex;
     if (currentIndex === null) return;
 
     let newIndex: number;

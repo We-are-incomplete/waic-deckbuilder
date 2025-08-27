@@ -158,14 +158,14 @@ export const useFilterStore = defineStore("filter", () => {
    */
   const applyKindFilter = (
     cards: readonly Card[],
-    kinds: readonly string[],
+    kinds: readonly CardKind[],
   ): readonly Card[] => {
     if (kinds.length === 0) {
       return cards;
     }
 
     // 高速なSet を使用した効率的なルックアップ
-    const kindSet = new Set(kinds);
+    const kindSet = new Set<CardKind>(kinds);
     const result: Card[] = [];
     const cardCount = cards.length;
 
@@ -187,13 +187,13 @@ export const useFilterStore = defineStore("filter", () => {
    */
   const applyTypeFilter = (
     cards: readonly Card[],
-    types: readonly string[],
+    types: readonly CardType[],
   ): readonly Card[] => {
     if (types.length === 0) {
       return cards;
     }
 
-    const typeSet = new Set(types);
+    const typeSet = new Set<CardType>(types);
     const result: Card[] = [];
     const cardCount = cards.length;
 

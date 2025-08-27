@@ -8,14 +8,14 @@ export const GAME_CONSTANTS = {
 } as const;
 
 // カード種別とタイプの定数
-export const CARD_KINDS: readonly CardKind[] = [
+export const CARD_KINDS = [
   "Artist",
   "Song",
   "Magic",
   "Direction",
-] as const;
+] as const satisfies readonly CardKind[];
 
-export const CARD_TYPES: readonly CardType[] = [
+export const CARD_TYPES = [
   "赤",
   "青",
   "黄",
@@ -25,7 +25,7 @@ export const CARD_TYPES: readonly CardType[] = [
   "即時",
   "装備",
   "設置",
-] as const;
+] as const satisfies readonly CardType[];
 
 export const PRIORITY_TAGS: readonly string[] = [
   // --- Artist ---

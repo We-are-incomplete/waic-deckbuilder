@@ -66,20 +66,23 @@ export const createKindSort = (): SortComparator<Pick<Card, "kind">> => {
  * カードタイプ別ソート関数（CARD_TYPESの並び順に従う）
  * 赤 → 青 → 黄 → 白 → 黒 → 全 → 即時 → 装備 → 設置 の順序
  */
+const TYPE_INDEX: ReadonlyMap<CardType, number> = new Map(
+  CARD_TYPES.map((t, i) => [t, i] as const),
+);
+
 export const createTypeSort = (): SortComparator<Pick<Card, "type">> => {
   return (a: Pick<Card, "type">, b: Pick<Card, "type">): number => {
     const getEarliestTypeIndex = (
       cardTypes: CardType | readonly CardType[],
     ): number => {
-      if (!cardTypes) return CARD_TYPES.length;
       const types: CardType[] = Array.isArray(cardTypes)
         ? [...cardTypes]
         : [cardTypes];
 
-      let minIndex = CARD_TYPES.length;
+      let minIndex: number = CARD_TYPES.length;
       for (const type of types) {
         // CARD_TYPESは ["赤", "青", "黄", "白", "黒", "全", "即時", "装備", "設置"] の順序
-        const index = CARD_TYPES.indexOf(type);
+        const index = TYPE_INDEX.get(type) ?? CARD_TYPES.length;
         if (index !== -1 && index < minIndex) {
           minIndex = index;
         }
