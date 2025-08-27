@@ -69,10 +69,10 @@ export const createKindSort = (): SortComparator<Pick<Card, "kind">> => {
 export const createTypeSort = (): SortComparator<Pick<Card, "type">> => {
   return (a: Pick<Card, "type">, b: Pick<Card, "type">): number => {
     const getEarliestTypeIndex = (
-      cardTypes: CardType | readonly CardType[] | string | readonly string[],
+      cardTypes: CardType | readonly CardType[],
     ): number => {
       if (!cardTypes) return CARD_TYPES.length;
-      const types: string[] = Array.isArray(cardTypes)
+      const types: CardType[] = Array.isArray(cardTypes)
         ? [...cardTypes]
         : [cardTypes];
 

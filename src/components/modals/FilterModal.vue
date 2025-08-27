@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import { useFilterStore } from "../../stores/filter";
 import { useFilterHelpers } from "../../composables/useFilterHelpers";
+import type { CardKind, CardType } from "../../types/card";
 
 // Props（最小限に削減）
 interface Props {
@@ -35,11 +36,11 @@ const updateText = (text: string) => {
   filterStore.setTextFilter(text);
 };
 
-const toggleKind = (kind: string) => {
+const toggleKind = (kind: CardKind) => {
   filterStore.toggleKindFilter(kind);
 };
 
-const toggleType = (type: string) => {
+const toggleType = (type: CardType) => {
   filterStore.toggleTypeFilter(type);
 };
 

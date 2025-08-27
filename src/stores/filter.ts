@@ -8,6 +8,7 @@ import {
   type ComputedRef,
 } from "vue";
 import type { Card, FilterCriteria } from "../types";
+import type { CardKind, CardType } from "../types/card";
 import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants/game";
 import * as CardDomain from "../domain/card";
 import { useCardsStore } from "./cards";
@@ -423,8 +424,8 @@ export const useFilterStore = defineStore("filter", () => {
   /**
    * 種別フィルターを切り替え
    */
-  const toggleKindFilter = (kind: string): void => {
-    const currentKinds: string[] = [...filterCriteria.value.kind];
+  const toggleKindFilter = (kind: CardKind): void => {
+    const currentKinds: CardKind[] = [...filterCriteria.value.kind];
     const index = currentKinds.indexOf(kind);
 
     if (index > -1) {
@@ -442,8 +443,8 @@ export const useFilterStore = defineStore("filter", () => {
   /**
    * タイプフィルターを切り替え
    */
-  const toggleTypeFilter = (type: string): void => {
-    const currentTypes: string[] = [...filterCriteria.value.type];
+  const toggleTypeFilter = (type: CardType): void => {
+    const currentTypes: CardType[] = [...filterCriteria.value.type];
     const index = currentTypes.indexOf(type);
 
     if (index > -1) {

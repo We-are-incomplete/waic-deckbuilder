@@ -28,8 +28,8 @@ export type FilterCondition =
  */
 export interface FilterCriteria {
   readonly text: string;
-  readonly kind: readonly string[];
-  readonly type: readonly string[];
+  readonly kind: readonly CardKind[];
+  readonly type: readonly CardType[];
   readonly tags: readonly string[];
   readonly hasEntryCondition: boolean;
 }

@@ -1,5 +1,6 @@
 import { computed, type ComputedRef } from "vue";
 import type { FilterCriteria } from "../types";
+import type { CardKind, CardType } from "../types/card";
 
 /**
  * フィルター選択状態のヘルパー関数を提供するコンポーザブル
@@ -8,14 +9,14 @@ export function useFilterHelpers(filterCriteria: ComputedRef<FilterCriteria>) {
   /**
    * 指定された種類が選択されているかチェック
    */
-  const isKindSelected = (kind: string): boolean => {
+  const isKindSelected = (kind: CardKind): boolean => {
     return filterCriteria.value.kind.includes(kind);
   };
 
   /**
    * 指定された型が選択されているかチェック
    */
-  const isTypeSelected = (type: string): boolean => {
+  const isTypeSelected = (type: CardType): boolean => {
     return filterCriteria.value.type.includes(type);
   };
 
