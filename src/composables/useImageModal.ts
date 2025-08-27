@@ -2,6 +2,7 @@ import { shallowRef, computed, triggerRef } from "vue";
 import type { Card, DeckCard } from "../types";
 import { getCardImageUrlSafe } from "../utils";
 import { globalImageUrlCache } from "../utils/cache";
+import { useCardsStore } from "../stores/cards"; // useCardsStore をインポート
 
 /**
  * 画像モーダル状態の型定義
@@ -51,22 +52,20 @@ export function useImageModal() {
   /**
    * カード画像を拡大表示（Vue 3.5最適化版）
    */
-  const openImageModal = (cardId: string, deckCards: readonly DeckCard[]) => {
-    // より効率的な検索
-    const cardIndex = deckCards.findIndex((item) => item.card.id === cardId);
+  const openImageModal = (cardId: string) => { // deckCards を削除
+    const cardsStore = useCardsStore(); // useCardsStore を利用
 
-    if (cardIndex !== -1) {
-      const deckCard = deckCards[cardIndex];
+    const card = cardsStore.getCardById(cardId); // cardId から Card オブジェクトを取得
 
-      // Vue 3.5の新機能を使用した状態更新
+    if (card) { // カードが存在する場合のみ処理
       updateImageModalState({
-        selectedCard: deckCard.card,
-        selectedIndex: cardIndex,
+        selectedCard: card,
+        selectedIndex: null, // デッキ外のカードなので null
         selectedImage: getCachedImageUrl(cardId),
         isVisible: true,
       });
     } else {
-      console.warn(`Card with ID ${cardId} not found in deck`);
+      console.warn(`Card with ID ${cardId} not found in store`); // ログメッセージを修正
     }
   };
 

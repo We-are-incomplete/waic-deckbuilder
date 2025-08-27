@@ -58,7 +58,7 @@ useIntervalFn(cleanupStaleEntries, CACHE_CLEANUP_INTERVAL, { immediate: true });
 const openImageModal = (cardId: string) => {
   // 入力ガード（空文字や未存在IDなら何もしない）
   if (!cardId) return;
-  openModal(cardId, deckCards.value);
+  openModal(cardId);
 };
 
 // カードナビゲーション（デッキカードを渡す）
