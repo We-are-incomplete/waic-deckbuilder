@@ -188,9 +188,7 @@ export const useDeckStore = defineStore("deck", () => {
   const setDeckCards = (cards: readonly DeckCard[]) => {
     const state = calculateDeckState(cards);
     if (state.type === "invalid") {
-      errorHandler.handleRuntimeError("無効なデッキです", {
-        errors: state.errors,
-      });
+      errorHandler.handleValidationError("無効なデッキです", state.errors);
       return;
     }
     updateDeckCardsWithVersion(cards);

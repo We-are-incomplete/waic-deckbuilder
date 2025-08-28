@@ -19,7 +19,7 @@ const PRELOAD_INFLIGHT_RAW = Number(
 );
 export const PRELOAD_MAX_INFLIGHT =
   Number.isFinite(PRELOAD_INFLIGHT_RAW) && PRELOAD_INFLIGHT_RAW > 0
-    ? Math.floor(PRELOAD_INFLIGHT_RAW)
+    ? Math.min(Math.floor(PRELOAD_INFLIGHT_RAW), 16)
     : 6;
 
 // LRUキャッシュエントリー
@@ -253,6 +253,11 @@ export const handleImageError = (event: Event): Result<void, string> => {
   }
 
   target.onerror = null;
+  // サポート環境では低優先度での再取得を明示
+  try {
+    // @ts-ignore - 実装環境によっては存在しない
+    target.fetchPriority = "low";
+  } catch {}
   target.src = `${getNormalizedBaseUrl()}placeholder.avif`;
 
   return ok(undefined);
@@ -266,6 +271,20 @@ export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
   if (import.meta.env.SSR || typeof window === "undefined") {
     return ok(undefined);
   }
+  // 省データモード/低速回線ではスキップ
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const conn: any = (navigator as any)?.connection;
+  if (conn?.saveData) {
+    logger.info("Preload skipped due to saveData mode");
+    return ok(undefined);
+  }
+  // 有効なら低優先度で取得
+  const setLowFetchPriority = (img: HTMLImageElement) => {
+    try {
+      // @ts-ignore
+      img.fetchPriority = "low";
+    } catch {}
+  };
   if (!cards || cards.length === 0) {
     return ok(undefined); // 空配列は正常
   }
@@ -289,6 +308,7 @@ export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
           const img = new Image();
           img.crossOrigin = "anonymous";
           img.decoding = "async";
+          setLowFetchPriority(img);
           img.onload = () => {
             if (gen === cacheState.generation) {
               setCacheEntry(card.id, img);
