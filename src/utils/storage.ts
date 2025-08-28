@@ -1,7 +1,6 @@
 import { ok, err, type Result } from "neverthrow";
-import type { Card } from "../types/card";
-import type { DeckCard } from "../types/deck";
-import { STORAGE_KEYS } from "../constants/storage";
+import type { Card, DeckCard } from "../types";
+import { STORAGE_KEYS } from "../constants";
 import { logger } from "./logger";
 import { useLocalStorage } from "@vueuse/core";
 

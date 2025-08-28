@@ -5,8 +5,8 @@
  *        neverthrow Result型を使用して、成功または失敗の結果を明示的に扱います。
  */
 
-import type { Card, CardKind, CardType } from "../types/card";
-import { CARD_KINDS, CARD_TYPES } from "../constants/game";
+import type { Card, CardKind, CardType } from "../types";
+import { CARD_KINDS, CARD_TYPES } from "../constants";
 import { type Result, ok, err } from "neverthrow";
 import { logger } from "../utils";
 import Papa from "papaparse";

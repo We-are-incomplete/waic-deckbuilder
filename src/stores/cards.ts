@@ -1,12 +1,15 @@
 import { defineStore } from "pinia";
 import { ref, shallowRef, readonly, computed, markRaw, triggerRef } from "vue";
 import type { Card } from "../types";
-import { preloadImages, logger } from "../utils";
-import { safeAsyncOperation } from "../utils/errorHandler";
-import * as CardDomain from "../domain/card";
+import {
+  preloadImages,
+  loadCardsFromCsv,
+  logger,
+  safeAsyncOperation,
+} from "../utils";
+import * as CardDomain from "../domain";
 import { ok, err, type Result } from "neverthrow";
 import { useMemoize } from "@vueuse/core";
-import { loadCardsFromCsv } from "../utils/cardDataConverter";
 
 // カードストア専用のエラー型
 type CardStoreError =

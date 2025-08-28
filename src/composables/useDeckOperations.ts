@@ -4,13 +4,11 @@
  * メモ化による最適化とエラーハンドリングを含む
  */
 import { computed, type ComputedRef } from "vue";
-import type { Card } from "../types/card";
-import type { DeckCard, DeckOperation } from "../types/deck";
-import * as DeckDomain from "../domain/deck";
-import { useDeckStore } from "../stores/deck";
-import { useCardsStore } from "../stores/cards";
+import type { Card, DeckCard, DeckOperation } from "../types";
+import * as DeckDomain from "../domain";
+import { useCardsStore, useDeckStore } from "../stores";
 import { useMemoize } from "@vueuse/core";
-import { createErrorHandler } from "../utils/errorHandler"; // createErrorHandler を追加
+import { createErrorHandler } from "../utils";
 
 /**
  * 安全なハッシュ関数（64bitバージョン）

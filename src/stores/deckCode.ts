@@ -10,7 +10,7 @@ import {
 } from "../utils";
 import { GAME_CONSTANTS } from "../constants";
 import { useDeckStore } from "./deck";
-import { sortDeckCards } from "../domain/sort";
+import { sortDeckCards } from "../domain";
 import { useClipboard } from "@vueuse/core";
 
 export const useDeckCodeStore = defineStore("deckCode", () => {

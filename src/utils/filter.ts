@@ -1,4 +1,4 @@
-import type { Card, CardType } from "../types/card";
+import type { Card, CardType } from "../types";
 
 /**
  * カードがテキスト検索にマッチするかチェック

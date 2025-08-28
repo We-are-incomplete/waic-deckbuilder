@@ -16,8 +16,7 @@ import {
   CardImageModal,
   DeckManagementModal,
 } from "./components";
-import { cleanupStaleEntries } from "./utils";
-import { CACHE_CLEANUP_INTERVAL } from "./utils/image";
+import { cleanupStaleEntries, CACHE_CLEANUP_INTERVAL } from "./utils";
 
 // コンポーザブル
 import { useImageModal } from "./composables/useImageModal";

@@ -1,5 +1,5 @@
 import { computed, type Ref } from "vue";
-import type { DeckCard } from "../types/deck";
+import type { DeckCard } from "../types";
 
 /**
  * デッキカード関連の状態管理を提供するコンポーザブル

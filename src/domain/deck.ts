@@ -10,14 +10,14 @@
  * - パフォーマンス最適化のためにMapベースの内部処理を活用
  */
 import { ok, err, type Result } from "neverthrow";
-import { GAME_CONSTANTS } from "../constants/game";
-import type { Card } from "../types/card";
+import { GAME_CONSTANTS } from "../constants";
 import type {
+  Card,
   DeckCard,
   DeckState,
   DeckOperation,
   DeckOperationError,
-} from "../types/deck";
+} from "../types";
 
 // =============================================================================
 // Map ベースのパフォーマンス最適化関数

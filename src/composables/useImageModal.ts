@@ -7,9 +7,8 @@
  */
 import { shallowRef, computed, triggerRef, watch, type Ref } from "vue";
 import type { Card, DeckCard } from "../types";
-import { getCardImageUrlSafe, logger } from "../utils";
-import { globalImageUrlCache } from "../utils/cache";
-import { useCardsStore } from "../stores/cards"; // useCardsStore をインポート
+import { getCardImageUrlSafe, globalImageUrlCache, logger } from "../utils";
+import { useCardsStore } from "../stores";
 
 /**
  * 画像モーダル状態の型定義
@@ -132,7 +131,7 @@ export function useImageModal(sortedDeckCards: Ref<readonly DeckCard[]>) {
 
   // モーダル表示中にデッキが変わった場合の追従
   watch(
-    () => sortedDeckCards.value,
+    sortedDeckCards,
     (cards) => {
       if (
         !imageModalState.value.isVisible ||

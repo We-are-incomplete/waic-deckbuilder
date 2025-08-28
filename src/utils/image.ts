@@ -1,5 +1,5 @@
 import { ok, err, type Result } from "neverthrow";
-import type { Card } from "../types/card";
+import type { Card } from "../types";
 import { logger } from "./logger";
 
 // LRUキャッシュの設定

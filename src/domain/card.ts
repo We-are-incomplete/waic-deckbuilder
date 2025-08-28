@@ -8,7 +8,7 @@
  * - エラーハンドリングにはneverthrowのResult型を使用し、例外をスローしない
  */
 import { ok, err, type Result } from "neverthrow";
-import type { Card, CardKind, CardType } from "../types/card";
+import type { Card, CardKind, CardType } from "../types";
 
 /**
  * カードの検証中に発生しうるエラーを表す代数的データ型。

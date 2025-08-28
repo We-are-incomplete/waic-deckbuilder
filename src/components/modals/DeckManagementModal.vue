@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { useDeckManagementStore } from "../../stores/deckManagement";
-import { useDeckStore } from "../../stores/deck";
-import { useDeckCodeStore } from "../../stores/deckCode";
-import { useAppStore } from "../../stores/app";
+import {
+  useAppStore,
+  useDeckCodeStore,
+  useDeckManagementStore,
+  useDeckStore,
+} from "../../stores";
 
 const deckManagementStore = useDeckManagementStore();
 const deckStore = useDeckStore();

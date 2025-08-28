@@ -1,4 +1,5 @@
 export * from "./cache";
+export * from "./cardDataConverter";
 export * from "./deckCode";
 export * from "./errorHandler";
 export * from "./export";

@@ -1,6 +1,5 @@
 import { computed, type ComputedRef } from "vue";
-import type { FilterCriteria } from "../types";
-import type { CardKind, CardType } from "../types/card";
+import type { CardKind, CardType, FilterCriteria } from "../types";
 
 /**
  * フィルター選択状態のヘルパー関数を提供するコンポーザブル

@@ -1,4 +1,4 @@
-import type { CardKind, CardType } from "../types/card";
+import type { CardKind, CardType } from "../types";
 
 export const GAME_CONSTANTS = {
   // MAX_DECK_SIZE: 60, // 60枚制限を撤廃 - 無制限でカード追加可能

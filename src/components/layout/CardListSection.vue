@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactive, watchEffect, computed } from "vue";
-import { GAME_CONSTANTS } from "../../constants/game";
+import { GAME_CONSTANTS } from "../../constants";
 import type { Card, DeckCard } from "../../types";
 import { handleImageError, getCardImageUrlSafe } from "../../utils";
 import { onLongPress } from "@vueuse/core";

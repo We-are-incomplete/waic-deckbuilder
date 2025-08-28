@@ -44,7 +44,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { useSwipe } from "@vueuse/core";
-import { handleImageError } from "../../utils/image";
+import { handleImageError } from "../../utils";
 import type { Card } from "../../types";
 
 interface Props {

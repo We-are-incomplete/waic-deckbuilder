@@ -10,10 +10,13 @@ import {
   removeDeckNameFromLocalStorage,
   createVersionedState,
   createArraySortMemo,
+  createErrorHandler,
 } from "../utils";
-import { createErrorHandler } from "../utils/errorHandler";
-import * as DeckDomain from "../domain/deck";
-import { sortDeckCards } from "../domain/sort";
+import {
+  calculateDeckState,
+  executeDeckOperation,
+  sortDeckCards,
+} from "../domain";
 import { useDebounceFn, useEventListener } from "@vueuse/core";
 
 /**
@@ -87,7 +90,7 @@ export const useDeckStore = defineStore("deck", () => {
    * Vue 3.5最適化: デッキの状態情報
    */
   const deckState = computed(() => {
-    return DeckDomain.calculateDeckState(deckCards.value);
+    return calculateDeckState(deckCards.value);
   });
 
   /**
@@ -101,7 +104,7 @@ export const useDeckStore = defineStore("deck", () => {
    * Vue 3.5最適化: カードをデッキに追加
    */
   const addCardToDeck = (card: Card): void => {
-    const result = DeckDomain.executeDeckOperation(deckCards.value, {
+    const result = executeDeckOperation(deckCards.value, {
       type: "addCard",
       card,
     });
@@ -119,7 +122,7 @@ export const useDeckStore = defineStore("deck", () => {
    * Vue 3.5最適化: カード枚数を増やす
    */
   const incrementCardCount = (cardId: string): void => {
-    const result = DeckDomain.executeDeckOperation(deckCards.value, {
+    const result = executeDeckOperation(deckCards.value, {
       type: "incrementCount",
       cardId,
     });
@@ -137,7 +140,7 @@ export const useDeckStore = defineStore("deck", () => {
    * Vue 3.5最適化: カード枚数を減らす
    */
   const decrementCardCount = (cardId: string): void => {
-    const result = DeckDomain.executeDeckOperation(deckCards.value, {
+    const result = executeDeckOperation(deckCards.value, {
       type: "decrementCount",
       cardId,
     });
@@ -155,7 +158,7 @@ export const useDeckStore = defineStore("deck", () => {
    * Vue 3.5最適化: カードをデッキから削除
    */
   const removeCardFromDeck = (cardId: string): void => {
-    const result = DeckDomain.executeDeckOperation(deckCards.value, {
+    const result = executeDeckOperation(deckCards.value, {
       type: "removeCard",
       cardId,
     });

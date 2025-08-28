@@ -51,7 +51,7 @@ export const useExportStore = defineStore("export", () => {
         resolve(
           err({
             type: "imageLoad",
-            message: "画像の読み込みがタイムアウトしました",
+            message: `画像の読み込みがタイムアウトしました (${loadedCount}/${images.length}枚読み込み済み)`,
             originalError: new Error("timeout"),
           }),
         );

@@ -7,12 +7,10 @@ import {
   triggerRef,
   type ComputedRef,
 } from "vue";
-import type { Card, FilterCriteria } from "../types";
-import type { CardKind, CardType } from "../types/card";
-import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants/game";
-import * as CardDomain from "../domain/card";
+import type { Card, CardKind, CardType, FilterCriteria } from "../types";
+import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants";
 import { useCardsStore } from "./cards";
-import { sortCards } from "../domain/sort";
+import { searchCardsByName, sortCards } from "../domain";
 import {
   createArraySortMemo,
   createFilterMemo,
@@ -150,7 +148,7 @@ export const useFilterStore = defineStore("filter", () => {
       return cards;
     }
 
-    return CardDomain.searchCardsByName(cards, normalizedText);
+    return searchCardsByName(cards, normalizedText);
   };
 
   /**
