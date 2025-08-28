@@ -335,6 +335,16 @@ export const useCardsStore = defineStore("cards", () => {
         logger.warn("画像のプリロードに失敗しました:", preloadResult.error);
       }
       logger.info(`${checkedCards.length}枚のカードを読み込みました`);
+    } catch (e) {
+      const mapped = mapErrorToCardStoreError(e);
+      error.value = mapped;
+      logger.error(
+        "カードデータの読み込み中に予期せぬエラーが発生しました:",
+        mapped,
+        {
+          cause: e,
+        },
+      );
     } finally {
       isLoading.value = false;
     }
@@ -363,9 +373,9 @@ export const useCardsStore = defineStore("cards", () => {
 
   return {
     // リアクティブな状態
-    availableCards,
-    isLoading,
-    error,
+    availableCards: readonly(availableCards),
+    isLoading: readonly(isLoading),
+    error: readonly(error),
     cardCount,
     hasCards,
     isReady,

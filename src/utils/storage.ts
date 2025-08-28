@@ -14,7 +14,7 @@ export type StorageError =
   | { readonly type: "notFound"; readonly key: string }
   | { readonly type: "parseError"; readonly key: string; readonly data: string }
   | { readonly type: "saveError"; readonly key: string; readonly data: unknown }
-  | { readonly type: "removeError"; readonly key: string }
+  | { readonly type: "resetError"; readonly key: string }
   | {
       readonly type: "invalidData";
       readonly key: string;
@@ -212,7 +212,7 @@ export const resetDeckCardsInLocalStorage = (): Result<void, StorageError> => {
     return ok(undefined);
   } catch (e) {
     logger.error("デッキカードのリセットに失敗しました", e, []);
-    return err({ type: "removeError", key: STORAGE_KEYS.DECK_CARDS });
+    return err({ type: "resetError", key: STORAGE_KEYS.DECK_CARDS });
   }
 };
 
@@ -225,6 +225,6 @@ export const resetDeckNameInLocalStorage = (): Result<void, StorageError> => {
     return ok(undefined);
   } catch (e) {
     logger.error("デッキ名のリセットに失敗しました", e, "新しいデッキ");
-    return err({ type: "removeError", key: STORAGE_KEYS.DECK_NAME });
+    return err({ type: "resetError", key: STORAGE_KEYS.DECK_NAME });
   }
 };

@@ -100,77 +100,50 @@ export const useDeckStore = defineStore("deck", () => {
     return deckState.value.type === "invalid" ? deckState.value.errors : [];
   });
 
-  /**
-   * Vue 3.5最適化: カードをデッキに追加
-   */
-  const addCardToDeck = (card: Card): void => {
-    const result = executeDeckOperation(deckCards.value, {
-      type: "addCard",
-      card,
-    });
-
+  const applyOperation = <T extends Parameters<typeof executeDeckOperation>[1]>(
+    operation: T,
+    onErrMsg: string,
+  ) => {
+    const result = executeDeckOperation(deckCards.value, operation);
     if (result.isOk()) {
       updateDeckCardsWithVersion(result.value);
     } else {
-      errorHandler.handleValidationError(
-        `カードの追加に失敗しました: ${result.error.type}`,
-      );
+      errorHandler.handleValidationError(`${onErrMsg}: ${result.error.type}`);
     }
   };
+
+  /**
+   * Vue 3.5最適化: カードをデッキに追加
+   */
+  const addCardToDeck = (card: Card): void =>
+    applyOperation({ type: "addCard", card }, "カードの追加に失敗しました");
 
   /**
    * Vue 3.5最適化: カード枚数を増やす
    */
-  const incrementCardCount = (cardId: string): void => {
-    const result = executeDeckOperation(deckCards.value, {
-      type: "incrementCount",
-      cardId,
-    });
-
-    if (result.isOk()) {
-      updateDeckCardsWithVersion(result.value);
-    } else {
-      errorHandler.handleValidationError(
-        `カード枚数の増加に失敗しました: ${result.error.type}`,
-      );
-    }
-  };
+  const incrementCardCount = (cardId: string): void =>
+    applyOperation(
+      { type: "incrementCount", cardId },
+      "カード枚数の増加に失敗しました",
+    );
 
   /**
    * Vue 3.5最適化: カード枚数を減らす
    */
-  const decrementCardCount = (cardId: string): void => {
-    const result = executeDeckOperation(deckCards.value, {
-      type: "decrementCount",
-      cardId,
-    });
-
-    if (result.isOk()) {
-      updateDeckCardsWithVersion(result.value);
-    } else {
-      errorHandler.handleValidationError(
-        `カード枚数の減少に失敗しました: ${result.error.type}`,
-      );
-    }
-  };
+  const decrementCardCount = (cardId: string): void =>
+    applyOperation(
+      { type: "decrementCount", cardId },
+      "カード枚数の減少に失敗しました",
+    );
 
   /**
    * Vue 3.5最適化: カードをデッキから削除
    */
-  const removeCardFromDeck = (cardId: string): void => {
-    const result = executeDeckOperation(deckCards.value, {
-      type: "removeCard",
-      cardId,
-    });
-
-    if (result.isOk()) {
-      updateDeckCardsWithVersion(result.value);
-    } else {
-      errorHandler.handleValidationError(
-        `カードの削除に失敗しました: ${result.error.type}`,
-      );
-    }
-  };
+  const removeCardFromDeck = (cardId: string): void =>
+    applyOperation(
+      { type: "removeCard", cardId },
+      "カードの削除に失敗しました",
+    );
 
   /**
    * Vue 3.5最適化: ローカルストレージからデッキを初期化
@@ -225,7 +198,13 @@ export const useDeckStore = defineStore("deck", () => {
    */
   const resetDeckName = () => {
     deckName.value = "新しいデッキ";
-    resetDeckNameInLocalStorage();
+    const r = resetDeckNameInLocalStorage();
+    if (r.isErr()) {
+      errorHandler.handleRuntimeError(
+        "デッキ名のリセットに失敗しました",
+        r.error,
+      );
+    }
   };
 
   /**

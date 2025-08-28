@@ -229,6 +229,7 @@ export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
 
       if (!hasCacheEntry(card.id)) {
         const img = new Image();
+        img.crossOrigin = "anonymous";
         const urlResult = getCardImageUrl(card.id);
         if (urlResult.isOk()) {
           img.src = urlResult.value;

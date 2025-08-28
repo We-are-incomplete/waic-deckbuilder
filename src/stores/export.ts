@@ -38,7 +38,9 @@ const redactUrl = (src?: string): string => {
   if (!src) return "不明な画像";
   try {
     const base =
-      typeof window !== "undefined" ? window.location.origin : "http://local";
+      typeof window !== "undefined"
+        ? window.location.origin
+        : "http://localhost";
     const u = new URL(src, base);
     if (u.protocol === "blob:") return "(blob)";
     if (u.protocol === "data:") return "(data-uri)";
@@ -195,7 +197,10 @@ export const useExportStore = defineStore("export", () => {
       // Canvas生成 (neverthrow でラップ)
       const canvasResult = await fromPromise(
         html2canvas(exportContainer, {
-          scale: 1,
+          scale:
+            typeof window !== "undefined"
+              ? Math.max(1, window.devicePixelRatio || 1)
+              : 1,
           useCORS: true,
           logging: false,
           allowTaint: false,

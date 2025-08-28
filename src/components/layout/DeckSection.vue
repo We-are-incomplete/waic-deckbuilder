@@ -270,6 +270,7 @@ defineExpose({
             @error="handleImageError"
             :alt="item.card.name"
             loading="lazy"
+            crossorigin="anonymous"
             class="block w-full h-full object-cover transition-transform duration-200 select-none"
           />
           <div

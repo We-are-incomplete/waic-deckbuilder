@@ -30,6 +30,7 @@
           v-if="imageSrc"
           :src="imageSrc"
           :alt="imageAltText"
+          crossorigin="anonymous"
           class="max-w-full max-h-full object-contain shadow-2xl"
           @error="handleImageError"
           @load="isImageLoading = false"
