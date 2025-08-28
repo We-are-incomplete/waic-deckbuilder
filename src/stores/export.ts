@@ -1,8 +1,9 @@
 import { defineStore } from "pinia";
-import { ref, nextTick, readonly } from "vue"; // readonly を追加
+import { ref, nextTick, readonly } from "vue";
 import html2canvas from "html2canvas-pro";
 import { generateFileName, downloadCanvas, logger } from "../utils";
-import { ok, err, type Result } from "neverthrow"; // ok, err を追加
+import { ok, err, type Result } from "neverthrow";
+import { useEventListener } from "@vueuse/core";
 
 // エクスポートストア専用のエラー型
 type ExportError =
@@ -43,10 +44,7 @@ export const useExportStore = defineStore("export", () => {
       let hasErrorOccurred = false;
 
       const cleanupListeners = () => {
-        images.forEach((img) => {
-          img.removeEventListener("load", checkComplete);
-          img.removeEventListener("error", handleImageError);
-        });
+        images.forEach;
       };
 
       const checkComplete = () => {
@@ -80,8 +78,8 @@ export const useExportStore = defineStore("export", () => {
           checkComplete();
         } else {
           // まだ読み込み中の画像
-          img.addEventListener("load", checkComplete, { once: true });
-          img.addEventListener("error", handleImageError, { once: true });
+          useEventListener(img, "load", checkComplete, { once: true });
+          useEventListener(img, "error", handleImageError, { once: true });
         }
       });
     });

@@ -90,7 +90,8 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
    */
   const copyDeckCode = async (codeType: "slash" | "kcg"): Promise<void> => {
     error.value = null;
-    const codeToCopy = codeType === "slash" ? slashDeckCode.value : kcgDeckCode.value;
+    const codeToCopy =
+      codeType === "slash" ? slashDeckCode.value : kcgDeckCode.value;
 
     try {
       await copyToClipboard(codeToCopy);

@@ -1,13 +1,5 @@
 import { defineStore } from "pinia";
-import {
-  ref,
-  computed,
-  watch,
-  readonly,
-  shallowRef,
-  onMounted,
-  onBeforeUnmount,
-} from "vue";
+import { ref, computed, watch, readonly, shallowRef } from "vue";
 import type { Card, DeckCard } from "../types";
 import {
   saveDeckToLocalStorage,
@@ -22,7 +14,7 @@ import {
 import { createErrorHandler } from "../utils/errorHandler";
 import * as DeckDomain from "../domain/deck";
 import { sortDeckCards } from "../domain/sort";
-import { useDebounceFn } from "@vueuse/core";
+import { useDebounceFn, useEventListener } from "@vueuse/core";
 
 /**
  * デッキの軽量ハッシュを生成する純粋関数
@@ -274,15 +266,7 @@ export const useDeckStore = defineStore("deck", () => {
 
   // ブラウザ環境でのみイベントリスナーを設定
   if (typeof window !== "undefined") {
-    onMounted(() => {
-      window.addEventListener("beforeunload", handleBeforeUnload);
-    });
-
-    onBeforeUnmount(() => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-      // コンポーネント破棄時にも保存を実行
-      handleBeforeUnload();
-    });
+    useEventListener(window, "beforeunload", handleBeforeUnload);
   }
 
   return {
