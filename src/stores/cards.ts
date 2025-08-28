@@ -24,7 +24,7 @@ type CardStoreError =
 
 export const useCardsStore = defineStore("cards", () => {
   const availableCards = shallowRef<readonly Card[]>([]);
-  const isLoading = ref<boolean>(true);
+  const isLoading = ref<boolean>(false);
   const error = ref<CardStoreError | null>(null);
 
   // カードデータのバージョン管理（キャッシュ無効化用）
