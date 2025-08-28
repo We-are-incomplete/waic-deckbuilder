@@ -22,8 +22,8 @@ import { CARD_KINDS, CARD_TYPES } from "../constants";
 export type CardValidationError =
   | { readonly type: "invalidId"; readonly id: string }
   | { readonly type: "invalidName"; readonly name: string }
-  | { readonly type: "invalidKind"; readonly kind: CardKind }
-  | { readonly type: "invalidType"; readonly cardType: CardType } // 未知タイプ
+  | { readonly type: "invalidKind"; readonly kind: string }
+  | { readonly type: "invalidType"; readonly cardType: string }
   | { readonly type: "emptyTypeList" } // 空配列
   | { readonly type: "duplicateTypes" } // 重複
   | { readonly type: "duplicateTags"; readonly tags: readonly string[] };
@@ -51,17 +51,17 @@ export const createCard = (
     return err({ type: "invalidKind", kind });
   }
 
+  // 空配列/重複チェック
+  if (type.length === 0) return err({ type: "emptyTypeList" });
+  if (new Set(type).size !== type.length)
+    return err({ type: "duplicateTypes" });
+
   // タイプ検証（実行時）
   for (const t of type) {
     if (!CARD_TYPES.includes(t)) {
       return err({ type: "invalidType", cardType: t });
     }
   }
-
-  // 空配列/重複チェック
-  if (type.length === 0) return err({ type: "emptyTypeList" });
-  if (new Set(type).size !== type.length)
-    return err({ type: "duplicateTypes" });
 
   // タグ検証
   let finalTags: readonly string[] | undefined = undefined;

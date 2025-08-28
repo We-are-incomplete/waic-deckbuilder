@@ -3,7 +3,7 @@
  * - 目的: デッキ名/デッキカードの保存・読込・リセット
  * - 方針: 例外は投げず Result<T,E> を返す。純粋関数と副作用関数を分離。
  */
-import { ok, err, type Result } from "neverthrow";
+import { ok, err, type Result, fromThrowable } from "neverthrow";
 import type { Card, DeckCard } from "../types";
 import { GAME_CONSTANTS, STORAGE_KEYS } from "../constants";
 import { logger } from "./logger";
@@ -37,10 +37,9 @@ export const deserializeDeckCards = (
   availableCards: readonly Card[],
 ): DeckCard[] => {
   // availableCardsをMapに変換して高速ルックアップを可能にする
-  const availableCardsMap = new Map<string, Card>();
-  for (const card of availableCards) {
-    availableCardsMap.set(card.id, card);
-  }
+  const availableCardsMap = new Map(
+    availableCards.map((c) => [c.id, c] as const),
+  );
 
   return serializedDeck
     .map((item) => {
@@ -48,11 +47,8 @@ export const deserializeDeckCards = (
       const safeCount =
         Number.isInteger(item.count) && item.count > 0 ? item.count : 0;
       const card = availableCardsMap.get(item.id);
-      // 上限を防御的にクランプ（GAME_CONSTANTS.MAX_CARD_COPIES 等を使用）
-      const clamped =
-        typeof GAME_CONSTANTS?.MAX_CARD_COPIES === "number"
-          ? Math.min(safeCount, GAME_CONSTANTS.MAX_CARD_COPIES)
-          : safeCount;
+      // 上限を防御的にクランプ（GAME_CONSTANTS.MAX_CARD_COPIES を使用）
+      const clamped = Math.min(safeCount, GAME_CONSTANTS.MAX_CARD_COPIES);
       return card && clamped > 0 ? { card, count: clamped } : null;
     })
     .filter((item: DeckCard | null): item is DeckCard => item !== null);
@@ -61,15 +57,17 @@ export const deserializeDeckCards = (
 // useLocalStorage を使用してデッキカードを管理
 const deckCardsStorage = useLocalStorage<
   readonly { id: string; count: number }[]
->(STORAGE_KEYS.DECK_CARDS, [], {
+>(STORAGE_KEYS.DECK_CARDS, [] as { id: string; count: number }[], {
   serializer: {
     read: (raw: string): readonly { id: string; count: number }[] => {
-      try {
-        return JSON.parse(raw);
-      } catch (e) {
-        logger.error("Failed to parse deck cards from local storage", e);
-        throw e; // 上位で parseError として扱う
-      }
+      const parsed = fromThrowable(JSON.parse)(raw);
+      if (parsed.isOk()) return parsed.value as { id: string; count: number }[];
+      logger.error(
+        "ローカルストレージのデッキカードの JSON 解析に失敗しました",
+        parsed.error,
+      );
+      // 例外は投げず、空配列でフォールバック（後段のバリデーションで健全化）
+      return [] as { id: string; count: number }[];
     },
     write: (value: readonly { id: string; count: number }[]) =>
       JSON.stringify(value),
@@ -130,7 +128,10 @@ export const loadDeckFromLocalStorage = (
       JSON.stringify(deckCardsStorage.value),
     );
     // エラー時はデッキカードのみクリーンアップ（デッキ名は保持）
-    resetDeckCardsInLocalStorage();
+    const r = resetDeckCardsInLocalStorage();
+    if (r.isErr()) {
+      logger.error("デッキカードのリセットに失敗しました", r.error);
+    }
     return err({
       type: "parseError",
       key: STORAGE_KEYS.DECK_CARDS,
@@ -178,16 +179,16 @@ export const loadDeckName = (): Result<string, StorageError> => {
  */
 export const resetDeckCardsInLocalStorage = (): Result<void, StorageError> => {
   try {
-    deckCardsStorage.value = [];
+    deckCardsStorage.value = [] as { id: string; count: number }[];
     return ok(undefined);
   } catch (e) {
-    logger.error("デッキカードの削除に失敗しました", e, []);
+    logger.error("デッキカードのリセットに失敗しました", e, []);
     return err({ type: "removeError", key: STORAGE_KEYS.DECK_CARDS });
   }
 };
 
 /**
- * デッキ名をローカルストレージから削除
+ * デッキ名をローカルストレージからで既定値（"新しいデッキ"）にリセット
  */
 export const removeDeckNameFromLocalStorage = (): Result<
   void,
@@ -197,7 +198,7 @@ export const removeDeckNameFromLocalStorage = (): Result<
     deckNameStorage.value = "新しいデッキ";
     return ok(undefined);
   } catch (e) {
-    logger.error("デッキ名の削除に失敗しました", e, "新しいデッキ");
+    logger.error("デッキ名のリセットに失敗しました", e, "新しいデッキ");
     return err({ type: "removeError", key: STORAGE_KEYS.DECK_NAME });
   }
 };

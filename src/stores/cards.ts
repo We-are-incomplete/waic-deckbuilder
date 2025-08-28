@@ -60,16 +60,19 @@ export const useCardsStore = defineStore("cards", () => {
   // CardStoreErrorに変換するヘルパー関数
   const mapErrorToCardStoreError = (e: unknown): CardStoreError => {
     if (e instanceof Error) {
-      const errorMessage = e.message;
-      if (errorMessage.includes("HTTP error")) {
-        const statusMatch = errorMessage.match(/status: (\d+)/);
+      const errorMessage = e.message ?? "";
+      // HTTP エラー: "HTTP error! status: <code>"
+      const statusMatch = errorMessage.match(/^HTTP error! status:\s+(\d+)/);
+      if (statusMatch) {
         const status = statusMatch ? parseInt(statusMatch[1]) : 500;
         return {
           type: "fetch",
           status,
           message: "カードデータの取得に失敗しました",
         };
-      } else if (
+      }
+      // パース系
+      if (
         errorMessage.includes("CSVデータが空です。") ||
         errorMessage.includes("CSVパースエラー:")
       ) {
@@ -77,7 +80,9 @@ export const useCardsStore = defineStore("cards", () => {
           type: "parse",
           message: "カードデータの解析に失敗しました",
         };
-      } else if (
+      }
+      // バリデーション系
+      if (
         errorMessage.includes("不正なCardKindが見つかりました:") ||
         errorMessage.includes("必須フィールド欠落:") ||
         errorMessage.includes("不正なCardTypeが見つかりました:")
@@ -86,7 +91,9 @@ export const useCardsStore = defineStore("cards", () => {
           type: "validation",
           message: "カードデータの検証に失敗しました",
         };
-      } else if (errorMessage.includes("ネットワークエラー:")) {
+      }
+      // ネットワーク系
+      if (errorMessage.includes("ネットワークエラー:")) {
         return {
           type: "fetch",
           status: 0, // ネットワークエラーはHTTPステータスがないため0

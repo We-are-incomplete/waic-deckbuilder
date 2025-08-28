@@ -32,7 +32,9 @@ type ExportError =
 const redactUrl = (src?: string): string => {
   if (!src) return "不明な画像";
   try {
-    const u = new URL(src, window.location.href);
+    const base =
+      typeof window !== "undefined" ? window.location.origin : "http://local";
+    const u = new URL(src, base);
     if (u.protocol === "blob:") return "(blob)";
     if (u.protocol === "data:") return "(data-uri)";
     const file = u.pathname.split("/").pop();
@@ -42,7 +44,9 @@ const redactUrl = (src?: string): string => {
   }
 };
 
-const IMAGE_LOAD_TIMEOUT_MS = 8000;
+const IMAGE_LOAD_TIMEOUT_MS = Number(
+  import.meta.env.VITE_IMAGE_LOAD_TIMEOUT_MS ?? 8000,
+);
 export const useExportStore = defineStore("export", () => {
   const isSaving = ref<boolean>(false);
 
@@ -149,6 +153,13 @@ export const useExportStore = defineStore("export", () => {
     deckName: string,
     exportContainer: HTMLElement,
   ): Promise<Result<void, ExportError>> => {
+    if (isSaving.value) {
+      return err({
+        type: "unknown",
+        message: "現在エクスポート処理中です。完了後に再度お試しください。",
+        originalError: null,
+      });
+    }
     if (!exportContainer) {
       return err({
         type: "unknown",
@@ -195,7 +206,7 @@ export const useExportStore = defineStore("export", () => {
       const errorMessage = "デッキ画像の保存に失敗しました";
       logger.error(errorMessage + ":", e);
       return err({
-        type: "html2canvas",
+        type: "unknown",
         message: errorMessage,
         originalError: e,
       });
