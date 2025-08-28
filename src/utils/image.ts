@@ -14,7 +14,13 @@ const MAX_CACHE_SIZE = 200; // 最大キャッシュサイズ
 export const CACHE_CLEANUP_INTERVAL = 5 * 60 * 1000; // 5分間隔でクリーンアップ
 
 // 画像プリロードの同時実行上限
-export const PRELOAD_MAX_INFLIGHT = 6 as const;
+const PRELOAD_INFLIGHT_RAW = Number(
+  (import.meta.env.VITE_PRELOAD_MAX_INFLIGHT as string | undefined) ?? "",
+);
+export const PRELOAD_MAX_INFLIGHT =
+  Number.isFinite(PRELOAD_INFLIGHT_RAW) && PRELOAD_INFLIGHT_RAW > 0
+    ? Math.floor(PRELOAD_INFLIGHT_RAW)
+    : 6;
 
 // LRUキャッシュエントリー
 interface CacheEntry {
@@ -28,6 +34,7 @@ interface CacheState {
   accessOrder: string[];
   cleanupTimer: ReturnType<typeof setInterval> | null;
   inflight: Set<string>;
+  generation: number;
 }
 
 // グローバルなキャッシュ状態
@@ -36,6 +43,7 @@ const cacheState: CacheState = {
   accessOrder: [],
   cleanupTimer: null,
   inflight: new Set<string>(),
+  generation: 0,
 };
 
 // 参照時に LRU を更新
@@ -53,6 +61,8 @@ export const startImageCacheMaintenance = (): void => {
   // SSR/非ブラウザでは開始しない
   if (import.meta.env.SSR || typeof window === "undefined") return;
   if (!cacheState.cleanupTimer) {
+    // 起動時に1回実行
+    cleanupStaleEntries();
     cacheState.cleanupTimer = setInterval(
       cleanupStaleEntries,
       CACHE_CLEANUP_INTERVAL,
@@ -194,6 +204,8 @@ const getCacheStats = (): { size: number; maxSize: number } => {
  * クリーンアップタイマーを停止
  */
 const destroyCache = (): void => {
+  // 進行中ハンドラを無効化
+  cacheState.generation++;
   if (cacheState.cleanupTimer) {
     clearInterval(cacheState.cleanupTimer);
     cacheState.cleanupTimer = null;
@@ -240,8 +252,8 @@ export const handleImageError = (event: Event): Result<void, string> => {
     return err("イベントターゲットが画像要素ではありません");
   }
 
-  target.src = `${getNormalizedBaseUrl()}placeholder.avif`;
   target.onerror = null;
+  target.src = `${getNormalizedBaseUrl()}placeholder.avif`;
 
   return ok(undefined);
 };
@@ -272,17 +284,23 @@ export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
       if (!hasCacheEntry(card.id) && !cacheState.inflight.has(card.id)) {
         const urlResult = getCardImageUrl(card.id);
         if (urlResult.isOk()) {
+          const gen = cacheState.generation;
           cacheState.inflight.add(card.id);
           const img = new Image();
           img.crossOrigin = "anonymous";
+          img.decoding = "async";
           img.onload = () => {
-            setCacheEntry(card.id, img);
+            if (gen === cacheState.generation) {
+              setCacheEntry(card.id, img);
+            }
             cacheState.inflight.delete(card.id);
             img.onload = null;
             img.onerror = null;
           };
           img.onerror = () => {
-            logger.warn(`Preload failed for card: ${card.id}`);
+            if (gen === cacheState.generation) {
+              logger.warn(`Preload failed for card: ${card.id}`);
+            }
             cacheState.inflight.delete(card.id);
             img.onload = null;
             img.onerror = null;

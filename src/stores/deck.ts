@@ -39,7 +39,7 @@ const generateDeckHash = (deckCards: readonly DeckCard[]): string => {
   // カードIDと枚数のタプル配列をソートし、JSON化して衝突を回避
   const entries = deckCards
     .map((dc) => [dc.card.id, dc.count] as const)
-    .sort((a, b) => a[0].localeCompare(b[0]));
+    .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
   return JSON.stringify(entries);
 };
 
@@ -59,7 +59,7 @@ export const useDeckStore = defineStore("deck", () => {
    * 成功時の共通処理：デッキカードを更新してバージョンをインクリメント
    */
   const updateDeckCardsWithVersion = (newCards: readonly DeckCard[]): void => {
-    deckCards.value = newCards;
+    deckCards.value = [...newCards];
     incrementVersion();
   };
 
@@ -186,6 +186,13 @@ export const useDeckStore = defineStore("deck", () => {
    * Vue 3.5最適化: デッキカードを設定
    */
   const setDeckCards = (cards: readonly DeckCard[]) => {
+    const state = calculateDeckState(cards);
+    if (state.type === "invalid") {
+      errorHandler.handleRuntimeError("無効なデッキです", {
+        errors: state.errors,
+      });
+      return;
+    }
     updateDeckCardsWithVersion(cards);
   };
 
@@ -224,6 +231,7 @@ export const useDeckStore = defineStore("deck", () => {
    */
   const setDeckName = (name: string): void => {
     const n = name.trim() || DEFAULT_DECK_NAME;
+    if (deckName.value === n) return;
     deckName.value = n;
   };
 
