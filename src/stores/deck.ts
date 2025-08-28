@@ -155,7 +155,10 @@ export const useDeckStore = defineStore("deck", () => {
   /**
    * Vue 3.5最適化: ローカルストレージからデッキを初期化
    */
+  let suppressSave = false;
   const initializeDeck = (availableCards: readonly Card[]): void => {
+    const prev = suppressSave;
+    suppressSave = true;
     const loadDeckResult = loadDeckFromLocalStorage(availableCards);
     if (loadDeckResult.isErr()) {
       updateDeckCardsWithVersion([]);
@@ -177,6 +180,7 @@ export const useDeckStore = defineStore("deck", () => {
     } else {
       deckName.value = loadNameResult.value;
     }
+    suppressSave = prev;
   };
 
   /**
@@ -265,24 +269,25 @@ export const useDeckStore = defineStore("deck", () => {
   watch(
     deckCards,
     (newCards) => {
-      debouncedSave(newCards);
+      if (!suppressSave) debouncedSave(newCards);
     },
     { deep: false, flush: "post" }, // shallowRefなので浅い監視で十分
   );
 
   watch(deckName, (newName) => {
-    debouncedSaveName(newName);
+    if (!suppressSave) debouncedSaveName(newName);
   });
 
   // ページアンロード時の保存保証
   let lastImmediateSaveAt = 0;
+  const MIN_SAVE_INTERVAL_MS = 500 as const;
   const nowMs = () =>
     typeof performance !== "undefined" && typeof performance.now === "function"
       ? performance.now()
       : Date.now();
   const handleBeforeUnload = () => {
     const now = nowMs();
-    if (now - lastImmediateSaveAt < 500) return;
+    if (now - lastImmediateSaveAt < MIN_SAVE_INTERVAL_MS) return;
     lastImmediateSaveAt = now;
     // 未処理のデバウンスを反映/無効化してから直接保存
     debouncedSave.flush?.();

@@ -9,6 +9,8 @@ import { ok, err, type Result } from "neverthrow";
 import type { Card } from "../types";
 import { logger } from "./logger";
 
+type NetworkInformationLite = { saveData?: boolean };
+
 // LRUキャッシュの設定
 const MAX_CACHE_SIZE = 200; // 最大キャッシュサイズ
 export const CACHE_CLEANUP_INTERVAL = 5 * 60 * 1000; // 5分間隔でクリーンアップ
@@ -51,9 +53,8 @@ const touchCacheKey = (key: string): void => {
   const entry = cacheState.cache.get(key);
   if (!entry) return;
   entry.lastAccessed = Date.now();
-  for (let i = cacheState.accessOrder.length - 1; i >= 0; i--) {
-    if (cacheState.accessOrder[i] === key) cacheState.accessOrder.splice(i, 1);
-  }
+  const idx = cacheState.accessOrder.lastIndexOf(key);
+  if (idx !== -1) cacheState.accessOrder.splice(idx, 1);
   cacheState.accessOrder.push(key);
 };
 
@@ -249,18 +250,19 @@ export const handleImageError = (event: Event): Result<void, string> => {
     return err("イベントまたはターゲットが指定されていません");
   }
 
-  const target = event.target as HTMLImageElement;
-  if (!target) {
+  const t = event.target;
+  if (!(t instanceof HTMLImageElement)) {
     return err("イベントターゲットが画像要素ではありません");
   }
+  const img = t;
 
-  target.onerror = null;
+  img.onerror = null;
   // サポート環境では低優先度での再取得を明示
   try {
     // @ts-ignore - 実装環境によっては存在しない
     target.fetchPriority = "low";
   } catch {}
-  target.src = `${getNormalizedBaseUrl()}placeholder.avif`;
+  img.src = `${getNormalizedBaseUrl()}placeholder.avif`;
 
   return ok(undefined);
 };
@@ -274,8 +276,8 @@ export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
     return ok(undefined);
   }
   // 省データモード/低速回線ではスキップ
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const conn: any = (navigator as any)?.connection;
+  const conn = (navigator as unknown as { connection?: NetworkInformationLite })
+    .connection;
   if (conn?.saveData) {
     logger.info("Preload skipped due to saveData mode");
     return ok(undefined);
