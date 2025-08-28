@@ -1,3 +1,10 @@
+/**
+ * DeckStore（src/stores/deck.ts）
+ * 目的: デッキ（カード配列・名称・派生状態）の集中管理とローカルストレージ永続化。
+ * 公開API: add/increment/decrement/remove/reset/initialize/set 等（下部参照）。
+ * 例外方針: 例外は投げず neverthrow の Result を受け取り errorHandler に委譲。
+ * 不変条件: DeckCard 配列は参照整合性を保ち、外部からは readonly で公開。
+ */
 import { defineStore } from "pinia";
 import { ref, computed, watch, readonly, shallowRef } from "vue";
 import type { Card, DeckCard } from "../types";
@@ -41,7 +48,7 @@ const generateDeckHash = (deckCards: readonly DeckCard[]): string => {
 export const useDeckStore = defineStore("deck", () => {
   // Vue 3.5の新機能: shallowRef for array performance optimization
   // DeckCard配列の深い監視は不要な場合が多いためshallowRefを使用
-  const deckCards = shallowRef<DeckCard[]>([]);
+  const deckCards = shallowRef<readonly DeckCard[]>([]);
   const deckName = ref<string>(DEFAULT_DECK_NAME);
 
   // メモ化最適化用のバージョン管理
@@ -54,7 +61,7 @@ export const useDeckStore = defineStore("deck", () => {
    * 成功時の共通処理：デッキカードを更新してバージョンをインクリメント
    */
   const updateDeckCardsWithVersion = (newCards: readonly DeckCard[]): void => {
-    deckCards.value = [...newCards];
+    deckCards.value = newCards;
     incrementVersion();
   };
 
@@ -109,9 +116,8 @@ export const useDeckStore = defineStore("deck", () => {
     if (result.isOk()) {
       updateDeckCardsWithVersion(result.value);
     } else {
-      errorHandler.handleValidationError(
-        `${onErrMsg}: ${result.error.type} ${JSON.stringify(result.error)}`,
-      );
+      // 構造化エラーを渡す（handleValidationError(message, detail) を想定）
+      errorHandler.handleValidationError(onErrMsg, result.error);
     }
   };
 
@@ -216,17 +222,17 @@ export const useDeckStore = defineStore("deck", () => {
    * デッキ名を設定
    */
   const setDeckName = (name: string): void => {
-    deckName.value = name;
+    deckName.value = name.trim();
   };
 
   // Vue 3.5の新機能: より効率的なデバウンス処理
   // maxWaitオプションで最大待機時間を制限し、ページアンロード時の保存漏れを防ぐ
-  type FlushableFn<T extends any[]> = ((...args: T) => void) & {
+  type FlushableFn<T extends unknown[]> = ((...args: T) => void) & {
     flush: () => void;
     cancel: () => void;
   };
   const debouncedSave = useDebounceFn(
-    (cards: DeckCard[]) => {
+    (cards: readonly DeckCard[]) => {
       const r = saveDeckToLocalStorage(cards);
       if (r.isErr()) {
         errorHandler.handleRuntimeError("デッキの保存に失敗しました", r.error);
@@ -234,7 +240,7 @@ export const useDeckStore = defineStore("deck", () => {
     },
     500,
     { maxWait: 2000 },
-  ) as unknown as FlushableFn<[DeckCard[]]>;
+  ) as unknown as FlushableFn<[readonly DeckCard[]]>;
 
   const debouncedSaveName = useDebounceFn(
     (name: string) => {
@@ -250,7 +256,7 @@ export const useDeckStore = defineStore("deck", () => {
     { maxWait: 2000 },
   ) as unknown as FlushableFn<[string]>;
 
-  // Vue 3.5最適化: watchEffect for better side effect management
+  // Vue 3.5最適化: watch で副作用を管理（shallowRef なので浅い監視で十分）
   watch(
     deckCards,
     (newCards) => {

@@ -47,8 +47,8 @@ const touchCacheKey = (key: string): void => {
 
 // 定期クリーンアップ開始（多重開始防止）
 export const startImageCacheMaintenance = (): void => {
-  // SSR では開始しない
-  if (import.meta.env.SSR) return;
+  // SSR/非ブラウザでは開始しない
+  if (import.meta.env.SSR || typeof window === "undefined") return;
   if (!cacheState.cleanupTimer) {
     cacheState.cleanupTimer = setInterval(
       cleanupStaleEntries,
@@ -164,7 +164,7 @@ export const cleanupStaleEntries = (): void => {
   }
 
   logger.debug(
-    `Image cache cleanup: removed ${keysToDelete.length} stale entries`,
+    `Image cache cleanup: removed ${keysToDelete.length} stale entries (size=${cacheState.cache.size}/${MAX_CACHE_SIZE}, ttl=${STALE_ENTRY_TTL_MS}ms)`,
   );
 };
 
@@ -174,6 +174,7 @@ export const cleanupStaleEntries = (): void => {
 const clearCache = (): void => {
   cacheState.cache.clear();
   cacheState.accessOrder = [];
+  cacheState.inflight.clear();
 };
 
 /**
@@ -261,6 +262,8 @@ export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
       currentIndex < cards.length &&
       (!deadline || deadline.timeRemaining() > 0)
     ) {
+      // 同時実行の上限
+      if (cacheState.inflight.size >= 6) break;
       const card = cards[currentIndex];
 
       if (!hasCacheEntry(card.id) && !cacheState.inflight.has(card.id)) {
