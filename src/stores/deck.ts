@@ -11,6 +11,7 @@ import {
   createVersionedState,
   createArraySortMemo,
   createErrorHandler,
+  DEFAULT_DECK_NAME,
 } from "../utils";
 import {
   calculateDeckState,
@@ -41,7 +42,7 @@ export const useDeckStore = defineStore("deck", () => {
   // Vue 3.5の新機能: shallowRef for array performance optimization
   // DeckCard配列の深い監視は不要な場合が多いためshallowRefを使用
   const deckCards = shallowRef<DeckCard[]>([]);
-  const deckName = ref<string>("新しいデッキ");
+  const deckName = ref<string>(DEFAULT_DECK_NAME);
 
   // メモ化最適化用のバージョン管理
   const { version: deckVersion, incrementVersion } = createVersionedState();
@@ -164,7 +165,7 @@ export const useDeckStore = defineStore("deck", () => {
 
     const loadNameResult = loadDeckName();
     if (loadNameResult.isErr()) {
-      deckName.value = "新しいデッキ";
+      deckName.value = DEFAULT_DECK_NAME;
       errorHandler.handleRuntimeError(
         "デッキ名の読み込みに失敗しました",
         loadNameResult.error,
@@ -208,7 +209,7 @@ export const useDeckStore = defineStore("deck", () => {
       );
       return;
     }
-    deckName.value = "新しいデッキ";
+    deckName.value = DEFAULT_DECK_NAME;
   };
 
   /**
@@ -263,7 +264,11 @@ export const useDeckStore = defineStore("deck", () => {
   });
 
   // ページアンロード時の保存保証
+  let lastImmediateSaveAt = 0;
   const handleBeforeUnload = () => {
+    const now = Date.now();
+    if (now - lastImmediateSaveAt < 500) return;
+    lastImmediateSaveAt = now;
     // 未処理のデバウンスを反映/無効化してから直接保存
     debouncedSave.flush?.();
     debouncedSaveName.flush?.();

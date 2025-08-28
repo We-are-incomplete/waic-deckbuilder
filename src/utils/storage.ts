@@ -9,7 +9,7 @@ import { GAME_CONSTANTS, STORAGE_KEYS } from "../constants";
 import { logger } from "./logger";
 import { useLocalStorage } from "@vueuse/core";
 
-const DEFAULT_DECK_NAME = "新しいデッキ" as const;
+export const DEFAULT_DECK_NAME = "新しいデッキ" as const;
 
 // ストレージ操作エラー型
 export type StorageError =
@@ -246,7 +246,7 @@ export const resetDeckCardsInLocalStorage = (): Result<void, StorageError> => {
 };
 
 /**
- * デッキ名をローカルストレージの既定値（"新しいデッキ"）にリセット
+ * デッキ名をローカルストレージの既定値にリセット
  */
 export const resetDeckNameInLocalStorage = (): Result<void, StorageError> => {
   try {

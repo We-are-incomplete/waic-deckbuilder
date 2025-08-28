@@ -264,11 +264,11 @@ export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
       const card = cards[currentIndex];
 
       if (!hasCacheEntry(card.id) && !cacheState.inflight.has(card.id)) {
-        cacheState.inflight.add(card.id);
-        const img = new Image();
-        img.crossOrigin = "anonymous";
         const urlResult = getCardImageUrl(card.id);
         if (urlResult.isOk()) {
+          cacheState.inflight.add(card.id);
+          const img = new Image();
+          img.crossOrigin = "anonymous";
           img.onload = () => {
             setCacheEntry(card.id, img);
             cacheState.inflight.delete(card.id);
@@ -282,6 +282,11 @@ export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
             img.onerror = null;
           };
           img.src = urlResult.value;
+        } else {
+          logger.warn(
+            `Preload skipped: invalid URL for card: ${card.id}`,
+            urlResult.error
+          );
         }
       }
       currentIndex++;
