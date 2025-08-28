@@ -23,6 +23,11 @@ type ExportError =
       readonly originalError: unknown;
     }
   | {
+      readonly type: "concurrency";
+      readonly message: string;
+      readonly originalError: unknown;
+    }
+  | {
       readonly type: "unknown";
       readonly message: string;
       readonly originalError: unknown;
@@ -44,9 +49,11 @@ const redactUrl = (src?: string): string => {
   }
 };
 
-const IMAGE_LOAD_TIMEOUT_MS = Number(
-  import.meta.env.VITE_IMAGE_LOAD_TIMEOUT_MS ?? 8000,
-);
+const IMAGE_LOAD_TIMEOUT_MS = (() => {
+  const raw = import.meta.env.VITE_IMAGE_LOAD_TIMEOUT_MS;
+  const n = Number.parseInt(String(raw ?? ""), 10);
+  return Number.isFinite(n) && n > 0 ? n : 8000;
+})();
 export const useExportStore = defineStore("export", () => {
   const isSaving = ref<boolean>(false);
 
@@ -68,7 +75,7 @@ export const useExportStore = defineStore("export", () => {
       let hasErrorOccurred = false;
       const stops: Array<() => void> = [];
 
-      const timeoutId = window.setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         if (hasErrorOccurred) return;
         hasErrorOccurred = true;
         cleanupListeners();
@@ -83,7 +90,7 @@ export const useExportStore = defineStore("export", () => {
 
       const cleanupListeners = () => {
         for (const stop of stops) stop();
-        window.clearTimeout(timeoutId);
+        clearTimeout(timeoutId);
         stops.length = 0;
       };
 
@@ -134,6 +141,10 @@ export const useExportStore = defineStore("export", () => {
           handleAlreadyBroken(img);
         } else {
           // まだ読み込み中の画像
+          // lazy だとロードが進みづらいので即時ロードを促進
+          if ("loading" in img && img.loading === "lazy") {
+            img.loading = "eager";
+          }
           const offLoad = useEventListener(img, "load", checkComplete, {
             once: true,
           });
@@ -155,7 +166,7 @@ export const useExportStore = defineStore("export", () => {
   ): Promise<Result<void, ExportError>> => {
     if (isSaving.value) {
       return err({
-        type: "unknown",
+        type: "concurrency",
         message: "現在エクスポート処理中です。完了後に再度お試しください。",
         originalError: null,
       });
@@ -177,6 +188,7 @@ export const useExportStore = defineStore("export", () => {
       // すべての画像の読み込み完了を待つ
       const imageLoadResult = await waitForImagesLoaded(exportContainer);
       if (imageLoadResult.isErr()) {
+        logger.error("画像の読み込みに失敗しました:", imageLoadResult.error);
         return imageLoadResult; // 画像読み込みエラーを伝播
       }
 

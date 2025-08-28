@@ -7,7 +7,7 @@ import {
   saveDeckName,
   loadDeckName,
   resetDeckCardsInLocalStorage,
-  removeDeckNameFromLocalStorage,
+  resetDeckNameInLocalStorage,
   createVersionedState,
   createArraySortMemo,
   createErrorHandler,
@@ -225,7 +225,7 @@ export const useDeckStore = defineStore("deck", () => {
    */
   const resetDeckName = () => {
     deckName.value = "新しいデッキ";
-    removeDeckNameFromLocalStorage();
+    resetDeckNameInLocalStorage();
   };
 
   /**

@@ -64,7 +64,7 @@ export const useCardsStore = defineStore("cards", () => {
       // HTTP エラー: "HTTP error! status: <code>"
       const statusMatch = errorMessage.match(/^HTTP error! status:\s+(\d+)/);
       if (statusMatch) {
-        const status = statusMatch ? parseInt(statusMatch[1]) : 500;
+        const status = parseInt(statusMatch[1], 10);
         return {
           type: "fetch",
           status,
@@ -73,8 +73,8 @@ export const useCardsStore = defineStore("cards", () => {
       }
       // パース系
       if (
-        errorMessage.includes("CSVデータが空です。") ||
-        errorMessage.includes("CSVパースエラー:")
+        errorMessage.startsWith("CSVデータが空です。") ||
+        errorMessage.startsWith("CSVパースエラー:")
       ) {
         return {
           type: "parse",
@@ -93,7 +93,7 @@ export const useCardsStore = defineStore("cards", () => {
         };
       }
       // ネットワーク系
-      if (errorMessage.includes("ネットワークエラー:")) {
+      if (errorMessage.startsWith("ネットワークエラー:")) {
         return {
           type: "fetch",
           status: 0, // ネットワークエラーはHTTPステータスがないため0
@@ -310,7 +310,9 @@ export const useCardsStore = defineStore("cards", () => {
       if (csvLoadResult.isErr()) {
         const mapped = mapErrorToCardStoreError(csvLoadResult.error);
         error.value = mapped;
-        logger.error("カードデータの読み込みエラー:", mapped);
+        logger.error("カードデータの読み込みエラー:", mapped, {
+          cause: csvLoadResult.error,
+        });
         return;
       }
       const validCards = validateCards(csvLoadResult.value);
@@ -318,7 +320,9 @@ export const useCardsStore = defineStore("cards", () => {
       if (ensured.isErr()) {
         const mapped = mapErrorToCardStoreError(ensured.error);
         error.value = mapped;
-        logger.error("カードデータの読み込みエラー:", mapped);
+        logger.error("カードデータの読み込みエラー:", mapped, {
+          cause: ensured.error,
+        });
         return;
       }
       // 成功パス

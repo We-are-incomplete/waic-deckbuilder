@@ -61,12 +61,41 @@ const deckCardsStorage = useLocalStorage<
   serializer: {
     read: (raw: string): readonly { id: string; count: number }[] => {
       const parsed = fromThrowable(JSON.parse)(raw);
-      if (parsed.isOk()) return parsed.value as { id: string; count: number }[];
-      logger.error(
-        "ローカルストレージのデッキカードの JSON 解析に失敗しました",
-        parsed.error,
-      );
-      // 例外は投げず、空配列でフォールバック（後段のバリデーションで健全化）
+      if (parsed.isOk()) {
+        const data = parsed.value as unknown;
+        const isValidArray =
+          Array.isArray(data) &&
+          data.every(
+            (x) =>
+              x &&
+              typeof x === "object" &&
+              typeof (x as any).id === "string" &&
+              Number.isFinite((x as any).count),
+          );
+        if (isValidArray) {
+          return data as { id: string; count: number }[];
+        }
+        logger.warn(
+          "ローカルストレージのデッキカードが想定スキーマではありません。初期化します。",
+          data,
+        );
+      } else {
+        logger.error(
+          "ローカルストレージのデッキカードの JSON 解析に失敗しました",
+          parsed.error,
+        );
+      }
+      // 解析/検証失敗時は破損データが残らないよう既定値で上書きする
+      try {
+        if (typeof window !== "undefined" && window.localStorage) {
+          window.localStorage.setItem(
+            STORAGE_KEYS.DECK_CARDS,
+            JSON.stringify([]),
+          );
+        }
+      } catch {
+        // noop: リセットに失敗しても空配列で返す
+      }
       return [] as { id: string; count: number }[];
     },
     write: (value: readonly { id: string; count: number }[]) =>
@@ -179,7 +208,7 @@ export const loadDeckName = (): Result<string, StorageError> => {
  */
 export const resetDeckCardsInLocalStorage = (): Result<void, StorageError> => {
   try {
-    deckCardsStorage.value = [] as { id: string; count: number }[];
+    deckCardsStorage.value = [] as readonly { id: string; count: number }[];
     return ok(undefined);
   } catch (e) {
     logger.error("デッキカードのリセットに失敗しました", e, []);
@@ -188,12 +217,9 @@ export const resetDeckCardsInLocalStorage = (): Result<void, StorageError> => {
 };
 
 /**
- * デッキ名をローカルストレージからで既定値（"新しいデッキ"）にリセット
+ * デッキ名をローカルストレージの既定値（"新しいデッキ"）にリセット
  */
-export const removeDeckNameFromLocalStorage = (): Result<
-  void,
-  StorageError
-> => {
+export const resetDeckNameInLocalStorage = (): Result<void, StorageError> => {
   try {
     deckNameStorage.value = "新しいデッキ";
     return ok(undefined);
