@@ -41,17 +41,24 @@ export const deserializeDeckCards = (
     availableCards.map((c) => [c.id, c] as const),
   );
 
-  return serializedDeck
-    .map((item) => {
-      // count を 1..∞ の整数に制限
-      const safeCount =
-        Number.isInteger(item.count) && item.count > 0 ? item.count : 0;
-      const card = availableCardsMap.get(item.id);
-      // 上限を防御的にクランプ（GAME_CONSTANTS.MAX_CARD_COPIES を使用）
-      const clamped = Math.min(safeCount, GAME_CONSTANTS.MAX_CARD_COPIES);
-      return card && clamped > 0 ? { card, count: clamped } : null;
-    })
-    .filter((item: DeckCard | null): item is DeckCard => item !== null);
+  // 1) 同一IDを合算（不正値は0として除外）し、都度クランプ
+  const aggregated = new Map<string, number>();
+  for (const item of serializedDeck) {
+    const n = Number.isInteger(item.count) && item.count > 0 ? item.count : 0;
+    if (n === 0) continue;
+    const next = Math.min(
+      (aggregated.get(item.id) ?? 0) + n,
+      GAME_CONSTANTS.MAX_CARD_COPIES,
+    );
+    aggregated.set(item.id, next);
+  }
+  // 2) 実在カードのみDeckCardへ復元
+  const out: DeckCard[] = [];
+  for (const [id, count] of aggregated) {
+    const card = availableCardsMap.get(id);
+    if (card && count > 0) out.push({ card, count });
+  }
+  return out;
 };
 
 // useLocalStorage を使用してデッキカードを管理
@@ -101,6 +108,7 @@ const deckCardsStorage = useLocalStorage<
     write: (value: readonly { id: string; count: number }[]) =>
       JSON.stringify(value),
   },
+  writeDefaults: true,
 });
 
 // useLocalStorage を使用してデッキ名を管理
@@ -199,7 +207,11 @@ export const loadDeckName = (): Result<string, StorageError> => {
     return ok(name || "新しいデッキ");
   } catch (e) {
     logger.error("デッキ名の読み込みに失敗しました", e);
-    return ok("新しいデッキ");
+    return err({
+      type: "parseError",
+      key: STORAGE_KEYS.DECK_NAME,
+      data: String(e),
+    });
   }
 };
 

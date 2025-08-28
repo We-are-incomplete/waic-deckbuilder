@@ -89,9 +89,14 @@ const hasCacheEntry = (key: string): boolean => {
   if (!key) {
     return false;
   }
-  const exists = cacheState.cache.has(key);
-  if (exists) touchCacheKey(key);
-  return exists;
+  return cacheState.cache.has(key);
+};
+
+export const getCachedImage = (key: string): HTMLImageElement | undefined => {
+  const entry = cacheState.cache.get(key);
+  if (!entry) return undefined;
+  touchCacheKey(key);
+  return entry.image;
 };
 
 /**
@@ -106,6 +111,11 @@ const evictIfNecessary = (): void => {
     cacheState.cache.delete(oldestKey);
   }
 };
+
+const getNormalizedBaseUrl = (): string =>
+  import.meta.env.BASE_URL.endsWith("/")
+    ? import.meta.env.BASE_URL
+    : `${import.meta.env.BASE_URL}/`;
 
 /**
  * 古いエントリーをクリーンアップ
@@ -172,10 +182,7 @@ export const getCardImageUrl = (cardId: string): Result<string, string> => {
     return err("カードIDが指定されていません");
   }
 
-  const base = import.meta.env.BASE_URL.endsWith("/")
-    ? import.meta.env.BASE_URL
-    : `${import.meta.env.BASE_URL}/`;
-  return ok(`${base}cards/${encodeURIComponent(cardId)}.avif`);
+  return ok(`${getNormalizedBaseUrl()}cards/${encodeURIComponent(cardId)}.avif`);
 };
 
 /**
@@ -188,7 +195,7 @@ export const getCardImageUrlSafe = (cardId: string): string => {
   }
   // エラーをログに記録
   logger.warn(`Failed to get image URL for card: ${cardId}`, result.error);
-  return `${import.meta.env.BASE_URL}placeholder.avif`; // エラー時はプレースホルダー画像を返す
+  return `${getNormalizedBaseUrl()}placeholder.avif`;
 };
 
 /**
@@ -204,7 +211,7 @@ export const handleImageError = (event: Event): Result<void, string> => {
     return err("イベントターゲットが画像要素ではありません");
   }
 
-  target.src = `${import.meta.env.BASE_URL}placeholder.avif`;
+  target.src = `${getNormalizedBaseUrl()}placeholder.avif`;
   target.onerror = null;
 
   return ok(undefined);

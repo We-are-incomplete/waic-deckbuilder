@@ -7,7 +7,7 @@ import { defineStore } from "pinia";
 import { ref, nextTick, readonly } from "vue";
 import html2canvas from "html2canvas-pro";
 import { generateFileName, downloadCanvas, logger } from "../utils";
-import { ok, err, fromPromise, type Result } from "neverthrow";
+import { ok, err, fromPromise, fromThrowable, type Result } from "neverthrow";
 import { useEventListener } from "@vueuse/core";
 
 // エクスポートストア専用のエラー型
@@ -44,6 +44,9 @@ const redactUrl = (src?: string): string => {
     const u = new URL(src, base);
     if (u.protocol === "blob:") return "(blob)";
     if (u.protocol === "data:") return "(data-uri)";
+  if (u.protocol !== "http:" && u.protocol !== "https:") {
+    return `(${u.protocol.replace(":", "")})`;
+  }
     const file = u.pathname.split("/").pop();
     return file || "(image)";
   } catch {
@@ -66,7 +69,7 @@ export const useExportStore = defineStore("export", () => {
     container: HTMLElement,
   ): Promise<Result<void, ExportError>> => {
     return new Promise((resolve) => {
-      const images = container.querySelectorAll("img");
+      const images = container.querySelectorAll<HTMLImageElement>("img");
 
       if (images.length === 0) {
         resolve(ok(undefined));
@@ -77,7 +80,15 @@ export const useExportStore = defineStore("export", () => {
       let hasErrorOccurred = false;
       const stops: Array<() => void> = [];
 
-      const timeoutId = setTimeout(() => {
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+      const cleanupListeners = () => {
+        for (const stop of stops) stop();
+        if (timeoutId) clearTimeout(timeoutId);
+        stops.length = 0;
+      };
+
+      timeoutId = setTimeout(() => {
         if (hasErrorOccurred) return;
         hasErrorOccurred = true;
         cleanupListeners();
@@ -89,12 +100,6 @@ export const useExportStore = defineStore("export", () => {
           }),
         );
       }, IMAGE_LOAD_TIMEOUT_MS);
-
-      const cleanupListeners = () => {
-        for (const stop of stops) stop();
-        clearTimeout(timeoutId);
-        stops.length = 0;
-      };
 
       const checkComplete = () => {
         if (hasErrorOccurred) return;
@@ -199,7 +204,7 @@ export const useExportStore = defineStore("export", () => {
         html2canvas(exportContainer, {
           scale:
             typeof window !== "undefined"
-              ? Math.max(1, window.devicePixelRatio || 1)
+              ? Math.min(2, Math.max(1, window.devicePixelRatio || 1))
               : 1,
           useCORS: true,
           logging: false,
@@ -214,9 +219,20 @@ export const useExportStore = defineStore("export", () => {
       if (canvasResult.isErr()) return err(canvasResult.error);
       const canvas = canvasResult.value;
 
-      // ダウンロード
+      // ダウンロード（fromThrowableでラップ）
       const filename = generateFileName(deckName);
-      downloadCanvas(canvas, filename);
+      const download = fromThrowable(
+        downloadCanvas,
+        (e): ExportError => ({
+          type: "unknown",
+          message: "デッキ画像の保存に失敗しました",
+          originalError: e,
+        }),
+      );
+      const dl = download(canvas, filename);
+      if (dl.isErr()) {
+        return err(dl.error);
+      }
 
       logger.info(`デッキ画像を保存しました: ${filename}`);
     } catch (e) {

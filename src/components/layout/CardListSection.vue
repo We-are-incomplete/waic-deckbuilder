@@ -1,3 +1,10 @@
++<!--
++  CardListSection.vue
++  目的: カード一覧の表示/クリック操作(追加・枚数増加)と画像の長押し拡大を提供する純UI層
++  入力: Props.availableCards, sortedAndFilteredCards, deckCards, isLoading, error
++  出力: Emits(openFilter, addCard, incrementCard, decrementCard, openImageModal)
++  留意: ドメイン制約(MAX_CARD_COPIES)は表示制御のみで、最終判定は親/ドメイン層に委譲
++-->
 <script setup lang="ts">
 import { reactive, watchEffect, computed } from "vue";
 import { GAME_CONSTANTS } from "../../constants";
@@ -266,6 +273,7 @@ watchEffect((onCleanup) => {
             @click="emit('incrementCard', card.id)"
             class="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-full flex items-center justify-center leading-none transition-all duration-200 shadow-lg hover:shadow-emerald-500/25 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed"
             :disabled="getCardInDeck(card.id) >= GAME_CONSTANTS.MAX_CARD_COPIES"
+            :aria-disabled="getCardInDeck(card.id) >= GAME_CONSTANTS.MAX_CARD_COPIES"
           >
             <svg
               class="w-3 h-3 sm:w-4 sm:h-4"

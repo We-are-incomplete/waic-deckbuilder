@@ -220,18 +220,24 @@ export const useDeckStore = defineStore("deck", () => {
     flush: () => void;
     cancel: () => void;
   };
-  const debouncedSave = useDebounceFn(
-    (cards: DeckCard[]) => {
-      saveDeckToLocalStorage(cards);
-    },
+const debouncedSave = useDebounceFn(
+  (cards: DeckCard[]) => {
+    const r = saveDeckToLocalStorage(cards);
+    if (r.isErr()) {
+      errorHandler.handleRuntimeError("デッキの保存に失敗しました", r.error);
+    }
+  },
     500,
     { maxWait: 2000 },
   ) as unknown as FlushableFn<[DeckCard[]]>;
 
-  const debouncedSaveName = useDebounceFn(
-    (name: string) => {
-      saveDeckName(name);
-    },
+const debouncedSaveName = useDebounceFn(
+  (name: string) => {
+    const r = saveDeckName(name);
+    if (r.isErr()) {
+      errorHandler.handleRuntimeError("デッキ名の保存に失敗しました", r.error);
+    }
+  },
     500,
     { maxWait: 2000 },
   ) as unknown as FlushableFn<[string]>;
@@ -257,8 +263,10 @@ export const useDeckStore = defineStore("deck", () => {
     // 念のため後続の遅延保存を打ち切る
     debouncedSave.cancel?.();
     debouncedSaveName.cancel?.();
-    saveDeckToLocalStorage(deckCards.value);
-    saveDeckName(deckName.value);
+  const r1 = saveDeckToLocalStorage(deckCards.value);
+  if (r1.isErr()) errorHandler.handleRuntimeError("デッキの即時保存に失敗しました", r1.error);
+  const r2 = saveDeckName(deckName.value);
+  if (r2.isErr()) errorHandler.handleRuntimeError("デッキ名の即時保存に失敗しました", r2.error);
   };
 
   // ブラウザ環境でのみイベントリスナーを設定
