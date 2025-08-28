@@ -1,8 +1,13 @@
+/**
+ * エクスポートストアの仕様
+ * 目的: デッキDOMをPNGとして保存する。副作用(I/O)はこの層に集約し、外部例外は neverthrow の Result で返す。
+ * 範囲: 画像読み込み待ち・タイムアウト・イベントクリーンアップの整合性保証。
+ */
 import { defineStore } from "pinia";
 import { ref, nextTick, readonly } from "vue";
 import html2canvas from "html2canvas-pro";
 import { generateFileName, downloadCanvas, logger } from "../utils";
-import { ok, err, type Result } from "neverthrow";
+import { ok, err, fromPromise, type Result } from "neverthrow";
 import { useEventListener } from "@vueuse/core";
 
 // エクスポートストア専用のエラー型
@@ -22,6 +27,18 @@ type ExportError =
       readonly message: string;
       readonly originalError: unknown;
     };
+
+// URLをユーザー表示/ログ向けに簡易マスク
+const redactUrl = (src?: string): string => {
+  if (!src) return "不明な画像";
+  try {
+    const u = new URL(src, window.location.href);
+    const file = u.pathname.split("/").pop();
+    return file || "(image)";
+  } catch {
+    return src.length > 120 ? src.slice(0, 120) + "…" : src;
+  }
+};
 
 export const useExportStore = defineStore("export", () => {
   const isSaving = ref<boolean>(false);
@@ -60,7 +77,8 @@ export const useExportStore = defineStore("export", () => {
 
       const cleanupListeners = () => {
         for (const stop of stops) stop();
-        clearTimeout(timeoutId);
+        window.clearTimeout(timeoutId);
+        stops.length = 0;
       };
 
       const checkComplete = () => {
@@ -80,9 +98,9 @@ export const useExportStore = defineStore("export", () => {
         resolve(
           err({
             type: "imageLoad",
-            message: `画像の読み込みに失敗しました: ${
-              (error.target as HTMLImageElement)?.src || "不明な画像"
-            }`,
+            message: `画像の読み込みに失敗しました: ${redactUrl(
+              (error.target as HTMLImageElement)?.src,
+            )}`,
             originalError: error,
           }),
         );
@@ -95,14 +113,14 @@ export const useExportStore = defineStore("export", () => {
         resolve(
           err({
             type: "imageLoad",
-            message: `画像の読み込みに失敗しました: ${img.src || "不明な画像"}`,
+            message: `画像の読み込みに失敗しました: ${redactUrl(img.src)}`,
             originalError: new Error("already-complete-broken"),
           }),
         );
       };
 
       images.forEach((img) => {
-        if (img.complete && img.naturalHeight !== 0) {
+        if (img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
           // 既に読み込み済みの画像
           checkComplete();
         } else if (img.complete) {
@@ -149,13 +167,22 @@ export const useExportStore = defineStore("export", () => {
         return imageLoadResult; // 画像読み込みエラーを伝播
       }
 
-      // Canvas生成
-      const canvas = await html2canvas(exportContainer, {
-        scale: 1,
-        useCORS: true,
-        logging: false,
-        allowTaint: true,
-      });
+      // Canvas生成 (neverthrow でラップ)
+      const canvasResult = await fromPromise(
+        html2canvas(exportContainer, {
+          scale: 1,
+          useCORS: true,
+          logging: false,
+          allowTaint: false,
+        }),
+        (e): ExportError => ({
+          type: "html2canvas",
+          message: "デッキ画像の保存に失敗しました",
+          originalError: e,
+        }),
+      );
+      if (canvasResult.isErr()) return err(canvasResult.error);
+      const canvas = canvasResult.value;
 
       // ダウンロード
       const filename = generateFileName(deckName);

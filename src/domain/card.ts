@@ -59,6 +59,18 @@ export const createCard = (
     }
   }
 
+  // 空配列/重複チェック
+  if (type.length === 0) {
+    return err({
+      type: "invalidType",
+      cardType: undefined as unknown as CardType,
+    });
+  }
+  if (new Set(type).size !== type.length) {
+    // 重複を許容しない方針ならエラー、許容なら正規化しても良い
+    return err({ type: "invalidType", cardType: type[0] });
+  }
+
   // タグ検証
   let finalTags: readonly string[] | undefined = undefined;
   const processedTags = tags

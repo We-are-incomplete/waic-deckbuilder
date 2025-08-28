@@ -120,7 +120,7 @@ export const loadDeckFromLocalStorage = (
       JSON.stringify(deckCardsStorage.value),
     );
     // エラー時はデッキカードのみクリーンアップ（デッキ名は保持）
-    resetDeckNameInLocalStorage();
+    resetDeckCardsInLocalStorage();
     return err({
       type: "parseError",
       key: STORAGE_KEYS.DECK_CARDS,
@@ -166,7 +166,7 @@ export const loadDeckName = (): Result<string, StorageError> => {
 /**
  * デッキ名をローカルストレージで既定値にリセット
  */
-export const resetDeckNameInLocalStorage = (): Result<void, StorageError> => {
+export const resetDeckCardsInLocalStorage = (): Result<void, StorageError> => {
   try {
     deckCardsStorage.value = [];
     return ok(undefined);

@@ -5,6 +5,7 @@ import { GAME_CONSTANTS } from "../../constants";
 import { getCardImageUrlSafe, handleImageError } from "../../utils";
 import { useDeckOperations } from "../../composables/useDeckOperations";
 import { useDeckStore } from "../../stores";
+import { storeToRefs } from "pinia";
 import { onLongPress } from "@vueuse/core";
 
 // Vue 3.5の新機能: 改善されたdefineProps with better TypeScript support
@@ -34,10 +35,8 @@ const {
 } = useDeckOperations();
 
 // 計算プロパティ（ストアから直接取得）- Vue 3.5の改善されたreactivity
-const deckCards = deckStore.deckCards;
-const deckName = deckStore.deckName;
-const sortedDeckCards = deckStore.sortedDeckCards;
-const totalDeckCards = deckStore.totalDeckCards;
+const { deckCards, deckName, sortedDeckCards, totalDeckCards } =
+  storeToRefs(deckStore);
 
 // デッキ名の更新（ストアメソッドを直接使用）
 const updateDeckName = (value: string) => {
@@ -70,7 +69,7 @@ const setDeckCardRef = (el: unknown, cardId: string) => {
 
 watchEffect((onCleanup) => {
   const stops: Function[] = [];
-  sortedDeckCards.forEach((item) => {
+  sortedDeckCards.value.forEach((item) => {
     const el = deckCardRefs.value.get(item.card.id);
     if (el) {
       const stop = onLongPress(el, () => openImageModal(item.card.id), {
@@ -234,14 +233,16 @@ defineExpose({
         >
           {{ totalDeckCards }}
         </span>
-        <span class="text-xs text-slate-400">/ 60</span>
+        <span class="text-xs text-slate-400"
+          >/ {{ GAME_CONSTANTS.MAX_DECK_SIZE }}</span
+        >
 
         <div class="w-12 sm:w-16 h-1 bg-slate-700 rounded-full overflow-hidden">
           <div
             class="h-full transition-all duration-300 rounded-full"
             :class="getDeckProgressColor(totalDeckCards)"
             :style="{
-              width: `${Math.min((totalDeckCards / 60) * 100, 100)}%`,
+              width: `${Math.min((totalDeckCards / GAME_CONSTANTS.MAX_DECK_SIZE) * 100, 100)}%`,
             }"
           ></div>
         </div>

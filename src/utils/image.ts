@@ -172,9 +172,10 @@ export const getCardImageUrl = (cardId: string): Result<string, string> => {
     return err("カードIDが指定されていません");
   }
 
-  return ok(
-    `${import.meta.env.BASE_URL}cards/${encodeURIComponent(cardId)}.avif`,
-  );
+  const base = import.meta.env.BASE_URL.endsWith("/")
+    ? import.meta.env.BASE_URL
+    : `${import.meta.env.BASE_URL}/`;
+  return ok(`${base}cards/${encodeURIComponent(cardId)}.avif`);
 };
 
 /**

@@ -291,42 +291,37 @@ export const useCardsStore = defineStore("cards", () => {
     isLoading.value = true;
     error.value = null;
 
-    const csvLoadResult = await loadCardsFromCsv(
-      `${import.meta.env.BASE_URL}cards.csv`,
-    );
-    const finalResult = csvLoadResult
-      .andThen((rawCards) => {
-        const validCards = validateCards(rawCards);
-        return ensureValidCards(validCards);
-      })
-      .andThen((checkedCards) => {
-        // キャッシュバージョンを先に更新（新しいデータ設定前に）
-        cardsVersion.value++;
-
-        // ストアに設定
-        availableCards.value = readonly(checkedCards);
-
-        // キャッシュの更新
-        updateCaches(checkedCards);
-
-        // 画像プリロード（非同期、エラーでも続行）
-        const preloadResult = preloadImages(checkedCards);
-        if (preloadResult.isErr()) {
-          logger.warn("画像のプリロードに失敗しました:", preloadResult.error);
-          // プリロードの失敗は致命的ではないので続行
-        }
-
-        logger.info(`${checkedCards.length}枚のカードを読み込みました`);
-        return ok(undefined); // 成功を示す
-      })
-      .mapErr(mapErrorToCardStoreError); // ここでエラーをマッピング
-
-    if (finalResult.isErr()) {
-      error.value = finalResult.error;
-      logger.error("カードデータの読み込みエラー:", finalResult.error);
+    try {
+      const csvLoadResult = await loadCardsFromCsv(
+        `${import.meta.env.BASE_URL}cards.csv`,
+      );
+      if (csvLoadResult.isErr()) {
+        const mapped = mapErrorToCardStoreError(csvLoadResult.error);
+        error.value = mapped;
+        logger.error("カードデータの読み込みエラー:", mapped);
+        return;
+      }
+      const validCards = validateCards(csvLoadResult.value);
+      const ensured = ensureValidCards(validCards);
+      if (ensured.isErr()) {
+        const mapped = mapErrorToCardStoreError(ensured.error);
+        error.value = mapped;
+        logger.error("カードデータの読み込みエラー:", mapped);
+        return;
+      }
+      // 成功パス
+      cardsVersion.value++;
+      const checkedCards = ensured.value;
+      availableCards.value = readonly(checkedCards);
+      updateCaches(checkedCards);
+      const preloadResult = preloadImages(checkedCards);
+      if (preloadResult.isErr()) {
+        logger.warn("画像のプリロードに失敗しました:", preloadResult.error);
+      }
+      logger.info(`${checkedCards.length}枚のカードを読み込みました`);
+    } finally {
+      isLoading.value = false;
     }
-
-    isLoading.value = false;
   };
 
   /**

@@ -6,7 +6,7 @@ import {
   loadDeckFromLocalStorage,
   saveDeckName,
   loadDeckName,
-  resetDeckNameInLocalStorage,
+  resetDeckCardsInLocalStorage,
   removeDeckNameFromLocalStorage,
   createVersionedState,
   createArraySortMemo,
@@ -211,7 +211,7 @@ export const useDeckStore = defineStore("deck", () => {
    */
   const resetDeckCards = () => {
     updateDeckCardsWithVersion([]);
-    resetDeckNameInLocalStorage();
+    resetDeckCardsInLocalStorage();
   };
 
   /**
@@ -231,13 +231,17 @@ export const useDeckStore = defineStore("deck", () => {
 
   // Vue 3.5の新機能: より効率的なデバウンス処理
   // maxWaitオプションで最大待機時間を制限し、ページアンロード時の保存漏れを防ぐ
+  type FlushableFn<T extends any[]> = ((...args: T) => void) & {
+    flush: () => void;
+    cancel: () => void;
+  };
   const debouncedSave = useDebounceFn(
     (cards: DeckCard[]) => {
       saveDeckToLocalStorage(cards);
     },
     500,
     { maxWait: 2000 },
-  );
+  ) as unknown as FlushableFn<[DeckCard[]]>;
 
   const debouncedSaveName = useDebounceFn(
     (name: string) => {
@@ -245,7 +249,7 @@ export const useDeckStore = defineStore("deck", () => {
     },
     500,
     { maxWait: 2000 },
-  );
+  ) as unknown as FlushableFn<[string]>;
 
   // Vue 3.5最適化: watchEffect for better side effect management
   watch(
@@ -263,12 +267,11 @@ export const useDeckStore = defineStore("deck", () => {
   // ページアンロード時の保存保証
   const handleBeforeUnload = () => {
     // 未処理のデバウンスを反映/無効化してから直接保存
-    type Flushable = { flush?: () => void; cancel?: () => void };
-    (debouncedSave as unknown as Flushable).flush?.();
-    (debouncedSaveName as unknown as Flushable).flush?.();
+    debouncedSave.flush?.();
+    debouncedSaveName.flush?.();
     // 念のため後続の遅延保存を打ち切る
-    (debouncedSave as unknown as Flushable).cancel?.();
-    (debouncedSaveName as unknown as Flushable).cancel?.();
+    debouncedSave.cancel?.();
+    debouncedSaveName.cancel?.();
     saveDeckToLocalStorage(deckCards.value);
     saveDeckName(deckName.value);
   };

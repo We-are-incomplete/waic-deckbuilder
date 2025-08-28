@@ -37,7 +37,7 @@ export function useFilterHelpers(filterCriteria: ComputedRef<FilterCriteria>) {
     const criteria = filterCriteria.value;
     let count = 0;
 
-    if (criteria.text?.trim()) count++;
+    if (criteria.text.trim()) count++;
     count += criteria.kind.length;
     count += criteria.type.length;
     count += criteria.tags.length;
