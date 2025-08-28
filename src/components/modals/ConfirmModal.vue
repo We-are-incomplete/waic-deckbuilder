@@ -3,7 +3,6 @@
     v-if="isVisible"
     class="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000] animate-fadeIn"
     @click="onBackdropClick"
-    @keydown.esc="onCancel"
     tabindex="0"
     role="dialog"
     aria-modal="true"
@@ -52,7 +51,7 @@
 
 <script setup lang="ts">
 import { watch } from "vue";
-import { useEventListener } from "@vueuse/core";
+import { useEventListener, useScrollLock } from "@vueuse/core";
 
 interface Props {
   isVisible: boolean;
@@ -101,14 +100,11 @@ useEventListener(document, "keydown", (event: KeyboardEvent) => {
 });
 
 // モーダルの表示状態に応じてbodyのスクロールを制御
+const isLocked = useScrollLock(document.body);
 watch(
   () => props.isVisible,
-  (newVal) => {
-    if (newVal) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+  (v) => {
+    isLocked.value = v;
   },
   { immediate: true },
 );

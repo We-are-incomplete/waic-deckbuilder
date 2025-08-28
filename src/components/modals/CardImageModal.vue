@@ -97,6 +97,7 @@ const hasNextCard = computed(() => {
 
 // useSwipeの適用
 useSwipe(imageContainer, {
+  threshold: 40,
   onSwipeEnd(_, direction) {
     if (direction === "left" && hasNextCard.value) {
       navigateToNext();

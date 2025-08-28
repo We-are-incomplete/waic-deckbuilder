@@ -1,4 +1,8 @@
 <script setup lang="ts">
+// App.vue
+// 画面全体のレイアウトと各ストア/セクション/モーダルの配線を担うコンテナ。
+// 初期化（カード読込・デッキ生成）とキャッシュ掃除などの副作用を集約し、
+// 画像モーダルには deckCards を外部参照として渡してスワイプナビゲーションの基準を統一する。
 import { onMounted, computed, useTemplateRef, watch } from "vue";
 import { useIntervalFn } from "@vueuse/core";
 

@@ -199,7 +199,7 @@ export const useDeckStore = defineStore("deck", () => {
   /**
    * Vue 3.5最適化: デッキカードを設定
    */
-  const setDeckCards = (cards: DeckCard[]) => {
+  const setDeckCards = (cards: readonly DeckCard[]) => {
     updateDeckCardsWithVersion(cards);
   };
 
@@ -259,7 +259,11 @@ export const useDeckStore = defineStore("deck", () => {
 
   // ページアンロード時の保存保証
   const handleBeforeUnload = () => {
-    // デバウンス関数をバイパスして直接保存処理を実行
+    // 未処理のデバウンスを反映/無効化してから直接保存
+    // @ts-expect-error VueUseの戻り値はflush/cancelを持つ
+    debouncedSave.flush?.();
+    // @ts-expect-error
+    debouncedSaveName.flush?.();
     saveDeckToLocalStorage(deckCards.value);
     saveDeckName(deckName.value);
   };
@@ -267,6 +271,12 @@ export const useDeckStore = defineStore("deck", () => {
   // ブラウザ環境でのみイベントリスナーを設定
   if (typeof window !== "undefined") {
     useEventListener(window, "beforeunload", handleBeforeUnload);
+    useEventListener(window, "pagehide", handleBeforeUnload);
+    if (typeof document !== "undefined") {
+      useEventListener(document, "visibilitychange", () => {
+        if (document.visibilityState === "hidden") handleBeforeUnload();
+      });
+    }
   }
 
   return {

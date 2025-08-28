@@ -10,7 +10,6 @@ import {
 } from "../utils";
 import { GAME_CONSTANTS } from "../constants";
 import { useDeckStore } from "./deck";
-
 import { sortDeckCards } from "../domain/sort";
 import { useClipboard } from "@vueuse/core";
 
@@ -24,7 +23,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
   const error = ref<DeckCodeError | null>(null);
   const deckStore = useDeckStore();
 
-  const { copy: copyToClipboard } = useClipboard();
+  const { copy: copyToClipboard, isSupported } = useClipboard();
 
   /**
    * デッキコードを生成
@@ -92,6 +91,21 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
     error.value = null;
     const codeToCopy =
       codeType === "slash" ? slashDeckCode.value : kcgDeckCode.value;
+
+    if (!codeToCopy) {
+      const msg = `${codeType === "slash" ? "スラッシュ区切り" : "KCG形式"}デッキコードが空です`;
+      logger.warn(msg);
+      error.value = { type: "copy", message: msg };
+      return;
+    }
+
+    if (!isSupported.value) {
+      const msg =
+        "この環境ではクリップボードへのコピーがサポートされていません";
+      logger.warn(msg);
+      error.value = { type: "copy", message: msg };
+      return;
+    }
 
     try {
       await copyToClipboard(codeToCopy);

@@ -2,12 +2,12 @@
  * useImageModal: 画像モーダルの状態管理と（デッキ基準の）ナビゲーションを提供するコンポーザブル
  * 仕様:
  * - selectedIndex: デッキに存在しないカードは null
- * - ナビゲーション対象: deckStore.deckCards（表示順に合わせる場合は sortedDeckCards を採用）
+ * - ナビゲーション対象: 引数で受け取る sortedDeckCards（外部から提供されるリアクティブ配列）
  * - 外部I/O: 画像URLキャッシュ(globalImageUrlCache)のみ／例外は発生させない
  */
-import { shallowRef, computed, triggerRef, type Ref } from "vue";
+import { shallowRef, computed, triggerRef, watch, type Ref } from "vue";
 import type { Card, DeckCard } from "../types";
-import { getCardImageUrlSafe } from "../utils";
+import { getCardImageUrlSafe, logger } from "../utils";
 import { globalImageUrlCache } from "../utils/cache";
 import { useCardsStore } from "../stores/cards"; // useCardsStore をインポート
 
@@ -77,7 +77,7 @@ export function useImageModal(sortedDeckCards: Ref<readonly DeckCard[]>) {
         isVisible: true,
       });
     } else {
-      console.warn("[useImageModal] カード未検出", { cardId });
+      logger.warn("[useImageModal] カード未検出", { cardId });
     }
   };
 
@@ -129,6 +129,27 @@ export function useImageModal(sortedDeckCards: Ref<readonly DeckCard[]>) {
   const selectedCard = computed(() => imageModalState.value.selectedCard);
   const selectedImage = computed(() => imageModalState.value.selectedImage);
   const selectedIndex = computed(() => imageModalState.value.selectedIndex);
+
+  // モーダル表示中にデッキが変わった場合の追従
+  watch(
+    () => sortedDeckCards.value,
+    (cards) => {
+      if (
+        !imageModalState.value.isVisible ||
+        !imageModalState.value.selectedCard
+      )
+        return;
+      const id = imageModalState.value.selectedCard.id;
+      const idx = cards.findIndex((dc) => dc.card.id === id);
+      if (idx === -1) {
+        // 現在のカードがデッキから消えた場合はクローズ（または最寄りに移動する等の仕様も可）
+        closeImageModal();
+      } else {
+        updateImageModalState({ selectedIndex: idx });
+      }
+    },
+    { deep: false },
+  );
 
   return {
     // 状態

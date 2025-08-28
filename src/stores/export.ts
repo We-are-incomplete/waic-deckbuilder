@@ -42,9 +42,10 @@ export const useExportStore = defineStore("export", () => {
 
       let loadedCount = 0;
       let hasErrorOccurred = false;
+      const stops: Array<() => void> = [];
 
       const cleanupListeners = () => {
-        images.forEach;
+        for (const stop of stops) stop();
       };
 
       const checkComplete = () => {
@@ -78,8 +79,13 @@ export const useExportStore = defineStore("export", () => {
           checkComplete();
         } else {
           // まだ読み込み中の画像
-          useEventListener(img, "load", checkComplete, { once: true });
-          useEventListener(img, "error", handleImageError, { once: true });
+          const offLoad = useEventListener(img, "load", checkComplete, {
+            once: true,
+          });
+          const offError = useEventListener(img, "error", handleImageError, {
+            once: true,
+          });
+          stops.push(offLoad, offError);
         }
       });
     });

@@ -139,7 +139,7 @@ export async function loadCardsFromCsv(
     const parseResult = parseCsv(csvText);
     return parseResult;
   } catch (error) {
-    console.error("Fetch error:", error); // デバッグログ
+    logger.error("Fetch error:", error); // デバッグログ
     return err(
       new Error(
         `ネットワークエラー: ${error instanceof Error ? error.message : String(error)}`,
@@ -149,7 +149,7 @@ export async function loadCardsFromCsv(
 }
 
 function parseCsv(csvText: string): Result<Card[], Error> {
-  if (import.meta.env?.DEV) console.debug("Parsing CSV text with PapaParse...");
+  if (import.meta.env?.DEV) logger.debug("Parsing CSV text with PapaParse...");
   const parseResult = Papa.parse<CsvCardRow>(csvText, {
     header: true, // ヘッダー行をオブジェクトのキーとして使用
     skipEmptyLines: true, // 空行をスキップ
@@ -166,7 +166,7 @@ function parseCsv(csvText: string): Result<Card[], Error> {
   });
 
   if (parseResult.errors.length > 0) {
-    console.error("PapaParse errors:", parseResult.errors);
+    logger.error("PapaParse errors:", parseResult.errors);
     return err(new Error(`CSVパースエラー: ${parseResult.errors[0].message}`));
   }
 
