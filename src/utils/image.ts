@@ -260,7 +260,8 @@ export const handleImageError = (event: Event): Result<void, string> => {
   // サポート環境では低優先度での再取得を明示
   try {
     // @ts-ignore - 実装環境によっては存在しない
-    target.fetchPriority = "low";
+    img.fetchPriority = "low";
+    img.decoding = "async";
   } catch {}
   img.src = `${getNormalizedBaseUrl()}placeholder.avif`;
 
@@ -283,7 +284,7 @@ export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
     return ok(undefined);
   }
   // 有効なら低優先度で取得
-  const setLowFetchPriority = (img: HTMLImageElement) => {
+  const setLowFetchPriority = (img: HTMLImageElement): void => {
     try {
       // @ts-ignore
       img.fetchPriority = "low";

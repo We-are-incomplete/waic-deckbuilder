@@ -39,7 +39,8 @@ const generateDeckHash = (deckCards: readonly DeckCard[]): string => {
   // カードIDと枚数のタプル配列をソートし、JSON化して衝突を回避
   const entries = deckCards
     .map((dc) => [dc.card.id, dc.count] as const)
-    .toSorted((a, b) => a[0].localeCompare(b[0]));
+    .slice()
+    .sort((a, b) => a[0].localeCompare(b[0]));
   return JSON.stringify(entries);
 };
 
@@ -229,7 +230,8 @@ export const useDeckStore = defineStore("deck", () => {
    * デッキ名を設定
    */
   const setDeckName = (name: string): void => {
-    const n = name.trim() || DEFAULT_DECK_NAME;
+    const n = name.trim();
+    if (!n) return resetDeckName();
     if (deckName.value === n) return;
     deckName.value = n;
   };
