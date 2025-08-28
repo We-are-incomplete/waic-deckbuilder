@@ -108,7 +108,9 @@ export const useDeckStore = defineStore("deck", () => {
     if (result.isOk()) {
       updateDeckCardsWithVersion(result.value);
     } else {
-      errorHandler.handleValidationError(`${onErrMsg}: ${result.error.type}`);
+      errorHandler.handleValidationError(
+        `${onErrMsg}: ${result.error.type} ${JSON.stringify(result.error)}`,
+      );
     }
   };
 
@@ -183,28 +185,30 @@ export const useDeckStore = defineStore("deck", () => {
    * Vue 3.5最適化: デッキカードをリセット
    */
   const resetDeckCards = () => {
-    updateDeckCardsWithVersion([]);
     const r = resetDeckCardsInLocalStorage();
     if (r.isErr()) {
       errorHandler.handleRuntimeError(
         "デッキカードのリセットに失敗しました",
         r.error,
       );
+      return;
     }
+    updateDeckCardsWithVersion([]);
   };
 
   /**
    * デッキ名をリセット
    */
   const resetDeckName = () => {
-    deckName.value = "新しいデッキ";
     const r = resetDeckNameInLocalStorage();
     if (r.isErr()) {
       errorHandler.handleRuntimeError(
         "デッキ名のリセットに失敗しました",
         r.error,
       );
+      return;
     }
+    deckName.value = "新しいデッキ";
   };
 
   /**
@@ -283,7 +287,9 @@ export const useDeckStore = defineStore("deck", () => {
   // ブラウザ環境でのみイベントリスナーを設定
   if (typeof window !== "undefined") {
     useEventListener(window, "beforeunload", handleBeforeUnload);
-    useEventListener(window, "pagehide", handleBeforeUnload);
+    useEventListener(window, "pagehide", (e: PageTransitionEvent) => {
+      if (!e.persisted) handleBeforeUnload();
+    });
     if (typeof document !== "undefined") {
       useEventListener(document, "visibilitychange", () => {
         if (document.visibilityState === "hidden") handleBeforeUnload();

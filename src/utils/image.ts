@@ -24,6 +24,7 @@ interface CacheState {
   cache: Map<string, CacheEntry>;
   accessOrder: string[];
   cleanupTimer: ReturnType<typeof setInterval> | null;
+  inflight: Set<string>;
 }
 
 // グローバルなキャッシュ状態
@@ -31,6 +32,7 @@ const cacheState: CacheState = {
   cache: new Map<string, CacheEntry>(),
   accessOrder: [],
   cleanupTimer: null,
+  inflight: new Set<string>(),
 };
 
 // 参照時に LRU を更新
@@ -161,7 +163,7 @@ export const cleanupStaleEntries = (): void => {
     }
   }
 
-  logger.info(
+  logger.debug(
     `Image cache cleanup: removed ${keysToDelete.length} stale entries`,
   );
 };
@@ -169,7 +171,7 @@ export const cleanupStaleEntries = (): void => {
 /**
  * キャッシュをクリア
  */
-export const clearCache = (): void => {
+const clearCache = (): void => {
   cacheState.cache.clear();
   cacheState.accessOrder = [];
 };
@@ -177,7 +179,7 @@ export const clearCache = (): void => {
 /**
  * キャッシュの統計情報を取得
  */
-export const getCacheStats = (): { size: number; maxSize: number } => {
+const getCacheStats = (): { size: number; maxSize: number } => {
   return {
     size: cacheState.cache.size,
     maxSize: MAX_CACHE_SIZE,
@@ -187,7 +189,7 @@ export const getCacheStats = (): { size: number; maxSize: number } => {
 /**
  * クリーンアップタイマーを停止
  */
-export const destroyCache = (): void => {
+const destroyCache = (): void => {
   if (cacheState.cleanupTimer) {
     clearInterval(cacheState.cleanupTimer);
     cacheState.cleanupTimer = null;
@@ -261,18 +263,21 @@ export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
     ) {
       const card = cards[currentIndex];
 
-      if (!hasCacheEntry(card.id)) {
+      if (!hasCacheEntry(card.id) && !cacheState.inflight.has(card.id)) {
+        cacheState.inflight.add(card.id);
         const img = new Image();
         img.crossOrigin = "anonymous";
         const urlResult = getCardImageUrl(card.id);
         if (urlResult.isOk()) {
           img.onload = () => {
             setCacheEntry(card.id, img);
+            cacheState.inflight.delete(card.id);
             img.onload = null;
             img.onerror = null;
           };
           img.onerror = () => {
             logger.warn(`Preload failed for card: ${card.id}`);
+            cacheState.inflight.delete(card.id);
             img.onload = null;
             img.onerror = null;
           };

@@ -300,6 +300,7 @@ export const useCardsStore = defineStore("cards", () => {
    * カードデータを読み込む
    */
   const loadCards = async (): Promise<void> => {
+    if (isLoading.value) return; // 再入防止
     isLoading.value = true;
     error.value = null;
 
