@@ -11,8 +11,8 @@ import {
 import { GAME_CONSTANTS } from "../constants";
 import { useDeckStore } from "./deck";
 
-import { fromAsyncThrowable } from "neverthrow";
 import { sortDeckCards } from "../domain/sort";
+import { useClipboard } from "@vueuse/core";
 
 export const useDeckCodeStore = defineStore("deckCode", () => {
   const slashDeckCode = ref<string>(""); // スラッシュ区切りコード
@@ -23,6 +23,8 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
 
   const error = ref<DeckCodeError | null>(null);
   const deckStore = useDeckStore();
+
+  const { copy: copyToClipboard } = useClipboard();
 
   /**
    * デッキコードを生成
@@ -88,29 +90,16 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
    */
   const copyDeckCode = async (codeType: "slash" | "kcg"): Promise<void> => {
     error.value = null;
-    const codeToCopy =
-      codeType === "slash" ? slashDeckCode.value : kcgDeckCode.value;
+    const codeToCopy = codeType === "slash" ? slashDeckCode.value : kcgDeckCode.value;
 
-    // Clipboard APIを安全にラップ
-    const safeClipboardWrite = fromAsyncThrowable(
-      async (text: string) => {
-        if (!navigator.clipboard?.writeText) {
-          throw new Error("Clipboard API is not supported");
-        }
-        await navigator.clipboard.writeText(text);
-      },
-      (error: unknown) => error,
-    );
-
-    const result = await safeClipboardWrite(codeToCopy);
-
-    if (result.isOk()) {
+    try {
+      await copyToClipboard(codeToCopy);
       logger.info(
         `${codeType === "slash" ? "スラッシュ区切り" : "KCG形式"}デッキコードをコピーしました`,
       );
-    } else {
+    } catch (e) {
       const errorMessage = `${codeType === "slash" ? "スラッシュ区切り" : "KCG形式"}デッキコードのコピーに失敗しました`;
-      logger.error(errorMessage + ":", result.error);
+      logger.error(errorMessage + ":", e);
       error.value = { type: "copy", message: errorMessage };
     }
   };
