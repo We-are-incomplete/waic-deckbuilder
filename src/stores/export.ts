@@ -33,6 +33,8 @@ const redactUrl = (src?: string): string => {
   if (!src) return "不明な画像";
   try {
     const u = new URL(src, window.location.href);
+    if (u.protocol === "blob:") return "(blob)";
+    if (u.protocol === "data:") return "(data-uri)";
     const file = u.pathname.split("/").pop();
     return file || "(image)";
   } catch {
@@ -40,6 +42,7 @@ const redactUrl = (src?: string): string => {
   }
 };
 
+const IMAGE_LOAD_TIMEOUT_MS = 8000;
 export const useExportStore = defineStore("export", () => {
   const isSaving = ref<boolean>(false);
 
@@ -61,7 +64,6 @@ export const useExportStore = defineStore("export", () => {
       let hasErrorOccurred = false;
       const stops: Array<() => void> = [];
 
-      const IMAGE_LOAD_TIMEOUT_MS = 8000;
       const timeoutId = window.setTimeout(() => {
         if (hasErrorOccurred) return;
         hasErrorOccurred = true;

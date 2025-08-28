@@ -1,3 +1,8 @@
+/**
+ * @file カードストア
+ * - 取得/検証/キャッシュ/プリロードのオーケストレーション
+ * - neverthrow Result で例外を外部に漏らさない
+ */
 import { defineStore } from "pinia";
 import { ref, shallowRef, readonly, computed, markRaw, triggerRef } from "vue";
 import type { Card } from "../types";

@@ -1,6 +1,11 @@
+/**
+ * @file ストレージユーティリティ
+ * - 目的: デッキ名/デッキカードの保存・読込・リセット
+ * - 方針: 例外は投げず Result<T,E> を返す。純粋関数と副作用関数を分離。
+ */
 import { ok, err, type Result } from "neverthrow";
 import type { Card, DeckCard } from "../types";
-import { STORAGE_KEYS } from "../constants";
+import { GAME_CONSTANTS, STORAGE_KEYS } from "../constants";
 import { logger } from "./logger";
 import { useLocalStorage } from "@vueuse/core";
 
@@ -43,7 +48,12 @@ export const deserializeDeckCards = (
       const safeCount =
         Number.isInteger(item.count) && item.count > 0 ? item.count : 0;
       const card = availableCardsMap.get(item.id);
-      return card && safeCount > 0 ? { card, count: safeCount } : null;
+      // 上限を防御的にクランプ（GAME_CONSTANTS.MAX_CARD_COPIES 等を使用）
+      const clamped =
+        typeof GAME_CONSTANTS?.MAX_CARD_COPIES === "number"
+          ? Math.min(safeCount, GAME_CONSTANTS.MAX_CARD_COPIES)
+          : safeCount;
+      return card && clamped > 0 ? { card, count: clamped } : null;
     })
     .filter((item: DeckCard | null): item is DeckCard => item !== null);
 };
@@ -58,7 +68,7 @@ const deckCardsStorage = useLocalStorage<
         return JSON.parse(raw);
       } catch (e) {
         logger.error("Failed to parse deck cards from local storage", e);
-        return [];
+        throw e; // 上位で parseError として扱う
       }
     },
     write: (value: readonly { id: string; count: number }[]) =>
@@ -164,7 +174,7 @@ export const loadDeckName = (): Result<string, StorageError> => {
 };
 
 /**
- * デッキ名をローカルストレージで既定値にリセット
+ * デッキカードをローカルストレージで既定値（空配列）にリセット
  */
 export const resetDeckCardsInLocalStorage = (): Result<void, StorageError> => {
   try {

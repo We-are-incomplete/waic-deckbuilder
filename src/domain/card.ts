@@ -23,10 +23,9 @@ export type CardValidationError =
   | { readonly type: "invalidId"; readonly id: string }
   | { readonly type: "invalidName"; readonly name: string }
   | { readonly type: "invalidKind"; readonly kind: CardKind }
-  | {
-      readonly type: "invalidType";
-      readonly cardType: CardType;
-    }
+  | { readonly type: "invalidType"; readonly cardType: CardType } // 未知タイプ
+  | { readonly type: "emptyTypeList" } // 空配列
+  | { readonly type: "duplicateTypes" } // 重複
   | { readonly type: "duplicateTags"; readonly tags: readonly string[] };
 
 // カード作成関数
@@ -60,16 +59,9 @@ export const createCard = (
   }
 
   // 空配列/重複チェック
-  if (type.length === 0) {
-    return err({
-      type: "invalidType",
-      cardType: undefined as unknown as CardType,
-    });
-  }
-  if (new Set(type).size !== type.length) {
-    // 重複を許容しない方針ならエラー、許容なら正規化しても良い
-    return err({ type: "invalidType", cardType: type[0] });
-  }
+  if (type.length === 0) return err({ type: "emptyTypeList" });
+  if (new Set(type).size !== type.length)
+    return err({ type: "duplicateTypes" });
 
   // タグ検証
   let finalTags: readonly string[] | undefined = undefined;

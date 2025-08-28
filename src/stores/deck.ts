@@ -211,7 +211,13 @@ export const useDeckStore = defineStore("deck", () => {
    */
   const resetDeckCards = () => {
     updateDeckCardsWithVersion([]);
-    resetDeckCardsInLocalStorage();
+    const r = resetDeckCardsInLocalStorage();
+    if (r.isErr()) {
+      errorHandler.handleRuntimeError(
+        "デッキカードのリセットに失敗しました",
+        r.error,
+      );
+    }
   };
 
   /**
