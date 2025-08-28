@@ -97,7 +97,7 @@ export function useImageModal(sortedDeckCards: Ref<readonly DeckCard[]>) {
    * カードナビゲーション
    */
   const handleCardNavigation = (direction: "previous" | "next") => {
-    const deckCards = sortedDeckCards.value; // store から直接取得
+    const deckCards = sortedDeckCards.value; // 引数で受け取ったデッキから取得
     const currentIndex = imageModalState.value.selectedIndex;
     if (currentIndex === null) return;
 

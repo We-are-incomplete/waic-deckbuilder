@@ -44,8 +44,22 @@ export const useExportStore = defineStore("export", () => {
       let hasErrorOccurred = false;
       const stops: Array<() => void> = [];
 
+      const timeoutId = window.setTimeout(() => {
+        if (hasErrorOccurred) return;
+        hasErrorOccurred = true;
+        cleanupListeners();
+        resolve(
+          err({
+            type: "imageLoad",
+            message: "画像の読み込みがタイムアウトしました",
+            originalError: new Error("timeout"),
+          }),
+        );
+      }, 8000);
+
       const cleanupListeners = () => {
         for (const stop of stops) stop();
+        clearTimeout(timeoutId);
       };
 
       const checkComplete = () => {

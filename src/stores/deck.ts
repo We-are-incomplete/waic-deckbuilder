@@ -260,10 +260,12 @@ export const useDeckStore = defineStore("deck", () => {
   // ページアンロード時の保存保証
   const handleBeforeUnload = () => {
     // 未処理のデバウンスを反映/無効化してから直接保存
-    // @ts-expect-error VueUseの戻り値はflush/cancelを持つ
-    debouncedSave.flush?.();
-    // @ts-expect-error
-    debouncedSaveName.flush?.();
+    type Flushable = { flush?: () => void; cancel?: () => void };
+    (debouncedSave as unknown as Flushable).flush?.();
+    (debouncedSaveName as unknown as Flushable).flush?.();
+    // 念のため後続の遅延保存を打ち切る
+    (debouncedSave as unknown as Flushable).cancel?.();
+    (debouncedSaveName as unknown as Flushable).cancel?.();
     saveDeckToLocalStorage(deckCards.value);
     saveDeckName(deckName.value);
   };
