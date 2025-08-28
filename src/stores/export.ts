@@ -44,9 +44,9 @@ const redactUrl = (src?: string): string => {
     const u = new URL(src, base);
     if (u.protocol === "blob:") return "(blob)";
     if (u.protocol === "data:") return "(data-uri)";
-  if (u.protocol !== "http:" && u.protocol !== "https:") {
-    return `(${u.protocol.replace(":", "")})`;
-  }
+    if (u.protocol !== "http:" && u.protocol !== "https:") {
+      return `(${u.protocol.replace(":", "")})`;
+    }
     const file = u.pathname.split("/").pop();
     return file || "(image)";
   } catch {

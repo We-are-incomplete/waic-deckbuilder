@@ -330,11 +330,9 @@ export const useCardsStore = defineStore("cards", () => {
       const checkedCards = ensured.value;
       availableCards.value = readonly(checkedCards);
       updateCaches(checkedCards);
-      if (!import.meta.env.SSR) {
-        const preloadResult = preloadImages(checkedCards);
-        if (preloadResult.isErr()) {
-          logger.warn("画像のプリロードに失敗しました:", preloadResult.error);
-        }
+      const preloadResult = preloadImages(checkedCards);
+      if (preloadResult.isErr()) {
+        logger.warn("画像のプリロードに失敗しました:", preloadResult.error);
       }
       logger.info(`${checkedCards.length}枚のカードを読み込みました`);
     } catch (e) {

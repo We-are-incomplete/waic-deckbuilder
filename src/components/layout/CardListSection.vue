@@ -273,7 +273,9 @@ watchEffect((onCleanup) => {
             @click="emit('incrementCard', card.id)"
             class="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-full flex items-center justify-center leading-none transition-all duration-200 shadow-lg hover:shadow-emerald-500/25 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed"
             :disabled="getCardInDeck(card.id) >= GAME_CONSTANTS.MAX_CARD_COPIES"
-            :aria-disabled="getCardInDeck(card.id) >= GAME_CONSTANTS.MAX_CARD_COPIES"
+            :aria-disabled="
+              getCardInDeck(card.id) >= GAME_CONSTANTS.MAX_CARD_COPIES
+            "
           >
             <svg
               class="w-3 h-3 sm:w-4 sm:h-4"

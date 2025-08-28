@@ -16,7 +16,11 @@ export type StorageError =
   | { readonly type: "notFound"; readonly key: string }
   | { readonly type: "saveError"; readonly key: string; readonly data: unknown }
   | { readonly type: "resetError"; readonly key: string }
-  | { readonly type: "readError"; readonly key: string; readonly data?: unknown }
+  | {
+      readonly type: "readError";
+      readonly key: string;
+      readonly data?: unknown;
+    }
   | {
       readonly type: "invalidData";
       readonly key: string;
@@ -85,7 +89,8 @@ const deckCardsStorage = useLocalStorage<
               x &&
               typeof x === "object" &&
               typeof (x as any).id === "string" &&
-              Number.isInteger((x as any).count) && (x as any).count >= 0,
+              Number.isInteger((x as any).count) &&
+              (x as any).count >= 0,
           );
         if (isValidArray) {
           return data as { id: string; count: number }[];

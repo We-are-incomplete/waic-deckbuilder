@@ -4,7 +4,7 @@
  * - BASE_URL 正規化と画像 URL 構築
  * - 事前プリロード（requestIdleCallback フォールバック）
  * 注意: ブラウザ専用（SSR では呼び出さない）
-*/
+ */
 import { ok, err, type Result } from "neverthrow";
 import type { Card } from "../types";
 import { logger } from "./logger";
@@ -130,9 +130,14 @@ const getNormalizedBaseUrl = (): string => {
  * 古いエントリーをクリーンアップ
  */
 const DEFAULT_STALE_ENTRY_TTL_MS = 30 * 60 * 1000; // 30min
-const TTL_FROM_ENV = Number(
-  (import.meta.env.VITE_IMAGE_CACHE_TTL_MS as string | undefined) ?? ""
+const TTL_FROM_ENV_RAW = Number(
+  (import.meta.env.VITE_IMAGE_CACHE_TTL_MS as string | undefined) ?? "",
 );
+// 有効なのは「正の有限整数」に限定（0/負数/NaN/Infinityは無効）
+const TTL_FROM_ENV =
+  Number.isFinite(TTL_FROM_ENV_RAW) && TTL_FROM_ENV_RAW > 0
+    ? Math.floor(TTL_FROM_ENV_RAW)
+    : NaN;
 export const STALE_ENTRY_TTL_MS = Number.isFinite(TTL_FROM_ENV)
   ? TTL_FROM_ENV
   : DEFAULT_STALE_ENTRY_TTL_MS;
@@ -198,7 +203,9 @@ export const getCardImageUrl = (cardId: string): Result<string, string> => {
     return err("カードIDが指定されていません");
   }
 
-  return ok(`${getNormalizedBaseUrl()}cards/${encodeURIComponent(cardId)}.avif`);
+  return ok(
+    `${getNormalizedBaseUrl()}cards/${encodeURIComponent(cardId)}.avif`,
+  );
 };
 
 /**
@@ -261,9 +268,13 @@ export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
         if (urlResult.isOk()) {
           img.onload = () => {
             setCacheEntry(card.id, img);
+            img.onload = null;
+            img.onerror = null;
           };
           img.onerror = () => {
             logger.warn(`Preload failed for card: ${card.id}`);
+            img.onload = null;
+            img.onerror = null;
           };
           img.src = urlResult.value;
         }
