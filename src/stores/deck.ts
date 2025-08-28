@@ -39,7 +39,7 @@ const generateDeckHash = (deckCards: readonly DeckCard[]): string => {
   // カードIDと枚数のタプル配列をソートし、JSON化して衝突を回避
   const entries = deckCards
     .map((dc) => [dc.card.id, dc.count] as const)
-    .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+    .toSorted((a, b) => a[0].localeCompare(b[0]));
   return JSON.stringify(entries);
 };
 
@@ -106,20 +106,17 @@ export const useDeckStore = defineStore("deck", () => {
     return deckState.value.type === "invalid" ? deckState.value.errors : [];
   });
 
-  const applyOperation = <T extends Parameters<typeof executeDeckOperation>[1]>(
-    operation: T,
+  const applyOperation = (
+    operation: Parameters<typeof executeDeckOperation>[1],
     onErrMsg: string,
   ): boolean => {
     const result = executeDeckOperation(deckCards.value, operation);
-    if (result.isOk()) {
-      updateDeckCardsWithVersion(result.value);
-      return true;
-    }
-    {
-      // 構造化エラーを渡す（handleValidationError(message, detail) を想定）
+    if (result.isErr()) {
       errorHandler.handleValidationError(onErrMsg, result.error);
       return false;
     }
+    updateDeckCardsWithVersion(result.value);
+    return true;
   };
 
   /**
@@ -279,8 +276,12 @@ export const useDeckStore = defineStore("deck", () => {
 
   // ページアンロード時の保存保証
   let lastImmediateSaveAt = 0;
+  const nowMs = () =>
+    typeof performance !== "undefined" && typeof performance.now === "function"
+      ? performance.now()
+      : Date.now();
   const handleBeforeUnload = () => {
-    const now = Date.now();
+    const now = nowMs();
     if (now - lastImmediateSaveAt < 500) return;
     lastImmediateSaveAt = now;
     // 未処理のデバウンスを反映/無効化してから直接保存

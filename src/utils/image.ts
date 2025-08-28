@@ -51,8 +51,9 @@ const touchCacheKey = (key: string): void => {
   const entry = cacheState.cache.get(key);
   if (!entry) return;
   entry.lastAccessed = Date.now();
-  const idx = cacheState.accessOrder.indexOf(key);
-  if (idx > -1) cacheState.accessOrder.splice(idx, 1);
+  for (let i = cacheState.accessOrder.length - 1; i >= 0; i--) {
+    if (cacheState.accessOrder[i] === key) cacheState.accessOrder.splice(i, 1);
+  }
   cacheState.accessOrder.push(key);
 };
 
@@ -187,7 +188,6 @@ export const cleanupStaleEntries = (): void => {
 const clearCache = (): void => {
   cacheState.cache.clear();
   cacheState.accessOrder = [];
-  cacheState.inflight.clear();
 };
 
 /**
@@ -206,6 +206,8 @@ const getCacheStats = (): { size: number; maxSize: number } => {
 const destroyCache = (): void => {
   // 進行中ハンドラを無効化
   cacheState.generation++;
+  // inflight を明示的にリセット（以降の onload は世代ガードで無効化）
+  cacheState.inflight.clear();
   if (cacheState.cleanupTimer) {
     clearInterval(cacheState.cleanupTimer);
     cacheState.cleanupTimer = null;
@@ -291,7 +293,7 @@ export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
 
   let currentIndex = 0;
 
-  const processBatch = (deadline?: IdleDeadline): void => {
+  const processBatch = (deadline?: { timeRemaining: () => number }): void => {
     while (
       currentIndex < cards.length &&
       (!deadline || deadline.timeRemaining() > 0)
@@ -337,8 +339,11 @@ export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
     }
 
     if (currentIndex < cards.length) {
-      if (typeof requestIdleCallback === "function") {
-        requestIdleCallback(processBatch);
+      if (
+        typeof window !== "undefined" &&
+        typeof (window as any).requestIdleCallback === "function"
+      ) {
+        (window as any).requestIdleCallback(processBatch);
       } else {
         // requestIdleCallbackがサポートされていない場合のフォールバック
         setTimeout(() => processBatch(), 100);
@@ -346,8 +351,11 @@ export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
     }
   };
 
-  if (typeof requestIdleCallback === "function") {
-    requestIdleCallback(processBatch);
+  if (
+    typeof window !== "undefined" &&
+    typeof (window as any).requestIdleCallback === "function"
+  ) {
+    (window as any).requestIdleCallback(processBatch);
   } else {
     // requestIdleCallbackがサポートされていない場合の初期呼び出し
     setTimeout(() => processBatch(), 100);
