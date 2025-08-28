@@ -3,7 +3,7 @@
  * - LRU キャッシュ（MAX_CACHE_SIZE、TTL 30min）
  * - BASE_URL 正規化と画像 URL 構築
  * - 事前プリロード（requestIdleCallback フォールバック）
- * 注意: ブラウザ専用（SSR では呼び出さない）
+ * 注意: DOM を扱う関数（プリロード/クリーンアップ）は SSR では呼び出さない
  */
 import { ok, err, type Result } from "neverthrow";
 import type { Card } from "../types";
@@ -12,6 +12,9 @@ import { logger } from "./logger";
 // LRUキャッシュの設定
 const MAX_CACHE_SIZE = 200; // 最大キャッシュサイズ
 export const CACHE_CLEANUP_INTERVAL = 5 * 60 * 1000; // 5分間隔でクリーンアップ
+
+// 画像プリロードの同時実行上限
+export const PRELOAD_MAX_INFLIGHT = 6 as const;
 
 // LRUキャッシュエントリー
 interface CacheEntry {
@@ -263,7 +266,7 @@ export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
       (!deadline || deadline.timeRemaining() > 0)
     ) {
       // 同時実行の上限
-      if (cacheState.inflight.size >= 6) break;
+      if (cacheState.inflight.size >= PRELOAD_MAX_INFLIGHT) break;
       const card = cards[currentIndex];
 
       if (!hasCacheEntry(card.id) && !cacheState.inflight.has(card.id)) {
@@ -288,7 +291,7 @@ export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
         } else {
           logger.warn(
             `Preload skipped: invalid URL for card: ${card.id}`,
-            urlResult.error
+            urlResult.error,
           );
         }
       }
