@@ -50,14 +50,17 @@ const redactUrl = (src?: string): string => {
     const file = u.pathname.split("/").pop();
     return file || "(image)";
   } catch {
-    return src.length > 120 ? src.slice(0, 120) + "…" : src;
+    // 解析不能なURLは生値を出さない（情報漏洩対策）
+    return "(invalid-url)";
   }
 };
 
 const IMAGE_LOAD_TIMEOUT_MS = (() => {
   const raw = import.meta.env.VITE_IMAGE_LOAD_TIMEOUT_MS;
   const n = Number.parseInt(String(raw ?? ""), 10);
-  return Number.isFinite(n) && n > 0 ? n : 8000;
+  if (!Number.isFinite(n) || n <= 0) return 8000;
+  // 上限 60s
+  return Math.min(n, 60_000);
 })();
 export const useExportStore = defineStore("export", () => {
   const isSaving = ref<boolean>(false);
@@ -142,8 +145,8 @@ export const useExportStore = defineStore("export", () => {
         );
       };
 
-      images.forEach((img) => {
-        if (hasErrorOccurred) return;
+      for (const img of images) {
+        if (hasErrorOccurred) break;
         if (img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
           // 既に読み込み済みの画像
           checkComplete();
@@ -164,7 +167,7 @@ export const useExportStore = defineStore("export", () => {
           });
           stops.push(offLoad, offError);
         }
-      });
+      }
     });
   };
 

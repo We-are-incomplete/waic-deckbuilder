@@ -129,7 +129,13 @@ const getNormalizedBaseUrl = (): string => {
 /**
  * 古いエントリーをクリーンアップ
  */
-export const STALE_ENTRY_TTL_MS = 30 * 60 * 1000; // 30min
+const DEFAULT_STALE_ENTRY_TTL_MS = 30 * 60 * 1000; // 30min
+const TTL_FROM_ENV = Number(
+  (import.meta.env.VITE_IMAGE_CACHE_TTL_MS as string | undefined) ?? ""
+);
+export const STALE_ENTRY_TTL_MS = Number.isFinite(TTL_FROM_ENV)
+  ? TTL_FROM_ENV
+  : DEFAULT_STALE_ENTRY_TTL_MS;
 export const cleanupStaleEntries = (): void => {
   const now = Date.now();
   const staleThreshold = STALE_ENTRY_TTL_MS;
@@ -231,6 +237,10 @@ export const handleImageError = (event: Event): Result<void, string> => {
  * 画像のプリロード処理
  */
 export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
+  // SSR/非ブラウザ環境では何もしない
+  if (import.meta.env.SSR || typeof window === "undefined") {
+    return ok(undefined);
+  }
   if (!cards || cards.length === 0) {
     return ok(undefined); // 空配列は正常
   }

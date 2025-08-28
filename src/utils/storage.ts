@@ -14,7 +14,6 @@ const DEFAULT_DECK_NAME = "新しいデッキ" as const;
 // ストレージ操作エラー型
 export type StorageError =
   | { readonly type: "notFound"; readonly key: string }
-  | { readonly type: "parseError"; readonly key: string; readonly data: string }
   | { readonly type: "saveError"; readonly key: string; readonly data: unknown }
   | { readonly type: "resetError"; readonly key: string }
   | { readonly type: "readError"; readonly key: string; readonly data?: unknown }
@@ -57,9 +56,15 @@ export const deserializeDeckCards = (
   }
   // 2) 実在カードのみDeckCardへ復元
   const out: DeckCard[] = [];
+  let remaining = GAME_CONSTANTS.MAX_DECK_SIZE;
   for (const [id, count] of aggregated) {
+    if (remaining <= 0) break;
     const card = availableCardsMap.get(id);
-    if (card && count > 0) out.push({ card, count });
+    const use = Math.min(count, remaining);
+    if (card && use > 0) {
+      out.push({ card, count: use });
+      remaining -= use;
+    }
   }
   return out;
 };
@@ -176,7 +181,7 @@ export const loadDeckFromLocalStorage = (
       logger.error("デッキカードのリセットに失敗しました", r.error);
     }
     return err({
-      type: "parseError",
+      type: "readError",
       key: STORAGE_KEYS.DECK_CARDS,
       data: snapshot,
     });
