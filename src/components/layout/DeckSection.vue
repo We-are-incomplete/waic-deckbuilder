@@ -34,10 +34,10 @@ const {
 } = useDeckOperations();
 
 // 計算プロパティ（ストアから直接取得）- Vue 3.5の改善されたreactivity
-const deckCards = computed(() => deckStore.deckCards);
-const deckName = computed(() => deckStore.deckName);
-const sortedDeckCards = computed(() => deckStore.sortedDeckCards);
-const totalDeckCards = computed(() => deckStore.totalDeckCards);
+const deckCards = deckStore.deckCards;
+const deckName = deckStore.deckName;
+const sortedDeckCards = deckStore.sortedDeckCards;
+const totalDeckCards = deckStore.totalDeckCards;
 
 // デッキ名の更新（ストアメソッドを直接使用）
 const updateDeckName = (value: string) => {
@@ -70,7 +70,7 @@ const setDeckCardRef = (el: unknown, cardId: string) => {
 
 watchEffect((onCleanup) => {
   const stops: Function[] = [];
-  sortedDeckCards.value.forEach((item) => {
+  sortedDeckCards.forEach((item) => {
     const el = deckCardRefs.value.get(item.card.id);
     if (el) {
       const stop = onLongPress(el, () => openImageModal(item.card.id), {
@@ -88,21 +88,17 @@ const resetDeck = () => {
   emit("resetDeck");
 };
 
-// デッキ枚数の色分け計算
-const MAX_DECK_SIZE = 60;
-const WARNING_THRESHOLD = 50;
-
 const getDeckCountColor = (count: number) => {
-  if (count === MAX_DECK_SIZE) return "text-green-400";
-  if (count > MAX_DECK_SIZE) return "text-red-400";
-  if (count > WARNING_THRESHOLD) return "text-yellow-400";
+  if (count === GAME_CONSTANTS.MAX_DECK_SIZE) return "text-green-400";
+  if (count > GAME_CONSTANTS.MAX_DECK_SIZE) return "text-red-400";
+  if (count > (GAME_CONSTANTS.MAX_DECK_SIZE * 5) / 6) return "text-yellow-400";
   return "text-slate-100";
 };
 
 const getDeckProgressColor = (count: number) => {
-  if (count === MAX_DECK_SIZE) return "bg-green-500";
-  if (count > MAX_DECK_SIZE) return "bg-red-500";
-  if (count > WARNING_THRESHOLD) return "bg-yellow-500";
+  if (count === GAME_CONSTANTS.MAX_DECK_SIZE) return "bg-green-500";
+  if (count > GAME_CONSTANTS.MAX_DECK_SIZE) return "bg-red-500";
+  if (count > (GAME_CONSTANTS.MAX_DECK_SIZE * 5) / 6) return "bg-yellow-500";
   return "bg-blue-500";
 };
 

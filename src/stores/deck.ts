@@ -6,7 +6,7 @@ import {
   loadDeckFromLocalStorage,
   saveDeckName,
   loadDeckName,
-  removeDeckCardsFromLocalStorage,
+  resetDeckNameInLocalStorage,
   removeDeckNameFromLocalStorage,
   createVersionedState,
   createArraySortMemo,
@@ -211,7 +211,7 @@ export const useDeckStore = defineStore("deck", () => {
    */
   const resetDeckCards = () => {
     updateDeckCardsWithVersion([]);
-    removeDeckCardsFromLocalStorage();
+    resetDeckNameInLocalStorage();
   };
 
   /**

@@ -38,9 +38,12 @@ export const deserializeDeckCards = (
   }
 
   return serializedDeck
-    .map((item: { id: string; count: number }) => {
+    .map((item) => {
+      // count を 1..∞ の整数に制限
+      const safeCount =
+        Number.isInteger(item.count) && item.count > 0 ? item.count : 0;
       const card = availableCardsMap.get(item.id);
-      return card ? { card: card, count: item.count } : null;
+      return card && safeCount > 0 ? { card, count: safeCount } : null;
     })
     .filter((item: DeckCard | null): item is DeckCard => item !== null);
 };
@@ -117,7 +120,7 @@ export const loadDeckFromLocalStorage = (
       JSON.stringify(deckCardsStorage.value),
     );
     // エラー時はデッキカードのみクリーンアップ（デッキ名は保持）
-    removeDeckCardsFromLocalStorage();
+    resetDeckNameInLocalStorage();
     return err({
       type: "parseError",
       key: STORAGE_KEYS.DECK_CARDS,
@@ -161,12 +164,9 @@ export const loadDeckName = (): Result<string, StorageError> => {
 };
 
 /**
- * デッキカードをローカルストレージから削除
+ * デッキ名をローカルストレージで既定値にリセット
  */
-export const removeDeckCardsFromLocalStorage = (): Result<
-  void,
-  StorageError
-> => {
+export const resetDeckNameInLocalStorage = (): Result<void, StorageError> => {
   try {
     deckCardsStorage.value = [];
     return ok(undefined);

@@ -44,6 +44,7 @@ export const useExportStore = defineStore("export", () => {
       let hasErrorOccurred = false;
       const stops: Array<() => void> = [];
 
+      const IMAGE_LOAD_TIMEOUT_MS = 8000;
       const timeoutId = window.setTimeout(() => {
         if (hasErrorOccurred) return;
         hasErrorOccurred = true;
@@ -55,7 +56,7 @@ export const useExportStore = defineStore("export", () => {
             originalError: new Error("timeout"),
           }),
         );
-      }, 8000);
+      }, IMAGE_LOAD_TIMEOUT_MS);
 
       const cleanupListeners = () => {
         for (const stop of stops) stop();
@@ -87,10 +88,26 @@ export const useExportStore = defineStore("export", () => {
         );
       };
 
+      const handleAlreadyBroken = (img: HTMLImageElement) => {
+        if (hasErrorOccurred) return;
+        hasErrorOccurred = true;
+        cleanupListeners();
+        resolve(
+          err({
+            type: "imageLoad",
+            message: `画像の読み込みに失敗しました: ${img.src || "不明な画像"}`,
+            originalError: new Error("already-complete-broken"),
+          }),
+        );
+      };
+
       images.forEach((img) => {
         if (img.complete && img.naturalHeight !== 0) {
           // 既に読み込み済みの画像
           checkComplete();
+        } else if (img.complete) {
+          // 完了しているが壊れている画像
+          handleAlreadyBroken(img);
         } else {
           // まだ読み込み中の画像
           const offLoad = useEventListener(img, "load", checkComplete, {

@@ -1,3 +1,7 @@
+/**
+ * フィルター選択状態の判定用コンポーザブル
+ * - 種類/型/タグの選択判定と有効フィルター数の算出（副作用なし）
+ */
 import { computed, type ComputedRef } from "vue";
 import type { CardKind, CardType, FilterCriteria } from "../types";
 

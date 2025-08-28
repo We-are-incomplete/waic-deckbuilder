@@ -8,7 +8,7 @@
 import type { Card, CardKind, CardType } from "../types";
 import { CARD_KINDS, CARD_TYPES } from "../constants";
 import { type Result, ok, err } from "neverthrow";
-import { logger } from "../utils";
+import { logger } from "./logger";
 import Papa from "papaparse";
 
 interface CsvCardRow {

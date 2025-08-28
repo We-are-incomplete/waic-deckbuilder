@@ -143,12 +143,7 @@ export const useFilterStore = defineStore("filter", () => {
       return cards;
     }
 
-    const normalizedText = text.trim().toLowerCase();
-    if (normalizedText.length === 0) {
-      return cards;
-    }
-
-    return searchCardsByName(cards, normalizedText);
+    return searchCardsByName(cards, text);
   };
 
   /**

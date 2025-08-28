@@ -26,6 +26,26 @@ const cacheState: CacheState = {
   cleanupTimer: null,
 };
 
+// 参照時に LRU を更新
+const touchCacheKey = (key: string): void => {
+  const entry = cacheState.cache.get(key);
+  if (!entry) return;
+  entry.lastAccessed = Date.now();
+  const idx = cacheState.accessOrder.indexOf(key);
+  if (idx > -1) cacheState.accessOrder.splice(idx, 1);
+  cacheState.accessOrder.push(key);
+};
+
+// 定期クリーンアップ開始（多重開始防止）
+export const startImageCacheMaintenance = (): void => {
+  if (!cacheState.cleanupTimer) {
+    cacheState.cleanupTimer = setInterval(
+      cleanupStaleEntries,
+      CACHE_CLEANUP_INTERVAL,
+    );
+  }
+};
+
 /**
  * キャッシュにエントリーを設定
  */
@@ -69,7 +89,9 @@ const hasCacheEntry = (key: string): boolean => {
   if (!key) {
     return false;
   }
-  return cacheState.cache.has(key);
+  const exists = cacheState.cache.has(key);
+  if (exists) touchCacheKey(key);
+  return exists;
 };
 
 /**
@@ -150,7 +172,9 @@ export const getCardImageUrl = (cardId: string): Result<string, string> => {
     return err("カードIDが指定されていません");
   }
 
-  return ok(`${import.meta.env.BASE_URL}cards/${cardId}.avif`);
+  return ok(
+    `${import.meta.env.BASE_URL}cards/${encodeURIComponent(cardId)}.avif`,
+  );
 };
 
 /**

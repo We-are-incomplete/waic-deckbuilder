@@ -9,6 +9,7 @@
  */
 import { ok, err, type Result } from "neverthrow";
 import type { Card, CardKind, CardType } from "../types";
+import { CARD_KINDS, CARD_TYPES } from "../constants";
 
 /**
  * カードの検証中に発生しうるエラーを表す代数的データ型。
@@ -44,6 +45,18 @@ export const createCard = (
   // 名前検証
   if (!name || name.trim().length === 0) {
     return err({ type: "invalidName", name });
+  }
+
+  // 種別検証（実行時）
+  if (!CARD_KINDS.includes(kind)) {
+    return err({ type: "invalidKind", kind });
+  }
+
+  // タイプ検証（実行時）
+  for (const t of type) {
+    if (!CARD_TYPES.includes(t)) {
+      return err({ type: "invalidType", cardType: t });
+    }
   }
 
   // タグ検証
