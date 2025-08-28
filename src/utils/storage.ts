@@ -9,12 +9,15 @@ import { GAME_CONSTANTS, STORAGE_KEYS } from "../constants";
 import { logger } from "./logger";
 import { useLocalStorage } from "@vueuse/core";
 
+const DEFAULT_DECK_NAME = "新しいデッキ" as const;
+
 // ストレージ操作エラー型
 export type StorageError =
   | { readonly type: "notFound"; readonly key: string }
   | { readonly type: "parseError"; readonly key: string; readonly data: string }
   | { readonly type: "saveError"; readonly key: string; readonly data: unknown }
   | { readonly type: "resetError"; readonly key: string }
+  | { readonly type: "readError"; readonly key: string; readonly data?: unknown }
   | {
       readonly type: "invalidData";
       readonly key: string;
@@ -64,7 +67,7 @@ export const deserializeDeckCards = (
 // useLocalStorage を使用してデッキカードを管理
 const deckCardsStorage = useLocalStorage<
   readonly { id: string; count: number }[]
->(STORAGE_KEYS.DECK_CARDS, [] as { id: string; count: number }[], {
+>(STORAGE_KEYS.DECK_CARDS, [] as readonly { id: string; count: number }[], {
   serializer: {
     read: (raw: string): readonly { id: string; count: number }[] => {
       const parsed = fromThrowable(JSON.parse)(raw);
@@ -77,7 +80,7 @@ const deckCardsStorage = useLocalStorage<
               x &&
               typeof x === "object" &&
               typeof (x as any).id === "string" &&
-              Number.isFinite((x as any).count),
+              Number.isInteger((x as any).count) && (x as any).count >= 0,
           );
         if (isValidArray) {
           return data as { id: string; count: number }[];
@@ -114,7 +117,7 @@ const deckCardsStorage = useLocalStorage<
 // useLocalStorage を使用してデッキ名を管理
 const deckNameStorage = useLocalStorage<string>(
   STORAGE_KEYS.DECK_NAME,
-  "新しいデッキ",
+  DEFAULT_DECK_NAME,
 );
 
 /**
@@ -159,11 +162,14 @@ export const loadDeckFromLocalStorage = (
     const deckCards = deserializeDeckCards(parsedDeck, availableCards);
     return ok(deckCards);
   } catch (e) {
-    logger.error(
-      "保存されたデッキの読み込みに失敗しました",
-      e,
-      JSON.stringify(deckCardsStorage.value),
-    );
+    const snapshot = (() => {
+      try {
+        return JSON.stringify(deckCardsStorage.value);
+      } catch {
+        return "[unserializable]";
+      }
+    })();
+    logger.error("保存されたデッキの読み込みに失敗しました", e, snapshot);
     // エラー時はデッキカードのみクリーンアップ（デッキ名は保持）
     const r = resetDeckCardsInLocalStorage();
     if (r.isErr()) {
@@ -172,7 +178,7 @@ export const loadDeckFromLocalStorage = (
     return err({
       type: "parseError",
       key: STORAGE_KEYS.DECK_CARDS,
-      data: JSON.stringify(deckCardsStorage.value),
+      data: snapshot,
     });
   }
 };
@@ -181,7 +187,8 @@ export const loadDeckFromLocalStorage = (
  * デッキ名をローカルストレージに保存
  */
 export const saveDeckName = (name: string): Result<void, StorageError> => {
-  if (!name) {
+  const n = name?.trim();
+  if (!n) {
     return err({
       type: "invalidData",
       key: STORAGE_KEYS.DECK_NAME,
@@ -190,7 +197,7 @@ export const saveDeckName = (name: string): Result<void, StorageError> => {
   }
 
   try {
-    deckNameStorage.value = name;
+    deckNameStorage.value = n;
     return ok(undefined);
   } catch (e) {
     logger.error("デッキ名の保存に失敗しました", e);
@@ -204,11 +211,11 @@ export const saveDeckName = (name: string): Result<void, StorageError> => {
 export const loadDeckName = (): Result<string, StorageError> => {
   try {
     const name = deckNameStorage.value;
-    return ok(name || "新しいデッキ");
+    return ok(name || DEFAULT_DECK_NAME);
   } catch (e) {
     logger.error("デッキ名の読み込みに失敗しました", e);
     return err({
-      type: "parseError",
+      type: "readError",
       key: STORAGE_KEYS.DECK_NAME,
       data: String(e),
     });
@@ -233,10 +240,10 @@ export const resetDeckCardsInLocalStorage = (): Result<void, StorageError> => {
  */
 export const resetDeckNameInLocalStorage = (): Result<void, StorageError> => {
   try {
-    deckNameStorage.value = "新しいデッキ";
+    deckNameStorage.value = DEFAULT_DECK_NAME;
     return ok(undefined);
   } catch (e) {
-    logger.error("デッキ名のリセットに失敗しました", e, "新しいデッキ");
+    logger.error("デッキ名のリセットに失敗しました", e, DEFAULT_DECK_NAME);
     return err({ type: "resetError", key: STORAGE_KEYS.DECK_NAME });
   }
 };

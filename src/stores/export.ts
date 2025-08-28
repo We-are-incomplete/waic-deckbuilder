@@ -84,7 +84,10 @@ export const useExportStore = defineStore("export", () => {
 
       const cleanupListeners = () => {
         for (const stop of stops) stop();
-        if (timeoutId) clearTimeout(timeoutId);
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = undefined;
+        }
         stops.length = 0;
       };
 
@@ -140,6 +143,7 @@ export const useExportStore = defineStore("export", () => {
       };
 
       images.forEach((img) => {
+        if (hasErrorOccurred) return;
         if (img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
           // 既に読み込み済みの画像
           checkComplete();

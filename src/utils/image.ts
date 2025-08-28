@@ -1,3 +1,10 @@
+/**
+ * Image utilities:
+ * - LRU キャッシュ（MAX_CACHE_SIZE、TTL 30min）
+ * - BASE_URL 正規化と画像 URL 構築
+ * - 事前プリロード（requestIdleCallback フォールバック）
+ * 注意: ブラウザ専用（SSR では呼び出さない）
+*/
 import { ok, err, type Result } from "neverthrow";
 import type { Card } from "../types";
 import { logger } from "./logger";
@@ -38,6 +45,8 @@ const touchCacheKey = (key: string): void => {
 
 // 定期クリーンアップ開始（多重開始防止）
 export const startImageCacheMaintenance = (): void => {
+  // SSR では開始しない
+  if (import.meta.env.SSR) return;
   if (!cacheState.cleanupTimer) {
     cacheState.cleanupTimer = setInterval(
       cleanupStaleEntries,
@@ -112,17 +121,18 @@ const evictIfNecessary = (): void => {
   }
 };
 
-const getNormalizedBaseUrl = (): string =>
-  import.meta.env.BASE_URL.endsWith("/")
-    ? import.meta.env.BASE_URL
-    : `${import.meta.env.BASE_URL}/`;
+const getNormalizedBaseUrl = (): string => {
+  const base = import.meta.env.BASE_URL || "/";
+  return base.endsWith("/") ? base : `${base}/`;
+};
 
 /**
  * 古いエントリーをクリーンアップ
  */
+export const STALE_ENTRY_TTL_MS = 30 * 60 * 1000; // 30min
 export const cleanupStaleEntries = (): void => {
   const now = Date.now();
-  const staleThreshold = 30 * 60 * 1000; // 30分間未使用のエントリーを削除
+  const staleThreshold = STALE_ENTRY_TTL_MS;
 
   const keysToDelete: string[] = [];
 
@@ -239,8 +249,13 @@ export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
         img.crossOrigin = "anonymous";
         const urlResult = getCardImageUrl(card.id);
         if (urlResult.isOk()) {
+          img.onload = () => {
+            setCacheEntry(card.id, img);
+          };
+          img.onerror = () => {
+            logger.warn(`Preload failed for card: ${card.id}`);
+          };
           img.src = urlResult.value;
-          setCacheEntry(card.id, img);
         }
       }
       currentIndex++;
