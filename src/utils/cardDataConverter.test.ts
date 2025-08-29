@@ -70,7 +70,9 @@ describe("loadCardsFromCsv", () => {
   });
 
   it("CSVデータを正しくパースし、JSONデータと一致すること", async () => {
-    const result = await loadCardsFromCsv("/public/cards.csv");
+    const result = await loadCardsFromCsv(
+      "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBSkAVMH16J4iOgia3JKSwgpNG9gIWGu5a7OzdnuPmM2lvYW0MjchCBvy1i4ZS8aXJEPooubEivEfc/pub?gid=1598481515&single=true&output=csv",
+    );
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       expect(result.value).toEqual(mockJsonContent);
@@ -86,7 +88,9 @@ describe("loadCardsFromCsv", () => {
       text: async () => "id,name,kind,type,tags\n",
     } as Response);
 
-    const result = await loadCardsFromCsv("/public/cards.csv");
+    const result = await loadCardsFromCsv(
+      "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBSkAVMH16J4iOgia3JKSwgpNG9gIWGu5a7OzdnuPmM2lvYW0MjchCBvy1i4ZS8aXJEPooubEivEfc/pub?gid=1598481515&single=true&output=csv",
+    );
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       expect(result.value).toEqual([]);

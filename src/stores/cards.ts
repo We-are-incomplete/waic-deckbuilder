@@ -306,7 +306,7 @@ export const useCardsStore = defineStore("cards", () => {
 
     try {
       const csvLoadResult = await loadCardsFromCsv(
-        `${import.meta.env.BASE_URL}cards.csv`,
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBSkAVMH16J4iOgia3JKSwgpNG9gIWGu5a7OzdnuPmM2lvYW0MjchCBvy1i4ZS8aXJEPooubEivEfc/pub?gid=1598481515&single=true&output=csv",
       );
       if (csvLoadResult.isErr()) {
         const mapped = mapErrorToCardStoreError(csvLoadResult.error);
