@@ -39,7 +39,6 @@ const generateDeckHash = (deckCards: readonly DeckCard[]): string => {
   // カードIDと枚数のタプル配列をソートし、JSON化して衝突を回避
   const entries = deckCards
     .map((dc) => [dc.card.id, dc.count] as const)
-    .slice()
     .sort((a, b) => a[0].localeCompare(b[0]));
   return JSON.stringify(entries);
 };
@@ -161,41 +160,42 @@ export const useDeckStore = defineStore("deck", () => {
     const prev = suppressSave;
     suppressSave = true;
     try {
-     const loadDeckResult = loadDeckFromLocalStorage(availableCards);
-     if (loadDeckResult.isErr()) {
-       updateDeckCardsWithVersion([]);
-       errorHandler.handleRuntimeError(
-         "デッキの読み込みに失敗しました",
-         loadDeckResult.error,
-       );
-     } else {
-       const s = calculateDeckState(loadDeckResult.value);
-      if (s.type === "invalid") {
+      const loadDeckResult = loadDeckFromLocalStorage(availableCards);
+      if (loadDeckResult.isErr()) {
         updateDeckCardsWithVersion([]);
-        errorHandler.handleValidationError(
-          "保存されたデッキが不正です",
-          s.errors,
+        errorHandler.handleRuntimeError(
+          "デッキの読み込みに失敗しました",
+          loadDeckResult.error,
         );
-      } else if (s.type === "empty") {
-        updateDeckCardsWithVersion([]);
       } else {
-        updateDeckCardsWithVersion(s.cards);
+        const s = calculateDeckState(loadDeckResult.value);
+        if (s.type === "invalid") {
+          updateDeckCardsWithVersion([]);
+          errorHandler.handleValidationError(
+            "保存されたデッキが不正です",
+            s.errors,
+          );
+        } else if (s.type === "empty") {
+          updateDeckCardsWithVersion([]);
+        } else {
+          updateDeckCardsWithVersion(s.cards);
+        }
       }
-    }
 
-     const loadNameResult = loadDeckName();
-     if (loadNameResult.isErr()) {
-       deckName.value = DEFAULT_DECK_NAME;
-       errorHandler.handleRuntimeError(
-         "デッキ名の読み込みに失敗しました",
-         loadNameResult.error,
-       );
-     } else {
-       deckName.value = loadNameResult.value;
-     }
-   } finally {
-     suppressSave = prev;
-   }
+      const loadNameResult = loadDeckName();
+      if (loadNameResult.isErr()) {
+        deckName.value = DEFAULT_DECK_NAME;
+        errorHandler.handleRuntimeError(
+          "デッキ名の読み込みに失敗しました",
+          loadNameResult.error,
+        );
+      } else {
+        const n = loadNameResult.value.trim();
+        deckName.value = n || DEFAULT_DECK_NAME;
+      }
+    } finally {
+      suppressSave = prev;
+    }
   };
 
   /**
@@ -207,7 +207,8 @@ export const useDeckStore = defineStore("deck", () => {
       errorHandler.handleValidationError("無効なデッキです", state.errors);
       return;
     }
-    updateDeckCardsWithVersion(cards);
+    if (state.type === "empty") updateDeckCardsWithVersion([]);
+    else updateDeckCardsWithVersion(state.cards);
   };
 
   /**
@@ -257,13 +258,13 @@ export const useDeckStore = defineStore("deck", () => {
    */
   const setDeckName = (name: string): void => {
     const n = name.trim();
-   if (!n) {
-     resetDeckName();
-     return;
-   }
-   if (deckName.value === n) {
-     return;
-   }
+    if (!n) {
+      resetDeckName();
+      return;
+    }
+    if (deckName.value === n) {
+      return;
+    }
     deckName.value = n;
   };
 
