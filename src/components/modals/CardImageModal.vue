@@ -25,17 +25,12 @@
       </div>
 
       <!-- カード画像 -->
-      <div
-        ref="imageContainer"
-        class="touch-pan-y relative"
-        @touchstart="handleTouchStart"
-        @touchmove="handleTouchMove"
-        @touchend="handleTouchEnd"
-      >
+      <div ref="imageContainer" class="touch-pan-y relative">
         <img
           v-if="imageSrc"
           :src="imageSrc"
           :alt="imageAltText"
+          crossorigin="anonymous"
           class="max-w-full max-h-full object-contain shadow-2xl"
           @error="handleImageError"
           @load="isImageLoading = false"
@@ -49,7 +44,8 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
-import { handleImageError } from "../../utils/image";
+import { useSwipe } from "@vueuse/core";
+import { handleImageError } from "../../utils";
 import type { Card } from "../../types";
 
 interface Props {
@@ -83,11 +79,6 @@ watch(
   },
 );
 
-// スワイプ関連の状態
-const touchStartX = ref<number | null>(null);
-const touchStartY = ref<number | null>(null);
-const minSwipeDistance = 50; // 最小スワイプ距離（px）
-
 // ナビゲーション可能性を計算
 const hasPreviousCard = computed(() => {
   if (props.cardIndex === null || props.cardIndex === undefined) return false;
@@ -105,55 +96,17 @@ const hasNextCard = computed(() => {
   return props.cardIndex < props.totalCards - 1;
 });
 
-// スワイプハンドラー
-const handleTouchStart = (event: TouchEvent) => {
-  if (event.touches.length === 1) {
-    touchStartX.value = event.touches[0].clientX;
-    touchStartY.value = event.touches[0].clientY;
-  }
-};
-
-const handleTouchMove = (event: TouchEvent) => {
-  if (touchStartX.value === null || touchStartY.value === null) return;
-
-  const touch = event.touches[0];
-  const deltaX = touch.clientX - touchStartX.value;
-  const deltaY = touch.clientY - touchStartY.value;
-
-  // 水平方向の移動が縦方向より大きい場合のみpreventDefaultを呼び出す
-  if (Math.abs(deltaX) > Math.abs(deltaY)) {
-    event.preventDefault();
-  }
-};
-
-const handleTouchEnd = (event: TouchEvent) => {
-  if (touchStartX.value === null || touchStartY.value === null) return;
-
-  const touch = event.changedTouches[0];
-  const deltaX = touch.clientX - touchStartX.value;
-  const deltaY = touch.clientY - touchStartY.value;
-
-  // 縦方向のスワイプが横方向よりも大きい場合は処理しない
-  if (Math.abs(deltaY) > Math.abs(deltaX)) {
-    touchStartX.value = null;
-    touchStartY.value = null;
-    return;
-  }
-
-  // 最小距離以上のスワイプかチェック
-  if (Math.abs(deltaX) >= minSwipeDistance) {
-    if (deltaX > 0 && hasPreviousCard.value) {
-      // 右スワイプ - 前のカード
-      navigateToPrevious();
-    } else if (deltaX < 0 && hasNextCard.value) {
-      // 左スワイプ - 次のカード
+// useSwipeの適用
+useSwipe(imageContainer, {
+  threshold: 40,
+  onSwipeEnd(_, direction) {
+    if (direction === "left" && hasNextCard.value) {
       navigateToNext();
+    } else if (direction === "right" && hasPreviousCard.value) {
+      navigateToPrevious();
     }
-  }
-
-  touchStartX.value = null;
-  touchStartY.value = null;
-};
+  },
+});
 
 // ナビゲーション関数
 const navigateToPrevious = () => {

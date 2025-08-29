@@ -9,10 +9,9 @@
  * - neverthrowのResult型を使用してエラーを表現
  * - 例外をスローせず、エラーの詳細を型安全に返却
  */
-import type { Card } from "../types/card";
-import type { DeckCard } from "../types/deck";
-import { logger } from "./logger"; // loggerをインポート
-import { ok, err, type Result } from "neverthrow"; // Result をインポート
+import type { Card, DeckCard } from "../types";
+import { logger } from "./logger";
+import { ok, err, type Result } from "neverthrow";
 
 // --- KCGデッキコード用定数（IDHolder.csの定数に対応） ---
 const CHAR_MAP =

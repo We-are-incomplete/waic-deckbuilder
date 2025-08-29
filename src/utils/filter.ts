@@ -1,4 +1,8 @@
-import type { Card, CardType } from "../types/card";
+/**
+ * フィルタユーティリティ
+ * - テキスト/タイプ/タグ一致判定の純粋関数群（副作用なし）
+ */
+import type { Card, CardType } from "../types";
 
 /**
  * カードがテキスト検索にマッチするかチェック
@@ -12,10 +16,9 @@ export const isCardMatchingText = (card: Card, textLower: string): boolean => {
     return true;
   }
 
-  // タグでの検索
-  if (card.tags) {
-    const tags = Array.isArray(card.tags) ? card.tags : [card.tags];
-    return tags.some((tag: string) => tag.toLowerCase().includes(textLower));
+  // タグでの検索（tags は配列前提）
+  if (Array.isArray(card.tags)) {
+    return card.tags.some((tag) => tag.toLowerCase().includes(textLower));
   }
 
   return false;
@@ -40,11 +43,7 @@ export const isCardMatchingTag = (card: Card, tagSet: Set<string>): boolean => {
   }
 
   if (Array.isArray(card.tags)) {
-    // タグが配列の場合
-    return card.tags.some((tag: string) => tagSet.has(tag));
-  } else if (typeof card.tags === "string") {
-    // タグが文字列の場合
-    return tagSet.has(card.tags);
+    return card.tags.some((tag) => tagSet.has(tag));
   }
 
   return false;

@@ -1,4 +1,8 @@
 <script setup lang="ts">
+// App.vue
+// 画面全体のレイアウトと各ストア/セクション/モーダルの配線を担うコンテナ。
+// 初期化（カード読込・デッキ生成）とキャッシュ掃除などの副作用を集約し、
+// 画像モーダルには deckCards を外部参照として渡してスワイプナビゲーションの基準を統一する。
 import { onMounted, computed, useTemplateRef, watch } from "vue";
 import { useIntervalFn } from "@vueuse/core";
 
@@ -12,8 +16,7 @@ import {
   CardImageModal,
   DeckManagementModal,
 } from "./components";
-import { cleanupStaleEntries } from "./utils";
-import { CACHE_CLEANUP_INTERVAL } from "./utils/image";
+import { cleanupStaleEntries, CACHE_CLEANUP_INTERVAL } from "./utils";
 
 // コンポーザブル
 import { useImageModal } from "./composables/useImageModal";
@@ -43,28 +46,16 @@ const {
   selectedCard,
   selectedImage,
   selectedIndex,
-  openImageModal: openModal,
+  openImageModal,
   closeImageModal,
   handleCardNavigation,
-} = useImageModal();
+} = useImageModal(deckCards);
 
 // アプリケーションの初期化
 onMounted(appStore.initializeApp);
 
 // 画像キャッシュの定期的なクリーンアップ
 useIntervalFn(cleanupStaleEntries, CACHE_CLEANUP_INTERVAL, { immediate: true });
-
-// 画像モーダルを開く（デッキカードを渡す）
-const openImageModal = (cardId: string) => {
-  // 入力ガード（空文字や未存在IDなら何もしない）
-  if (!cardId) return;
-  openModal(cardId);
-};
-
-// カードナビゲーション（デッキカードを渡す）
- const navigateCard = (direction: "previous" | "next") => {
-   handleCardNavigation(direction);
- };
 
 watch(
   deckSectionRef,
@@ -179,7 +170,7 @@ const cardImageModalProps = computed(() => ({
     <CardImageModal
       v-bind="cardImageModalProps"
       @close="closeImageModal"
-      @navigate="navigateCard"
+      @navigate="handleCardNavigation"
     />
 
     <!-- デッキ管理モーダル -->

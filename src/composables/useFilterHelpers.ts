@@ -1,6 +1,9 @@
+/**
+ * フィルター選択状態の判定用コンポーザブル
+ * - 種類/型/タグの選択判定と有効フィルター数の算出（副作用なし）
+ */
 import { computed, type ComputedRef } from "vue";
-import type { FilterCriteria } from "../types";
-import type { CardKind, CardType } from "../types/card";
+import type { CardKind, CardType, FilterCriteria } from "../types";
 
 /**
  * フィルター選択状態のヘルパー関数を提供するコンポーザブル
@@ -34,7 +37,7 @@ export function useFilterHelpers(filterCriteria: ComputedRef<FilterCriteria>) {
     const criteria = filterCriteria.value;
     let count = 0;
 
-    if (criteria.text?.trim()) count++;
+    if (criteria.text.trim()) count++;
     count += criteria.kind.length;
     count += criteria.type.length;
     count += criteria.tags.length;

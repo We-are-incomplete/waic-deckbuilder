@@ -2,16 +2,13 @@
  * useImageModal: 画像モーダルの状態管理と（デッキ基準の）ナビゲーションを提供するコンポーザブル
  * 仕様:
  * - selectedIndex: デッキに存在しないカードは null
- * - ナビゲーション対象: deckStore.deckCards（表示順に合わせる場合は sortedDeckCards を採用）
+ * - ナビゲーション対象: 引数で受け取る sortedDeckCards（外部から提供されるリアクティブ配列）
  * - 外部I/O: 画像URLキャッシュ(globalImageUrlCache)のみ／例外は発生させない
  */
-import { shallowRef, computed, triggerRef } from "vue";
-import type { Card } from "../types";
-import { getCardImageUrlSafe } from "../utils";
-import { globalImageUrlCache } from "../utils/cache";
-import { useCardsStore } from "../stores/cards"; // useCardsStore をインポート
-import { useDeckStore } from "../stores/deck";
-
+import { shallowRef, computed, triggerRef, watch, type Ref } from "vue";
+import type { Card, DeckCard } from "../types";
+import { getCardImageUrlSafe, globalImageUrlCache, logger } from "../utils";
+import { useCardsStore } from "../stores";
 
 /**
  * 画像モーダル状態の型定義
@@ -26,7 +23,7 @@ interface ImageModalState {
 /**
  * 画像モーダル関連の状態管理とロジックを提供するコンポーザブル
  */
-export function useImageModal() {
+export function useImageModal(sortedDeckCards: Ref<readonly DeckCard[]>) {
   // Vue 3.5の新機能: shallowRef を使用したパフォーマンス最適化
   const imageModalState = shallowRef<ImageModalState>({
     isVisible: false,
@@ -37,7 +34,6 @@ export function useImageModal() {
 
   // ストアはコンポーザブル初期化時に1度だけ取得
   const cardsStore = useCardsStore();
-  const deckStore = useDeckStore();
 
   /**
    * 画像URLをキャッシュから高速取得
@@ -70,7 +66,7 @@ export function useImageModal() {
 
     if (card) {
       // デッキ内に存在すればそのインデックス、無ければnull
-      const idxInDeck = deckStore.sortedDeckCards.findIndex(
+      const idxInDeck = sortedDeckCards.value.findIndex(
         (dc) => dc.card.id === cardId,
       );
       updateImageModalState({
@@ -80,7 +76,7 @@ export function useImageModal() {
         isVisible: true,
       });
     } else {
-      console.warn("[useImageModal] カード未検出", { cardId });
+      logger.warn("[useImageModal] カード未検出", { cardId });
     }
   };
 
@@ -99,9 +95,9 @@ export function useImageModal() {
   /**
    * カードナビゲーション
    */
- const handleCardNavigation = (direction: "previous" | "next") => {
-   const deckCards = deckStore.deckCards;   // store から直接取得
-   const currentIndex = imageModalState.value.selectedIndex;
+  const handleCardNavigation = (direction: "previous" | "next") => {
+    const deckCards = sortedDeckCards.value; // 引数で受け取ったデッキから取得
+    const currentIndex = imageModalState.value.selectedIndex;
     if (currentIndex === null) return;
 
     let newIndex: number;
@@ -132,6 +128,27 @@ export function useImageModal() {
   const selectedCard = computed(() => imageModalState.value.selectedCard);
   const selectedImage = computed(() => imageModalState.value.selectedImage);
   const selectedIndex = computed(() => imageModalState.value.selectedIndex);
+
+  // モーダル表示中にデッキが変わった場合の追従
+  watch(
+    sortedDeckCards,
+    (cards) => {
+      if (
+        !imageModalState.value.isVisible ||
+        !imageModalState.value.selectedCard
+      )
+        return;
+      const id = imageModalState.value.selectedCard.id;
+      const idx = cards.findIndex((dc) => dc.card.id === id);
+      if (idx === -1) {
+        // 現在のカードがデッキから消えた場合はクローズ（または最寄りに移動する等の仕様も可）
+        closeImageModal();
+      } else {
+        updateImageModalState({ selectedIndex: idx });
+      }
+    },
+    { deep: false },
+  );
 
   return {
     // 状態

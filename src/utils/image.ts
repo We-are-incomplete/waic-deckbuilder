@@ -1,10 +1,28 @@
+/**
+ * Image utilities:
+ * - LRU キャッシュ（MAX_CACHE_SIZE、TTL 30min）
+ * - BASE_URL 正規化と画像 URL 構築
+ * - 事前プリロード（requestIdleCallback フォールバック）
+ * 注意: DOM を扱う関数（プリロード/クリーンアップ）は SSR では呼び出さない
+ */
 import { ok, err, type Result } from "neverthrow";
-import type { Card } from "../types/card";
+import type { Card } from "../types";
 import { logger } from "./logger";
+
+type NetworkInformationLite = { saveData?: boolean };
 
 // LRUキャッシュの設定
 const MAX_CACHE_SIZE = 200; // 最大キャッシュサイズ
 export const CACHE_CLEANUP_INTERVAL = 5 * 60 * 1000; // 5分間隔でクリーンアップ
+
+// 画像プリロードの同時実行上限
+const PRELOAD_INFLIGHT_RAW = Number(
+  (import.meta.env.VITE_PRELOAD_MAX_INFLIGHT as string | undefined) ?? "",
+);
+export const PRELOAD_MAX_INFLIGHT =
+  Number.isFinite(PRELOAD_INFLIGHT_RAW) && PRELOAD_INFLIGHT_RAW > 0
+    ? Math.min(Math.floor(PRELOAD_INFLIGHT_RAW), 16)
+    : 6;
 
 // LRUキャッシュエントリー
 interface CacheEntry {
@@ -17,6 +35,8 @@ interface CacheState {
   cache: Map<string, CacheEntry>;
   accessOrder: string[];
   cleanupTimer: ReturnType<typeof setInterval> | null;
+  inflight: Set<string>;
+  generation: number;
 }
 
 // グローバルなキャッシュ状態
@@ -24,6 +44,32 @@ const cacheState: CacheState = {
   cache: new Map<string, CacheEntry>(),
   accessOrder: [],
   cleanupTimer: null,
+  inflight: new Set<string>(),
+  generation: 0,
+};
+
+// 参照時に LRU を更新
+const touchCacheKey = (key: string): void => {
+  const entry = cacheState.cache.get(key);
+  if (!entry) return;
+  entry.lastAccessed = Date.now();
+  const idx = cacheState.accessOrder.lastIndexOf(key);
+  if (idx !== -1) cacheState.accessOrder.splice(idx, 1);
+  cacheState.accessOrder.push(key);
+};
+
+// 定期クリーンアップ開始（多重開始防止）
+export const startImageCacheMaintenance = (): void => {
+  // SSR/非ブラウザでは開始しない
+  if (import.meta.env.SSR || typeof window === "undefined") return;
+  if (!cacheState.cleanupTimer) {
+    // 起動時に1回実行
+    cleanupStaleEntries();
+    cacheState.cleanupTimer = setInterval(
+      cleanupStaleEntries,
+      CACHE_CLEANUP_INTERVAL,
+    );
+  }
 };
 
 /**
@@ -72,6 +118,13 @@ const hasCacheEntry = (key: string): boolean => {
   return cacheState.cache.has(key);
 };
 
+export const getCachedImage = (key: string): HTMLImageElement | undefined => {
+  const entry = cacheState.cache.get(key);
+  if (!entry) return undefined;
+  touchCacheKey(key);
+  return entry.image;
+};
+
 /**
  * 必要に応じて古いエントリーを削除
  */
@@ -85,12 +138,29 @@ const evictIfNecessary = (): void => {
   }
 };
 
+const getNormalizedBaseUrl = (): string => {
+  const base = import.meta.env.BASE_URL || "/";
+  return base.endsWith("/") ? base : `${base}/`;
+};
+
 /**
  * 古いエントリーをクリーンアップ
  */
+const DEFAULT_STALE_ENTRY_TTL_MS = 30 * 60 * 1000; // 30min
+const TTL_FROM_ENV_RAW = Number(
+  (import.meta.env.VITE_IMAGE_CACHE_TTL_MS as string | undefined) ?? "",
+);
+// 有効なのは「正の有限整数」に限定（0/負数/NaN/Infinityは無効）
+const TTL_FROM_ENV =
+  Number.isFinite(TTL_FROM_ENV_RAW) && TTL_FROM_ENV_RAW > 0
+    ? Math.floor(TTL_FROM_ENV_RAW)
+    : NaN;
+export const STALE_ENTRY_TTL_MS = Number.isFinite(TTL_FROM_ENV)
+  ? TTL_FROM_ENV
+  : DEFAULT_STALE_ENTRY_TTL_MS;
 export const cleanupStaleEntries = (): void => {
   const now = Date.now();
-  const staleThreshold = 30 * 60 * 1000; // 30分間未使用のエントリーを削除
+  const staleThreshold = STALE_ENTRY_TTL_MS;
 
   const keysToDelete: string[] = [];
 
@@ -108,15 +178,15 @@ export const cleanupStaleEntries = (): void => {
     }
   }
 
-  logger.info(
-    `Image cache cleanup: removed ${keysToDelete.length} stale entries`,
+  logger.debug(
+    `Image cache cleanup: removed ${keysToDelete.length} stale entries (size=${cacheState.cache.size}/${MAX_CACHE_SIZE}, ttl=${STALE_ENTRY_TTL_MS}ms)`,
   );
 };
 
 /**
  * キャッシュをクリア
  */
-export const clearCache = (): void => {
+const clearCache = (): void => {
   cacheState.cache.clear();
   cacheState.accessOrder = [];
 };
@@ -124,7 +194,7 @@ export const clearCache = (): void => {
 /**
  * キャッシュの統計情報を取得
  */
-export const getCacheStats = (): { size: number; maxSize: number } => {
+const getCacheStats = (): { size: number; maxSize: number } => {
   return {
     size: cacheState.cache.size,
     maxSize: MAX_CACHE_SIZE,
@@ -134,7 +204,11 @@ export const getCacheStats = (): { size: number; maxSize: number } => {
 /**
  * クリーンアップタイマーを停止
  */
-export const destroyCache = (): void => {
+const destroyCache = (): void => {
+  // 進行中ハンドラを無効化
+  cacheState.generation++;
+  // inflight を明示的にリセット（以降の onload は世代ガードで無効化）
+  cacheState.inflight.clear();
   if (cacheState.cleanupTimer) {
     clearInterval(cacheState.cleanupTimer);
     cacheState.cleanupTimer = null;
@@ -150,7 +224,9 @@ export const getCardImageUrl = (cardId: string): Result<string, string> => {
     return err("カードIDが指定されていません");
   }
 
-  return ok(`${import.meta.env.BASE_URL}cards/${cardId}.avif`);
+  return ok(
+    `${getNormalizedBaseUrl()}cards/${encodeURIComponent(cardId)}.avif`,
+  );
 };
 
 /**
@@ -163,7 +239,7 @@ export const getCardImageUrlSafe = (cardId: string): string => {
   }
   // エラーをログに記録
   logger.warn(`Failed to get image URL for card: ${cardId}`, result.error);
-  return `${import.meta.env.BASE_URL}placeholder.avif`; // エラー時はプレースホルダー画像を返す
+  return `${getNormalizedBaseUrl()}placeholder.avif`;
 };
 
 /**
@@ -174,13 +250,20 @@ export const handleImageError = (event: Event): Result<void, string> => {
     return err("イベントまたはターゲットが指定されていません");
   }
 
-  const target = event.target as HTMLImageElement;
-  if (!target) {
+  const t = event.target;
+  if (!(t instanceof HTMLImageElement)) {
     return err("イベントターゲットが画像要素ではありません");
   }
+  const img = t;
 
-  target.src = `${import.meta.env.BASE_URL}placeholder.avif`;
-  target.onerror = null;
+  img.onerror = null;
+  // サポート環境では低優先度での再取得を明示
+  try {
+    // @ts-ignore - 実装環境によっては存在しない
+    img.fetchPriority = "low";
+    img.decoding = "async";
+  } catch {}
+  img.src = `${getNormalizedBaseUrl()}placeholder.avif`;
 
   return ok(undefined);
 };
@@ -189,33 +272,81 @@ export const handleImageError = (event: Event): Result<void, string> => {
  * 画像のプリロード処理
  */
 export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
+  // SSR/非ブラウザ環境では何もしない
+  if (import.meta.env.SSR || typeof window === "undefined") {
+    return ok(undefined);
+  }
+  // 省データモード/低速回線ではスキップ
+  const conn = (navigator as unknown as { connection?: NetworkInformationLite })
+    .connection;
+  if (conn?.saveData) {
+    logger.info("Preload skipped due to saveData mode");
+    return ok(undefined);
+  }
+  // 有効なら低優先度で取得
+  const setLowFetchPriority = (img: HTMLImageElement): void => {
+    try {
+      // @ts-ignore
+      img.fetchPriority = "low";
+    } catch {}
+  };
   if (!cards || cards.length === 0) {
     return ok(undefined); // 空配列は正常
   }
 
   let currentIndex = 0;
 
-  const processBatch = (deadline?: IdleDeadline): void => {
+  const processBatch = (deadline?: { timeRemaining: () => number }): void => {
     while (
       currentIndex < cards.length &&
       (!deadline || deadline.timeRemaining() > 0)
     ) {
+      // 同時実行の上限
+      if (cacheState.inflight.size >= PRELOAD_MAX_INFLIGHT) break;
       const card = cards[currentIndex];
 
-      if (!hasCacheEntry(card.id)) {
-        const img = new Image();
+      if (!hasCacheEntry(card.id) && !cacheState.inflight.has(card.id)) {
         const urlResult = getCardImageUrl(card.id);
         if (urlResult.isOk()) {
+          const gen = cacheState.generation;
+          cacheState.inflight.add(card.id);
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.decoding = "async";
+          setLowFetchPriority(img);
+          img.onload = () => {
+            if (gen === cacheState.generation) {
+              setCacheEntry(card.id, img);
+            }
+            cacheState.inflight.delete(card.id);
+            img.onload = null;
+            img.onerror = null;
+          };
+          img.onerror = () => {
+            if (gen === cacheState.generation) {
+              logger.warn(`Preload failed for card: ${card.id}`);
+            }
+            cacheState.inflight.delete(card.id);
+            img.onload = null;
+            img.onerror = null;
+          };
           img.src = urlResult.value;
-          setCacheEntry(card.id, img);
+        } else {
+          logger.warn(
+            `Preload skipped: invalid URL for card: ${card.id}`,
+            urlResult.error,
+          );
         }
       }
       currentIndex++;
     }
 
     if (currentIndex < cards.length) {
-      if (typeof requestIdleCallback === "function") {
-        requestIdleCallback(processBatch);
+      if (
+        typeof window !== "undefined" &&
+        typeof (window as any).requestIdleCallback === "function"
+      ) {
+        (window as any).requestIdleCallback(processBatch);
       } else {
         // requestIdleCallbackがサポートされていない場合のフォールバック
         setTimeout(() => processBatch(), 100);
@@ -223,8 +354,11 @@ export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
     }
   };
 
-  if (typeof requestIdleCallback === "function") {
-    requestIdleCallback(processBatch);
+  if (
+    typeof window !== "undefined" &&
+    typeof (window as any).requestIdleCallback === "function"
+  ) {
+    (window as any).requestIdleCallback(processBatch);
   } else {
     // requestIdleCallbackがサポートされていない場合の初期呼び出し
     setTimeout(() => processBatch(), 100);

@@ -3,7 +3,6 @@
     v-if="isVisible"
     class="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000] animate-fadeIn"
     @click="onBackdropClick"
-    @keydown.esc="onCancel"
     tabindex="0"
     role="dialog"
     aria-modal="true"
@@ -51,7 +50,8 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted } from "vue";
+import { watch } from "vue";
+import { useEventListener, useScrollLock } from "@vueuse/core";
 
 interface Props {
   isVisible: boolean;
@@ -93,19 +93,21 @@ const onBackdropClick = () => {
 };
 
 // ESCキーでモーダルを閉じる
-const handleKeyDown = (event: KeyboardEvent) => {
+useEventListener(document, "keydown", (event: KeyboardEvent) => {
   if (event.key === "Escape" && props.isVisible && !props.loading) {
     emit("cancel");
   }
-};
-
-onMounted(() => {
-  document.addEventListener("keydown", handleKeyDown);
 });
 
-onUnmounted(() => {
-  document.removeEventListener("keydown", handleKeyDown);
-});
+// モーダルの表示状態に応じてbodyのスクロールを制御
+const isLocked = useScrollLock(document.body);
+watch(
+  () => props.isVisible,
+  (v) => {
+    isLocked.value = v;
+  },
+  { immediate: true },
+);
 </script>
 
 <style scoped>

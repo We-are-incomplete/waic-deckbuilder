@@ -8,7 +8,8 @@
  * - エラーハンドリングにはneverthrowのResult型を使用し、例外をスローしない
  */
 import { ok, err, type Result } from "neverthrow";
-import type { Card, CardKind, CardType } from "../types/card";
+import type { Card, CardKind, CardType } from "../types";
+import { CARD_KINDS, CARD_TYPES } from "../constants";
 
 /**
  * カードの検証中に発生しうるエラーを表す代数的データ型。
@@ -21,11 +22,10 @@ import type { Card, CardKind, CardType } from "../types/card";
 export type CardValidationError =
   | { readonly type: "invalidId"; readonly id: string }
   | { readonly type: "invalidName"; readonly name: string }
-  | { readonly type: "invalidKind"; readonly kind: CardKind }
-  | {
-      readonly type: "invalidType";
-      readonly cardType: CardType;
-    }
+  | { readonly type: "invalidKind"; readonly kind: string }
+  | { readonly type: "invalidType"; readonly cardType: string }
+  | { readonly type: "emptyTypeList" } // 空配列
+  | { readonly type: "duplicateTypes" } // 重複
   | { readonly type: "duplicateTags"; readonly tags: readonly string[] };
 
 // カード作成関数
@@ -44,6 +44,23 @@ export const createCard = (
   // 名前検証
   if (!name || name.trim().length === 0) {
     return err({ type: "invalidName", name });
+  }
+
+  // 種別検証（実行時）
+  if (!CARD_KINDS.includes(kind)) {
+    return err({ type: "invalidKind", kind });
+  }
+
+  // 空配列/重複チェック
+  if (type.length === 0) return err({ type: "emptyTypeList" });
+  if (new Set(type).size !== type.length)
+    return err({ type: "duplicateTypes" });
+
+  // タイプ検証（実行時）
+  for (const t of type) {
+    if (!CARD_TYPES.includes(t)) {
+      return err({ type: "invalidType", cardType: t });
+    }
   }
 
   // タグ検証

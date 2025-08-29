@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, useTemplateRef, ref, watchEffect } from "vue";
 import { DeckExportContainer } from "../index";
-import { handleImageError } from "../../utils/image";
-import { getCardImageUrlSafe } from "../../utils";
+import { GAME_CONSTANTS } from "../../constants";
+import { getCardImageUrlSafe, handleImageError } from "../../utils";
 import { useDeckOperations } from "../../composables/useDeckOperations";
-import { useDeckStore } from "../../stores/deck";
+import { useDeckStore } from "../../stores";
+import { storeToRefs } from "pinia";
 import { onLongPress } from "@vueuse/core";
 
 // Vue 3.5の新機能: 改善されたdefineProps with better TypeScript support
@@ -34,10 +35,8 @@ const {
 } = useDeckOperations();
 
 // 計算プロパティ（ストアから直接取得）- Vue 3.5の改善されたreactivity
-const deckCards = computed(() => deckStore.deckCards);
-const deckName = computed(() => deckStore.deckName);
-const sortedDeckCards = computed(() => deckStore.sortedDeckCards);
-const totalDeckCards = computed(() => deckStore.totalDeckCards);
+const { deckCards, deckName, sortedDeckCards, totalDeckCards } =
+  storeToRefs(deckStore);
 
 // デッキ名の更新（ストアメソッドを直接使用）
 const updateDeckName = (value: string) => {
@@ -84,37 +83,27 @@ watchEffect((onCleanup) => {
   });
 });
 
-// カードデクリメント処理（ハンドラークリーンアップ付き）
-const decrementCard = (cardId: string) => {
-  handleDecrementCard(cardId);
-};
-
 const resetDeck = () => {
   emit("resetDeck");
 };
 
-// デッキ枚数の色分け計算
-const MAX_DECK_SIZE = 60;
-const WARNING_THRESHOLD = 50;
-
 const getDeckCountColor = (count: number) => {
-  if (count === MAX_DECK_SIZE) return "text-green-400";
-  if (count > MAX_DECK_SIZE) return "text-red-400";
-  if (count > WARNING_THRESHOLD) return "text-yellow-400";
+  if (count === GAME_CONSTANTS.MAX_DECK_SIZE) return "text-green-400";
+  if (count > GAME_CONSTANTS.MAX_DECK_SIZE) return "text-red-400";
+  if (count > (GAME_CONSTANTS.MAX_DECK_SIZE * 5) / 6) return "text-yellow-400";
   return "text-slate-100";
 };
 
 const getDeckProgressColor = (count: number) => {
-  if (count === MAX_DECK_SIZE) return "bg-green-500";
-  if (count > MAX_DECK_SIZE) return "bg-red-500";
-  if (count > WARNING_THRESHOLD) return "bg-yellow-500";
+  if (count === GAME_CONSTANTS.MAX_DECK_SIZE) return "bg-green-500";
+  if (count > GAME_CONSTANTS.MAX_DECK_SIZE) return "bg-red-500";
+  if (count > (GAME_CONSTANTS.MAX_DECK_SIZE * 5) / 6) return "bg-yellow-500";
   return "bg-blue-500";
 };
 
 // エクスポート用
 defineExpose({
   exportContainer,
-  decrementCard,
   resetDeck,
   updateDeckName,
 });
@@ -244,14 +233,16 @@ defineExpose({
         >
           {{ totalDeckCards }}
         </span>
-        <span class="text-xs text-slate-400">/ 60</span>
+        <span class="text-xs text-slate-400"
+          >/ {{ GAME_CONSTANTS.MAX_DECK_SIZE }}</span
+        >
 
         <div class="w-12 sm:w-16 h-1 bg-slate-700 rounded-full overflow-hidden">
           <div
             class="h-full transition-all duration-300 rounded-full"
             :class="getDeckProgressColor(totalDeckCards)"
             :style="{
-              width: `${Math.min((totalDeckCards / 60) * 100, 100)}%`,
+              width: `${Math.min((totalDeckCards / GAME_CONSTANTS.MAX_DECK_SIZE) * 100, 100)}%`,
             }"
           ></div>
         </div>
@@ -279,6 +270,7 @@ defineExpose({
             @error="handleImageError"
             :alt="item.card.name"
             loading="lazy"
+            crossorigin="anonymous"
             class="block w-full h-full object-cover transition-transform duration-200 select-none"
           />
           <div
@@ -290,7 +282,7 @@ defineExpose({
           class="absolute bottom-2 w-full px-1 flex items-center justify-center gap-1"
         >
           <button
-            @click="decrementCard(item.card.id)"
+            @click="handleDecrementCard(item.card.id)"
             class="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-full flex items-center justify-center leading-none transition-all duration-200 shadow-lg hover:shadow-red-500/25"
           >
             <svg
@@ -315,7 +307,7 @@ defineExpose({
           <button
             @click="handleIncrementCard(item.card.id)"
             class="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-full flex items-center justify-center leading-none transition-all duration-200 shadow-lg hover:shadow-emerald-500/25 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed"
-            :disabled="item.count >= 4"
+            :disabled="item.count >= GAME_CONSTANTS.MAX_CARD_COPIES"
           >
             <svg
               class="w-3 h-3 sm:w-4 sm:h-4"

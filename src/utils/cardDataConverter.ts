@@ -5,10 +5,10 @@
  *        neverthrow Result型を使用して、成功または失敗の結果を明示的に扱います。
  */
 
-import type { Card, CardKind, CardType } from "../types/card";
-import { CARD_KINDS, CARD_TYPES } from "../constants/game";
+import type { Card, CardKind, CardType } from "../types";
+import { CARD_KINDS, CARD_TYPES } from "../constants";
 import { type Result, ok, err } from "neverthrow";
-import { logger } from "../utils";
+import { logger } from "./logger";
 import Papa from "papaparse";
 
 interface CsvCardRow {
@@ -105,7 +105,8 @@ function isCardType(value: string): value is CardType {
 export async function loadCardsFromCsv(
   csvPath: string,
 ): Promise<Result<Card[], Error>> {
-  if (import.meta.env?.DEV) logger.debug("Attempting to fetch CSV from:", csvPath);
+  if (import.meta.env?.DEV)
+    logger.debug("Attempting to fetch CSV from:", csvPath);
 
   try {
     // 通常のfetch APIを使用（useFetchの代わり）
@@ -131,13 +132,14 @@ export async function loadCardsFromCsv(
       return err(new Error("CSVデータが空です。"));
     }
 
-    if (import.meta.env?.DEV) logger.debug("CSV data fetched successfully, length:", csvText.length);
+    if (import.meta.env?.DEV)
+      logger.debug("CSV data fetched successfully, length:", csvText.length);
 
     // papaparse を使用してCSVをパース
     const parseResult = parseCsv(csvText);
     return parseResult;
   } catch (error) {
-    console.error("Fetch error:", error); // デバッグログ
+    logger.error("Fetch error:", error); // デバッグログ
     return err(
       new Error(
         `ネットワークエラー: ${error instanceof Error ? error.message : String(error)}`,
@@ -147,7 +149,7 @@ export async function loadCardsFromCsv(
 }
 
 function parseCsv(csvText: string): Result<Card[], Error> {
-  if (import.meta.env?.DEV) console.debug("Parsing CSV text with PapaParse...");
+  if (import.meta.env?.DEV) logger.debug("Parsing CSV text with PapaParse...");
   const parseResult = Papa.parse<CsvCardRow>(csvText, {
     header: true, // ヘッダー行をオブジェクトのキーとして使用
     skipEmptyLines: true, // 空行をスキップ
@@ -164,7 +166,7 @@ function parseCsv(csvText: string): Result<Card[], Error> {
   });
 
   if (parseResult.errors.length > 0) {
-    console.error("PapaParse errors:", parseResult.errors);
+    logger.error("PapaParse errors:", parseResult.errors);
     return err(new Error(`CSVパースエラー: ${parseResult.errors[0].message}`));
   }
 
@@ -214,6 +216,7 @@ function parseCsv(csvText: string): Result<Card[], Error> {
     });
   }
 
-  if (import.meta.env?.DEV) logger.debug("Successfully parsed cards:", cards.length);
+  if (import.meta.env?.DEV)
+    logger.debug("Successfully parsed cards:", cards.length);
   return ok(cards);
 }

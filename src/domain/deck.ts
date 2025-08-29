@@ -10,16 +10,14 @@
  * - パフォーマンス最適化のためにMapベースの内部処理を活用
  */
 import { ok, err, type Result } from "neverthrow";
-import type { Card } from "../types/card";
+import { GAME_CONSTANTS } from "../constants";
 import type {
+  Card,
   DeckCard,
   DeckState,
   DeckOperation,
   DeckOperationError,
-} from "../types/deck";
-
-// ドメイン定数
-const MAX_CARD_COPIES = 4;
+} from "../types";
 
 // =============================================================================
 // Map ベースのパフォーマンス最適化関数
@@ -57,11 +55,11 @@ export const createDeckCard = (
   if (count < 1) {
     return err({ type: "invalidCardCount", cardId: card.id, count });
   }
-  if (count > MAX_CARD_COPIES) {
+  if (count > GAME_CONSTANTS.MAX_CARD_COPIES) {
     return err({
       type: "maxCountExceeded",
       cardId: card.id,
-      maxCount: MAX_CARD_COPIES,
+      maxCount: GAME_CONSTANTS.MAX_CARD_COPIES,
     });
   }
 
@@ -87,9 +85,9 @@ export const calculateDeckState = (cards: readonly DeckCard[]): DeckState => {
         `カード「${deckCard.card.name}」の枚数が無効です: ${deckCard.count}`,
       );
     }
-    if (deckCard.count > MAX_CARD_COPIES) {
+    if (deckCard.count > GAME_CONSTANTS.MAX_CARD_COPIES) {
       errors.push(
-        `カード「${deckCard.card.name}」の枚数が上限を超えています: ${deckCard.count}/${MAX_CARD_COPIES}`,
+        `カード「${deckCard.card.name}」の枚数が上限を超えています: ${deckCard.count}/${GAME_CONSTANTS.MAX_CARD_COPIES}`,
       );
     }
   }
@@ -110,11 +108,11 @@ export const addCardToDeck = (
   const existingCard = deckMap.get(cardToAdd.id);
 
   if (existingCard) {
-    if (existingCard.count >= MAX_CARD_COPIES) {
+    if (existingCard.count >= GAME_CONSTANTS.MAX_CARD_COPIES) {
       return err({
         type: "maxCountExceeded",
         cardId: cardToAdd.id,
-        maxCount: MAX_CARD_COPIES,
+        maxCount: GAME_CONSTANTS.MAX_CARD_COPIES,
       });
     }
 
@@ -158,8 +156,12 @@ export const setCardCount = (
     return ok(mapToDeckCards(deckMap));
   }
 
-  if (count > MAX_CARD_COPIES) {
-    return err({ type: "maxCountExceeded", cardId, maxCount: MAX_CARD_COPIES });
+  if (count > GAME_CONSTANTS.MAX_CARD_COPIES) {
+    return err({
+      type: "maxCountExceeded",
+      cardId,
+      maxCount: GAME_CONSTANTS.MAX_CARD_COPIES,
+    });
   }
 
   const updatedCard = { ...existingCard, count };

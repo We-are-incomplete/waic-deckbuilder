@@ -3,8 +3,8 @@
  * - 自然順/種別/タイプの比較関数と合成/反転ヘルパー群
  * - 純粋関数のみ（副作用なし）
  */
-import type { Card, CardType } from "../types/card";
-import { CARD_KINDS, CARD_TYPES } from "../constants/game";
+import type { Card, CardType } from "../types";
+import { CARD_KINDS, CARD_TYPES } from "../constants";
 
 // ソート用の型定義
 export type SortComparator<T> = (a: T, b: T) => number;

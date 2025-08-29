@@ -1,9 +1,5 @@
 import type { Card, DeckCard } from "../types";
-import {
-  createNaturalSort,
-  createKindSort,
-  createTypeSort,
-} from "../utils/sort";
+import { createNaturalSort, createKindSort, createTypeSort } from "../utils";
 
 /**
  * @file カードとデッキカードのソートに関するドメインロジックを定義する。

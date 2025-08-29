@@ -1,18 +1,12 @@
+/**
+ * [spec] フィルタ条件の状態管理（Pinia）。カード一覧の抽出/並び替え/統計を提供するストア。
+ */
 import { defineStore } from "pinia";
-import {
-  ref,
-  readonly,
-  computed,
-  shallowRef,
-  triggerRef,
-  type ComputedRef,
-} from "vue";
-import type { Card, FilterCriteria } from "../types";
-import type { CardKind, CardType } from "../types/card";
-import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants/game";
-import * as CardDomain from "../domain/card";
+import { ref, readonly, computed, shallowRef, type ComputedRef } from "vue";
+import type { Card, CardKind, CardType, FilterCriteria } from "../types";
+import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants";
 import { useCardsStore } from "./cards";
-import { sortCards } from "../domain/sort";
+import { searchCardsByName, sortCards } from "../domain";
 import {
   createArraySortMemo,
   createFilterMemo,
@@ -145,12 +139,7 @@ export const useFilterStore = defineStore("filter", () => {
       return cards;
     }
 
-    const normalizedText = text.trim().toLowerCase();
-    if (normalizedText.length === 0) {
-      return cards;
-    }
-
-    return CardDomain.searchCardsByName(cards, normalizedText);
+    return searchCardsByName(cards, text);
   };
 
   /**
@@ -395,7 +384,6 @@ export const useFilterStore = defineStore("filter", () => {
    */
   const updateFilterCriteria = (criteria: FilterCriteria): void => {
     filterCriteria.value = { ...criteria };
-    triggerRef(filterCriteria); // 手動でリアクティブ更新をトリガー
   };
 
   /**
@@ -497,8 +485,8 @@ export const useFilterStore = defineStore("filter", () => {
     filterStats,
 
     // 定数
-    allKinds: readonly([...CARD_KINDS]),
-    allTypes: readonly([...CARD_TYPES]),
+    allKinds: CARD_KINDS,
+    allTypes: CARD_TYPES,
 
     // アクション
     openFilterModal,
