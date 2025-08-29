@@ -160,28 +160,31 @@ export const useDeckStore = defineStore("deck", () => {
   const initializeDeck = (availableCards: readonly Card[]): void => {
     const prev = suppressSave;
     suppressSave = true;
-    const loadDeckResult = loadDeckFromLocalStorage(availableCards);
-    if (loadDeckResult.isErr()) {
-      updateDeckCardsWithVersion([]);
-      errorHandler.handleRuntimeError(
-        "デッキの読み込みに失敗しました",
-        loadDeckResult.error,
-      );
-    } else {
-      updateDeckCardsWithVersion(loadDeckResult.value);
-    }
+    try {
+     const loadDeckResult = loadDeckFromLocalStorage(availableCards);
+     if (loadDeckResult.isErr()) {
+       updateDeckCardsWithVersion([]);
+       errorHandler.handleRuntimeError(
+         "デッキの読み込みに失敗しました",
+         loadDeckResult.error,
+       );
+     } else {
+       updateDeckCardsWithVersion(loadDeckResult.value);
+     }
 
-    const loadNameResult = loadDeckName();
-    if (loadNameResult.isErr()) {
-      deckName.value = DEFAULT_DECK_NAME;
-      errorHandler.handleRuntimeError(
-        "デッキ名の読み込みに失敗しました",
-        loadNameResult.error,
-      );
-    } else {
-      deckName.value = loadNameResult.value;
-    }
-    suppressSave = prev;
+     const loadNameResult = loadDeckName();
+     if (loadNameResult.isErr()) {
+       deckName.value = DEFAULT_DECK_NAME;
+       errorHandler.handleRuntimeError(
+         "デッキ名の読み込みに失敗しました",
+         loadNameResult.error,
+       );
+     } else {
+       deckName.value = loadNameResult.value;
+     }
+   } finally {
+     suppressSave = prev;
+   }
   };
 
   /**
@@ -231,8 +234,13 @@ export const useDeckStore = defineStore("deck", () => {
    */
   const setDeckName = (name: string): void => {
     const n = name.trim();
-    if (!n) return resetDeckName();
-    if (deckName.value === n) return;
+   if (!n) {
+     resetDeckName();
+     return;
+   }
+   if (deckName.value === n) {
+     return;
+   }
     deckName.value = n;
   };
 
