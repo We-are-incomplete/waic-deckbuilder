@@ -103,7 +103,7 @@ export const useDeckStore = defineStore("deck", () => {
   /**
    * Vue 3.5最適化: デッキのエラーメッセージ
    */
-  const deckErrors = computed(() => {
+  const deckErrors = computed<readonly string[]>(() => {
     return deckState.value.type === "invalid" ? deckState.value.errors : [];
   });
 
@@ -169,8 +169,19 @@ export const useDeckStore = defineStore("deck", () => {
          loadDeckResult.error,
        );
      } else {
-       updateDeckCardsWithVersion(loadDeckResult.value);
-     }
+       const s = calculateDeckState(loadDeckResult.value);
+      if (s.type === "invalid") {
+        updateDeckCardsWithVersion([]);
+        errorHandler.handleValidationError(
+          "保存されたデッキが不正です",
+          s.errors,
+        );
+      } else if (s.type === "empty") {
+        updateDeckCardsWithVersion([]);
+      } else {
+        updateDeckCardsWithVersion(s.cards);
+      }
+    }
 
      const loadNameResult = loadDeckName();
      if (loadNameResult.isErr()) {
@@ -211,7 +222,13 @@ export const useDeckStore = defineStore("deck", () => {
       );
       return;
     }
-    updateDeckCardsWithVersion([]);
+    const prev = suppressSave;
+    suppressSave = true;
+    try {
+      updateDeckCardsWithVersion([]);
+    } finally {
+      suppressSave = prev;
+    }
   };
 
   /**
@@ -226,7 +243,13 @@ export const useDeckStore = defineStore("deck", () => {
       );
       return;
     }
-    deckName.value = DEFAULT_DECK_NAME;
+    const prev = suppressSave;
+    suppressSave = true;
+    try {
+      deckName.value = DEFAULT_DECK_NAME;
+    } finally {
+      suppressSave = prev;
+    }
   };
 
   /**
