@@ -15,7 +15,7 @@ export default defineConfig({
       manifest: {
         name: "神椿TCGデッキメーカー",
         short_name: "KCG Maker",
-        display: "fullscreen",
+        display: "standalone",
         theme_color: "#000000",
         icons: [
           {
