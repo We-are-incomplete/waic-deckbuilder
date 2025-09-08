@@ -20,7 +20,6 @@ import { cleanupStaleEntries, CACHE_CLEANUP_INTERVAL } from "./utils";
 
 // コンポーザブル
 import { useImageModal } from "./composables/useImageModal";
-import { useDeckCards } from "./composables/useDeckCards";
 
 // ストア初期化
 const appStore = useAppStore();
@@ -38,9 +37,6 @@ const deckSectionRef =
   useTemplateRef<InstanceType<typeof DeckSection>>("deckSection");
 
 // コンポーザブルの初期化
-const sortedDeckCards = computed(() => deckStore.sortedDeckCards);
-const { deckCards } = useDeckCards(sortedDeckCards);
-
 const {
   isVisible: imageModalVisible,
   selectedCard,
@@ -49,7 +45,7 @@ const {
   openImageModal,
   closeImageModal,
   handleCardNavigation,
-} = useImageModal(deckCards);
+} = useImageModal(computed(() => deckStore.sortedDeckCards));
 
 // アプリケーションの初期化
 onMounted(appStore.initializeApp);
@@ -103,7 +99,7 @@ const cardImageModalProps = computed(() => ({
   imageSrc: selectedImage.value,
   currentCard: selectedCard.value,
   cardIndex: selectedIndex.value,
-  totalCards: deckCards.value.length,
+  totalCards: deckStore.sortedDeckCards.length,
 }));
 </script>
 

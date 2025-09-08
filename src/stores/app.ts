@@ -1,5 +1,14 @@
+/**
+ * Spec: App Store
+ * 目的: アプリ全体のUI状態（リセット確認モーダル、初期化フロー、デッキ操作）を管理する。
+ * 契約:
+ * - deckSectionRef: DeckSection の template ref を保持（UI便宜用）。永続化/シリアライズ対象外。
+ * - showResetConfirmModal: 読み取り専用。resetDeck/confirmResetDeck/cancelResetDeck でのみ変更。
+ * - initializeApp: カード読み込み失敗時は早期 return して後続副作用を停止。
+ * 非目標: ビジネスロジックは各ストアへ委譲（最小API表面）。
+ */
 import { defineStore } from "pinia";
-import { ref, readonly } from "vue";
+import { ref, readonly, shallowRef } from "vue";
 import { useCardsStore } from "./cards";
 import { useDeckStore } from "./deck";
 import { useFilterStore } from "./filter";
@@ -10,13 +19,15 @@ import { useDeckManagementStore } from "./deckManagement";
 
 import type DeckSection from "../components/layout/DeckSection.vue";
 
+// Vue 3.5の新機能: Template refs management
+// より柔軟なtemplate ref管理
+// DeckSectionコンポーネントのインスタンス型を定義
+// Vue 3.5の新機能: InstanceType<typeof Component> でコンポーネントインスタンスの型を正確に取得
+// Template ref 管理のための型定義（TypeScript の InstanceType を使用）
+export type DeckSectionInstance = InstanceType<typeof DeckSection>;
+
 export const useAppStore = defineStore("app", () => {
-  // Vue 3.5の新機能: Template refs management
-  // より柔軟なtemplate ref管理
-  // DeckSectionコンポーネントのインスタンス型を定義
-  // Vue 3.5の新機能: InstanceType<typeof Component> でコンポーネントインスタンスの型を正確に取得
-  type DeckSectionInstance = InstanceType<typeof DeckSection>;
-  let deckSectionRef = ref<DeckSectionInstance | null>(null);
+  let deckSectionRef = shallowRef<DeckSectionInstance | null>(null);
 
   // Vue 3.5の新機能: shallowRef for performance optimization
   // 頻繁に変更されない状態にはshallowRefを使用

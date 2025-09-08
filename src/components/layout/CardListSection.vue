@@ -7,8 +7,6 @@
 -->
 <script setup lang="ts">
 import {
-  reactive,
-  watchEffect,
   computed,
   shallowRef,
   watch,
@@ -18,8 +16,8 @@ import {
 import { GAME_CONSTANTS } from "../../constants";
 import type { Card, DeckCard } from "../../types";
 import { handleImageError, getCardImageUrlSafe } from "../../utils";
-import { onLongPress } from "@vueuse/core";
 import { fromThrowable } from "neverthrow";
+import { useLongPressImageModal } from "../../composables/useLongPressImageModal";
 
 interface Props {
   availableCards: readonly Card[];
@@ -146,31 +144,7 @@ const handleCardClick = (card: Card) => {
   }
 };
 
-const cardRefs = reactive(new Map<string, HTMLElement>());
-
-const setCardRef = (el: unknown, cardId: string) => {
-  if (el instanceof HTMLElement) {
-    cardRefs.set(cardId, el);
-  } else {
-    cardRefs.delete(cardId);
-  }
-};
-
-watchEffect((onCleanup) => {
-  const stops: Array<() => void> = [];
-  props.sortedAndFilteredCards.forEach((card) => {
-    const el = cardRefs.get(card.id);
-    if (el) {
-      const stop = onLongPress(el, () => openImageModal(card.id), {
-        delay: 500,
-      });
-      stops.push(stop);
-    }
-  });
-  onCleanup(() => {
-    stops.forEach((stop) => stop());
-  });
-});
+const { setCardRef } = useLongPressImageModal(openImageModal, displayedCards);
 </script>
 
 <template>
