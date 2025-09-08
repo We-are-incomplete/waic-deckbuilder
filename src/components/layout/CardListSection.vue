@@ -19,6 +19,7 @@ import { GAME_CONSTANTS } from "../../constants";
 import type { Card, DeckCard } from "../../types";
 import { handleImageError, getCardImageUrlSafe } from "../../utils";
 import { onLongPress } from "@vueuse/core";
+import { fromThrowable } from "neverthrow";
 
 interface Props {
   availableCards: readonly Card[];
@@ -44,15 +45,15 @@ const FAVORITE_CARDS_STORAGE_KEY = "waic-deckbuilder-favorite-cards";
 
 const loadFavoriteIds = (): string[] => {
   if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(FAVORITE_CARDS_STORAGE_KEY) ?? "[]";
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed)
-      ? parsed.filter((x): x is string => typeof x === "string")
-      : [];
-  } catch {
-    return [];
-  }
+  const raw = window.localStorage.getItem(FAVORITE_CARDS_STORAGE_KEY) ?? "[]";
+  const parse = fromThrowable(
+    () => JSON.parse(raw) as unknown,
+    () => [],
+  );
+  const data = parse().valueOf();
+  return Array.isArray(data)
+    ? data.filter((x): x is string => typeof x === "string")
+    : [];
 };
 
 const favoriteCardIds = shallowRef<ReadonlySet<string>>(
@@ -74,18 +75,15 @@ const persistFavorites = () => {
 // 参照の再代入でのみ発火（深い監視は不要）
 watch(favoriteCardIds, persistFavorites);
 
-// 他タブの変更と同期
-let onStorage: (e: StorageEvent) => void;
+// 他タブの変更と同期（インスタンスローカルに登録/解除）
 onMounted(() => {
-  onStorage = (e: StorageEvent) => {
+  const onStorage = (e: StorageEvent) => {
     if (e.key === FAVORITE_CARDS_STORAGE_KEY || e.key === null) {
       favoriteCardIds.value = new Set(loadFavoriteIds());
     }
   };
   window.addEventListener("storage", onStorage);
-});
-onBeforeUnmount(() => {
-  if (onStorage) window.removeEventListener("storage", onStorage);
+  onBeforeUnmount(() => window.removeEventListener("storage", onStorage));
 });
 
 const isFavorite = (cardId: string) => favoriteCardIds.value.has(cardId);
@@ -328,7 +326,7 @@ watchEffect((onCleanup) => {
             "
           >
             <svg
-              class="w-6 h-6 transition-transform duration-200 hover:scale-110"
+              class="w-7 h-7 sm:w-8 sm:h-8 p-0.5 transition-transform duration-200 hover:scale-110"
               :class="{
                 'text-yellow-400': isFavorite(card.id),
                 'text-gray-400/70': !isFavorite(card.id),
