@@ -1,16 +1,25 @@
-+<!--
-+  CardListSection.vue
-+  目的: カード一覧の表示/クリック操作(追加・枚数増加)と画像の長押し拡大を提供する純UI層
-+  入力: Props.availableCards, sortedAndFilteredCards, deckCards, isLoading, error
-+  出力: Emits(openFilter, addCard, incrementCard, decrementCard, openImageModal)
-+  留意: ドメイン制約(MAX_CARD_COPIES)は表示制御のみで、最終判定は親/ドメイン層に委譲
-+-->
+<!--
+  CardListSection.vue
+  目的: カード一覧の表示/クリック操作(追加・枚数増加)と画像の長押し拡大を提供する純UI層
+  入力: Props.availableCards, sortedAndFilteredCards, deckCards, isLoading, error
+  出力: Emits(openFilter, addCard, incrementCard, decrementCard, openImageModal)
+  留意: ドメイン制約(MAX_CARD_COPIES)は表示制御のみで、最終判定は親/ドメイン層に委譲
+-->
 <script setup lang="ts">
-import { reactive, watchEffect, computed } from "vue";
+import {
+  reactive,
+  watchEffect,
+  computed,
+  shallowRef,
+  watch,
+  onMounted,
+  onBeforeUnmount,
+} from "vue";
 import { GAME_CONSTANTS } from "../../constants";
 import type { Card, DeckCard } from "../../types";
 import { handleImageError, getCardImageUrlSafe } from "../../utils";
 import { onLongPress } from "@vueuse/core";
+import { fromThrowable } from "neverthrow";
 
 interface Props {
   availableCards: readonly Card[];
@@ -30,6 +39,81 @@ interface Emits {
 
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
+
+// お気に入りカードIDの管理（安全な初期化＋不変更新）
+const FAVORITE_CARDS_STORAGE_KEY = "waic-deckbuilder-favorite-cards";
+
+const loadFavoriteIds = (): string[] => {
+  if (typeof window === "undefined") return [];
+  const raw = window.localStorage.getItem(FAVORITE_CARDS_STORAGE_KEY) ?? "[]";
+  const parse = fromThrowable(
+    () => JSON.parse(raw) as unknown,
+    () => [],
+  );
+  const data = parse().valueOf();
+  return Array.isArray(data)
+    ? data.filter((x): x is string => typeof x === "string")
+    : [];
+};
+
+const favoriteCardIds = shallowRef<ReadonlySet<string>>(
+  new Set(loadFavoriteIds()),
+);
+
+const persistFavorites = () => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      FAVORITE_CARDS_STORAGE_KEY,
+      JSON.stringify([...favoriteCardIds.value].sort()),
+    );
+  } catch {
+    // Safari private mode / QUOTA_EXCEEDED などは無視（UIを壊さない）
+  }
+};
+
+// 参照の再代入でのみ発火（深い監視は不要）
+watch(favoriteCardIds, persistFavorites);
+
+// 他タブの変更と同期（インスタンスローカルに登録/解除）
+onMounted(() => {
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === FAVORITE_CARDS_STORAGE_KEY || e.key === null) {
+      favoriteCardIds.value = new Set(loadFavoriteIds());
+    }
+  };
+  window.addEventListener("storage", onStorage);
+  onBeforeUnmount(() => window.removeEventListener("storage", onStorage));
+});
+
+const isFavorite = (cardId: string) => favoriteCardIds.value.has(cardId);
+
+const toggleFavorite = (cardId: string) => {
+  const next = new Set(favoriteCardIds.value);
+  next.has(cardId) ? next.delete(cardId) : next.add(cardId);
+  favoriteCardIds.value = next;
+};
+
+// 純関数: お気に入り優先で並べ替え
+const prioritizeFavorites = (
+  cards: readonly Card[],
+  favs: ReadonlySet<string>,
+): readonly Card[] => {
+  const fav: Card[] = [];
+  const other: Card[] = [];
+  for (const c of cards) {
+    (favs.has(c.id) ? fav : other).push(c);
+  }
+  return [...fav, ...other];
+};
+
+// お気に入りカードを優先的にソートした表示用カードリスト
+const displayedCards = computed<readonly Card[]>(() => {
+  return prioritizeFavorites(
+    props.sortedAndFilteredCards,
+    favoriteCardIds.value,
+  );
+});
 
 // デッキにあるカードのマップを作成（パフォーマンス向上のため）
 const deckCardMap = computed(() => {
@@ -207,7 +291,7 @@ watchEffect((onCleanup) => {
 
       <div
         v-else
-        v-for="card in props.sortedAndFilteredCards"
+        v-for="card in displayedCards"
         :key="card.id"
         class="group flex flex-col items-center relative transition-all duration-200"
         :title="
@@ -230,6 +314,31 @@ watchEffect((onCleanup) => {
             crossorigin="anonymous"
             class="block w-full h-full object-cover transition-transform duration-200 select-none"
           />
+          <!-- お気に入りアイコン -->
+          <button
+            type="button"
+            class="absolute top-2 left-1 z-20 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 rounded"
+            @click.stop="toggleFavorite(card.id)"
+            :title="isFavorite(card.id) ? 'お気に入り解除' : 'お気に入り登録'"
+            :aria-pressed="isFavorite(card.id)"
+            :aria-label="
+              isFavorite(card.id) ? 'お気に入り解除' : 'お気に入り登録'
+            "
+          >
+            <svg
+              class="w-7 h-7 sm:w-8 sm:h-8 p-0.5 transition-transform duration-200 hover:scale-110"
+              :class="{
+                'text-yellow-400': isFavorite(card.id),
+                'text-gray-400/70': !isFavorite(card.id),
+              }"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.817 1.48-8.279-6.064-5.828 8.332-1.151L12 .587z"
+              />
+            </svg>
+          </button>
           <div
             v-if="getCardInDeck(card.id) === 0"
             class="absolute inset-0 bg-gradient-to-t from-slate-900/50 via-transparent to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200"
