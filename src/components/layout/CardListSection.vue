@@ -12,7 +12,6 @@ import {
   watch,
   onMounted,
   onBeforeUnmount,
-  type Ref,
 } from "vue";
 import { GAME_CONSTANTS } from "../../constants";
 import type { Card, DeckCard } from "../../types";
@@ -145,10 +144,7 @@ const handleCardClick = (card: Card) => {
   }
 };
 
-const { setCardRef } = useLongPressImageModal(
-  openImageModal,
-  displayedCards as Ref<readonly Card[]>,
-);
+const { setCardRef } = useLongPressImageModal(openImageModal, displayedCards);
 </script>
 
 <template>

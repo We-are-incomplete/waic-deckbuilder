@@ -9,7 +9,8 @@ import type { Card } from "../types";
  */
 export function useLongPressImageModal(
   openImageModal: (cardId: string) => void,
-  cards: Ref<readonly Card[]>,
+  cards: Readonly<Ref<readonly Card[]>>,
+  options?: { delay?: number },
 ) {
   const cardRefs = reactive(new Map<string, HTMLElement>());
 
@@ -27,7 +28,7 @@ export function useLongPressImageModal(
       const el = cardRefs.get(card.id);
       if (el) {
         const stop = onLongPress(el, () => openImageModal(card.id), {
-          delay: 500,
+          delay: options?.delay ?? 500,
         });
         stops.push(stop);
       }
