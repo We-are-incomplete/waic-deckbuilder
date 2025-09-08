@@ -1,12 +1,12 @@
-+<!--
-+  CardListSection.vue
-+  目的: カード一覧の表示/クリック操作(追加・枚数増加)と画像の長押し拡大を提供する純UI層
-+  入力: Props.availableCards, sortedAndFilteredCards, deckCards, isLoading, error
-+  出力: Emits(openFilter, addCard, incrementCard, decrementCard, openImageModal)
-+  留意: ドメイン制約(MAX_CARD_COPIES)は表示制御のみで、最終判定は親/ドメイン層に委譲
-+-->
+<!--
+  CardListSection.vue
+  目的: カード一覧の表示/クリック操作(追加・枚数増加)と画像の長押し拡大を提供する純UI層
+  入力: Props.availableCards, sortedAndFilteredCards, deckCards, isLoading, error
+  出力: Emits(openFilter, addCard, incrementCard, decrementCard, openImageModal)
+  留意: ドメイン制約(MAX_CARD_COPIES)は表示制御のみで、最終判定は親/ドメイン層に委譲
+-->
 <script setup lang="ts">
-import { reactive, watchEffect, computed, ref, watch } from "vue";
+import { reactive, watchEffect, computed, shallowRef, watch } from "vue";
 import { GAME_CONSTANTS } from "../../constants";
 import type { Card, DeckCard } from "../../types";
 import { handleImageError, getCardImageUrlSafe } from "../../utils";
@@ -31,30 +31,51 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-// お気に入りカードIDの管理
+// お気に入りカードIDの管理（安全な初期化＋不変更新）
 const FAVORITE_CARDS_STORAGE_KEY = "waic-deckbuilder-favorite-cards";
-const favoriteCardIds = ref<Set<string>>(new Set(JSON.parse(localStorage.getItem(FAVORITE_CARDS_STORAGE_KEY) || "[]")));
 
-watch(favoriteCardIds, (newVal) => {
-  localStorage.setItem(FAVORITE_CARDS_STORAGE_KEY, JSON.stringify(Array.from(newVal)));
-}, { deep: true });
+const loadFavoriteIds = (): string[] => {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(FAVORITE_CARDS_STORAGE_KEY) ?? "[]";
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((x): x is string => typeof x === "string")
+      : [];
+  } catch {
+    return [];
+  }
+};
+
+const favoriteCardIds = shallowRef<ReadonlySet<string>>(
+  new Set(loadFavoriteIds()),
+);
+
+const persistFavorites = () => {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(
+    FAVORITE_CARDS_STORAGE_KEY,
+    JSON.stringify([...favoriteCardIds.value]),
+  );
+};
+
+// 参照の再代入でのみ発火（深い監視は不要）
+watch(favoriteCardIds, persistFavorites);
 
 const isFavorite = (cardId: string) => favoriteCardIds.value.has(cardId);
 
 const toggleFavorite = (cardId: string) => {
-  if (favoriteCardIds.value.has(cardId)) {
-    favoriteCardIds.value.delete(cardId);
-  } else {
-    favoriteCardIds.value.add(cardId);
-  }
+  const next = new Set(favoriteCardIds.value);
+  next.has(cardId) ? next.delete(cardId) : next.add(cardId);
+  favoriteCardIds.value = next;
 };
 
 // お気に入りカードを優先的にソートした表示用カードリスト
-const displayedCards = computed(() => {
+const displayedCards = computed<readonly Card[]>(() => {
   const favoriteCards: Card[] = [];
   const otherCards: Card[] = [];
 
-  props.sortedAndFilteredCards.forEach(card => {
+  props.sortedAndFilteredCards.forEach((card) => {
     if (isFavorite(card.id)) {
       favoriteCards.push(card);
     } else {
@@ -266,14 +287,22 @@ watchEffect((onCleanup) => {
             class="block w-full h-full object-cover transition-transform duration-200 select-none"
           />
           <!-- お気に入りアイコン -->
-          <div
+          <button
+            type="button"
             class="absolute top-2 left-1 z-20 cursor-pointer"
             @click.stop="toggleFavorite(card.id)"
             :title="isFavorite(card.id) ? 'お気に入り解除' : 'お気に入り登録'"
+            :aria-pressed="isFavorite(card.id)"
+            :aria-label="
+              isFavorite(card.id) ? 'お気に入り解除' : 'お気に入り登録'
+            "
           >
             <svg
               class="w-6 h-6 transition-transform duration-200 hover:scale-110"
-              :class="{ 'text-yellow-400': isFavorite(card.id), 'text-gray-400/70': !isFavorite(card.id) }"
+              :class="{
+                'text-yellow-400': isFavorite(card.id),
+                'text-gray-400/70': !isFavorite(card.id),
+              }"
               fill="currentColor"
               viewBox="0 0 24 24"
             >
@@ -281,7 +310,10 @@ watchEffect((onCleanup) => {
                 d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.817 1.48-8.279-6.064-5.828 8.332-1.151L12 .587z"
               />
             </svg>
-          </div>
+            <span class="sr-only">{{
+              isFavorite(card.id) ? "お気に入り解除" : "お気に入り登録"
+            }}</span>
+          </button>
           <div
             v-if="getCardInDeck(card.id) === 0"
             class="absolute inset-0 bg-gradient-to-t from-slate-900/50 via-transparent to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200"
