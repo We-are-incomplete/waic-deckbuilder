@@ -10,12 +10,13 @@ import { useDeckManagementStore } from "./deckManagement";
 
 import type DeckSection from "../components/layout/DeckSection.vue";
 
+// Vue 3.5の新機能: Template refs management
+// より柔軟なtemplate ref管理
+// DeckSectionコンポーネントのインスタンス型を定義
+// Vue 3.5の新機能: InstanceType<typeof Component> でコンポーネントインスタンスの型を正確に取得
+export type DeckSectionInstance = InstanceType<typeof DeckSection>;
+
 export const useAppStore = defineStore("app", () => {
-  // Vue 3.5の新機能: Template refs management
-  // より柔軟なtemplate ref管理
-  // DeckSectionコンポーネントのインスタンス型を定義
-  // Vue 3.5の新機能: InstanceType<typeof Component> でコンポーネントインスタンスの型を正確に取得
-  type DeckSectionInstance = InstanceType<typeof DeckSection>;
   let deckSectionRef = ref<DeckSectionInstance | null>(null);
 
   // Vue 3.5の新機能: shallowRef for performance optimization

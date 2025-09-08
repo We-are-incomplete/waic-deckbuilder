@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, useTemplateRef, ref, watchEffect } from "vue";
+import { computed, useTemplateRef } from "vue";
 import { DeckExportContainer } from "../index";
 import { GAME_CONSTANTS } from "../../constants";
 import { getCardImageUrlSafe, handleImageError } from "../../utils";
 import { useDeckOperations } from "../../composables/useDeckOperations";
 import { useDeckStore } from "../../stores";
 import { storeToRefs } from "pinia";
-import { onLongPress } from "@vueuse/core";
+import { useLongPressImageModal } from "../../composables/useLongPressImageModal";
 
 // Vue 3.5の新機能: 改善されたdefineProps with better TypeScript support
 interface Props {
@@ -57,31 +57,10 @@ const openImageModal = (cardId: string) => {
   emit("openImageModal", cardId);
 };
 
-const deckCardRefs = ref<Map<string, HTMLElement>>(new Map());
-
-const setDeckCardRef = (el: unknown, cardId: string) => {
-  if (el instanceof HTMLElement) {
-    deckCardRefs.value.set(cardId, el);
-  } else {
-    deckCardRefs.value.delete(cardId);
-  }
-};
-
-watchEffect((onCleanup) => {
-  const stops: Function[] = [];
-  sortedDeckCards.value.forEach((item) => {
-    const el = deckCardRefs.value.get(item.card.id);
-    if (el) {
-      const stop = onLongPress(el, () => openImageModal(item.card.id), {
-        delay: 500,
-      });
-      stops.push(stop);
-    }
-  });
-  onCleanup(() => {
-    stops.forEach((stop) => stop());
-  });
-});
+const { setCardRef: setDeckCardRef } = useLongPressImageModal(
+  openImageModal,
+  computed(() => sortedDeckCards.value.map((dc) => dc.card)),
+);
 
 const resetDeck = () => {
   emit("resetDeck");

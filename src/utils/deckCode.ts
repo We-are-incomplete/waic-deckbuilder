@@ -13,7 +13,7 @@ import type { Card, DeckCard } from "../types";
 import { logger } from "./logger";
 import { ok, err, type Result } from "neverthrow";
 
-// --- KCGデッキコード用定数（IDHolder.csの定数に対応） ---
+// --- KCGデッキコード用定数 ---
 const CHAR_MAP =
   "AIQYgow5BJRZhpx6CKSaiqy7DLTbjrz8EMUcks19FNVdlt2!GOWemu3?HPXfnv4/";
 const MAP1_EXPANSION = "eABCDEFGHI";
@@ -214,7 +214,6 @@ export const decodeKcgDeckCode = (
 
       const nVal = 500 - signedDecimalVal;
 
-      // C#のロジックに基づき'X'でパディング
       let formattedNVal: string;
       if (nVal >= 0 && nVal < 10) {
         formattedNVal = "XX" + nVal.toString();
