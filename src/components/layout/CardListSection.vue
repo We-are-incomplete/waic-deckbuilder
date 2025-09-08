@@ -64,7 +64,7 @@ const persistFavorites = () => {
   try {
     window.localStorage.setItem(
       FAVORITE_CARDS_STORAGE_KEY,
-      JSON.stringify([...favoriteCardIds.value]),
+      JSON.stringify([...favoriteCardIds.value].sort()),
     );
   } catch {
     // Safari private mode / QUOTA_EXCEEDED などは無視（UIを壊さない）
@@ -75,14 +75,17 @@ const persistFavorites = () => {
 watch(favoriteCardIds, persistFavorites);
 
 // 他タブの変更と同期
+let onStorage: (e: StorageEvent) => void;
 onMounted(() => {
-  const onStorage = (e: StorageEvent) => {
-    if (e.key === FAVORITE_CARDS_STORAGE_KEY) {
+  onStorage = (e: StorageEvent) => {
+    if (e.key === FAVORITE_CARDS_STORAGE_KEY || e.key === null) {
       favoriteCardIds.value = new Set(loadFavoriteIds());
     }
   };
   window.addEventListener("storage", onStorage);
-  onBeforeUnmount(() => window.removeEventListener("storage", onStorage));
+});
+onBeforeUnmount(() => {
+  if (onStorage) window.removeEventListener("storage", onStorage);
 });
 
 const isFavorite = (cardId: string) => favoriteCardIds.value.has(cardId);
@@ -93,21 +96,25 @@ const toggleFavorite = (cardId: string) => {
   favoriteCardIds.value = next;
 };
 
+// 純関数: お気に入り優先で並べ替え
+const prioritizeFavorites = (
+  cards: readonly Card[],
+  favs: ReadonlySet<string>,
+): readonly Card[] => {
+  const fav: Card[] = [];
+  const other: Card[] = [];
+  for (const c of cards) {
+    (favs.has(c.id) ? fav : other).push(c);
+  }
+  return [...fav, ...other];
+};
+
 // お気に入りカードを優先的にソートした表示用カードリスト
 const displayedCards = computed<readonly Card[]>(() => {
-  const favoriteCards: Card[] = [];
-  const otherCards: Card[] = [];
-
-  props.sortedAndFilteredCards.forEach((card) => {
-    if (isFavorite(card.id)) {
-      favoriteCards.push(card);
-    } else {
-      otherCards.push(card);
-    }
-  });
-
-  // お気に入りカードを先頭に、その後は元のソート順を維持
-  return [...favoriteCards, ...otherCards];
+  return prioritizeFavorites(
+    props.sortedAndFilteredCards,
+    favoriteCardIds.value,
+  );
 });
 
 // デッキにあるカードのマップを作成（パフォーマンス向上のため）
