@@ -6,7 +6,7 @@
 +  留意: ドメイン制約(MAX_CARD_COPIES)は表示制御のみで、最終判定は親/ドメイン層に委譲
 +-->
 <script setup lang="ts">
-import { reactive, watchEffect, computed } from "vue";
+import { reactive, watchEffect, computed, ref, watch } from "vue";
 import { GAME_CONSTANTS } from "../../constants";
 import type { Card, DeckCard } from "../../types";
 import { handleImageError, getCardImageUrlSafe } from "../../utils";
@@ -30,6 +30,41 @@ interface Emits {
 
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
+
+// お気に入りカードIDの管理
+const FAVORITE_CARDS_STORAGE_KEY = "waic-deckbuilder-favorite-cards";
+const favoriteCardIds = ref<Set<string>>(new Set(JSON.parse(localStorage.getItem(FAVORITE_CARDS_STORAGE_KEY) || "[]")));
+
+watch(favoriteCardIds, (newVal) => {
+  localStorage.setItem(FAVORITE_CARDS_STORAGE_KEY, JSON.stringify(Array.from(newVal)));
+}, { deep: true });
+
+const isFavorite = (cardId: string) => favoriteCardIds.value.has(cardId);
+
+const toggleFavorite = (cardId: string) => {
+  if (favoriteCardIds.value.has(cardId)) {
+    favoriteCardIds.value.delete(cardId);
+  } else {
+    favoriteCardIds.value.add(cardId);
+  }
+};
+
+// お気に入りカードを優先的にソートした表示用カードリスト
+const displayedCards = computed(() => {
+  const favoriteCards: Card[] = [];
+  const otherCards: Card[] = [];
+
+  props.sortedAndFilteredCards.forEach(card => {
+    if (isFavorite(card.id)) {
+      favoriteCards.push(card);
+    } else {
+      otherCards.push(card);
+    }
+  });
+
+  // お気に入りカードを先頭に、その後は元のソート順を維持
+  return [...favoriteCards, ...otherCards];
+});
 
 // デッキにあるカードのマップを作成（パフォーマンス向上のため）
 const deckCardMap = computed(() => {
@@ -207,7 +242,7 @@ watchEffect((onCleanup) => {
 
       <div
         v-else
-        v-for="card in props.sortedAndFilteredCards"
+        v-for="card in displayedCards"
         :key="card.id"
         class="group flex flex-col items-center relative transition-all duration-200"
         :title="
@@ -230,6 +265,23 @@ watchEffect((onCleanup) => {
             crossorigin="anonymous"
             class="block w-full h-full object-cover transition-transform duration-200 select-none"
           />
+          <!-- お気に入りアイコン -->
+          <div
+            class="absolute top-2 left-1 z-20 cursor-pointer"
+            @click.stop="toggleFavorite(card.id)"
+            :title="isFavorite(card.id) ? 'お気に入り解除' : 'お気に入り登録'"
+          >
+            <svg
+              class="w-6 h-6 transition-transform duration-200 hover:scale-110"
+              :class="{ 'text-yellow-400': isFavorite(card.id), 'text-gray-400/70': !isFavorite(card.id) }"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.817 1.48-8.279-6.064-5.828 8.332-1.151L12 .587z"
+              />
+            </svg>
+          </div>
           <div
             v-if="getCardInDeck(card.id) === 0"
             class="absolute inset-0 bg-gradient-to-t from-slate-900/50 via-transparent to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200"

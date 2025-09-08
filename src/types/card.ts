@@ -32,6 +32,7 @@ export type CardType =
  * @property effect - カードの効果テキスト。
  * @property hasEntryCondition - 【登場条件】を持つカードかどうかを示す真偽値。
  * @property tags - カードに関連付けられたタグのリスト。
+ * @property isFavorite - カードがお気に入り登録されているかどうかを示す真偽値。
  */
 export interface Card {
   readonly id: string;
@@ -41,4 +42,5 @@ export interface Card {
   readonly effect?: string;
   readonly hasEntryCondition?: boolean;
   readonly tags?: readonly string[];
+  isFavorite?: boolean;
 }
