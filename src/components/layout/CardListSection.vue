@@ -6,7 +6,15 @@
   留意: ドメイン制約(MAX_CARD_COPIES)は表示制御のみで、最終判定は親/ドメイン層に委譲
 -->
 <script setup lang="ts">
-import { reactive, watchEffect, computed, shallowRef, watch } from "vue";
+import {
+  reactive,
+  watchEffect,
+  computed,
+  shallowRef,
+  watch,
+  onMounted,
+  onBeforeUnmount,
+} from "vue";
 import { GAME_CONSTANTS } from "../../constants";
 import type { Card, DeckCard } from "../../types";
 import { handleImageError, getCardImageUrlSafe } from "../../utils";
@@ -53,14 +61,29 @@ const favoriteCardIds = shallowRef<ReadonlySet<string>>(
 
 const persistFavorites = () => {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(
-    FAVORITE_CARDS_STORAGE_KEY,
-    JSON.stringify([...favoriteCardIds.value]),
-  );
+  try {
+    window.localStorage.setItem(
+      FAVORITE_CARDS_STORAGE_KEY,
+      JSON.stringify([...favoriteCardIds.value]),
+    );
+  } catch {
+    // Safari private mode / QUOTA_EXCEEDED などは無視（UIを壊さない）
+  }
 };
 
 // 参照の再代入でのみ発火（深い監視は不要）
 watch(favoriteCardIds, persistFavorites);
+
+// 他タブの変更と同期
+onMounted(() => {
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === FAVORITE_CARDS_STORAGE_KEY) {
+      favoriteCardIds.value = new Set(loadFavoriteIds());
+    }
+  };
+  window.addEventListener("storage", onStorage);
+  onBeforeUnmount(() => window.removeEventListener("storage", onStorage));
+});
 
 const isFavorite = (cardId: string) => favoriteCardIds.value.has(cardId);
 
@@ -289,7 +312,7 @@ watchEffect((onCleanup) => {
           <!-- お気に入りアイコン -->
           <button
             type="button"
-            class="absolute top-2 left-1 z-20 cursor-pointer"
+            class="absolute top-2 left-1 z-20 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 rounded"
             @click.stop="toggleFavorite(card.id)"
             :title="isFavorite(card.id) ? 'お気に入り解除' : 'お気に入り登録'"
             :aria-pressed="isFavorite(card.id)"
@@ -310,9 +333,6 @@ watchEffect((onCleanup) => {
                 d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.817 1.48-8.279-6.064-5.828 8.332-1.151L12 .587z"
               />
             </svg>
-            <span class="sr-only">{{
-              isFavorite(card.id) ? "お気に入り解除" : "お気に入り登録"
-            }}</span>
           </button>
           <div
             v-if="getCardInDeck(card.id) === 0"
