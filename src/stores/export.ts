@@ -209,10 +209,7 @@ export const useExportStore = defineStore("export", () => {
       // Canvas生成 (neverthrow でラップ)
       const canvasResult = await fromPromise(
         html2canvas(exportContainer, {
-          scale:
-            typeof window !== "undefined"
-              ? Math.min(2, Math.max(1, window.devicePixelRatio || 1))
-              : 1,
+          scale: 1,
           useCORS: true,
           logging: false,
           allowTaint: false,

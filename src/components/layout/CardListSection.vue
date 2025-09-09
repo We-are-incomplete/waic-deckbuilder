@@ -6,13 +6,7 @@
   留意: ドメイン制約(MAX_CARD_COPIES)は表示制御のみで、最終判定は親/ドメイン層に委譲
 -->
 <script setup lang="ts">
-import {
-  computed,
-  shallowRef,
-  watch,
-  onMounted,
-  onBeforeUnmount,
-} from "vue";
+import { computed, shallowRef, watch, onMounted, onBeforeUnmount } from "vue";
 import { GAME_CONSTANTS } from "../../constants";
 import type { Card, DeckCard } from "../../types";
 import { handleImageError, getCardImageUrlSafe } from "../../utils";
