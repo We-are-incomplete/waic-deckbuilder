@@ -36,8 +36,23 @@ export default defineConfig({
             options: {
               cacheName: "cards-cache",
               expiration: {
-                maxEntries: 500,
-                maxAgeSeconds: 60 * 60 * 24 * 7, // 1 week
+                maxEntries: 1024,
+                maxAgeSeconds: 60 * 60 * 24 * 30,
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            urlPattern:
+              /^\/waic-deckbuilder\/(sheet2|sheet|sheet_nogrid)\.avif$/,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "bg-cache",
+              expiration: {
+                maxEntries: 3,
+                maxAgeSeconds: 60 * 60 * 24 * 30,
               },
               cacheableResponse: {
                 statuses: [0, 200],
