@@ -28,16 +28,20 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{css,html,js,png,webmanifest}"],
+        globPatterns: ["**/*.{css,html,ico,js,png,svg,webmanifest,woff2}"],
         runtimeCaching: [
           {
-            urlPattern: /^\/waic-deckbuilder\/cards\/.*\.avif$/,
+            urlPattern: ({ url }) =>
+              url.origin === self.location.origin &&
+              url.pathname.startsWith("/waic-deckbuilder/cards/") &&
+              url.pathname.endsWith(".avif"),
             handler: "CacheFirst",
             options: {
               cacheName: "cards-cache",
               expiration: {
                 maxEntries: 1024,
                 maxAgeSeconds: 60 * 60 * 24 * 30,
+                purgeOnQuotaError: true,
               },
               cacheableResponse: {
                 statuses: [0, 200],
@@ -45,14 +49,20 @@ export default defineConfig({
             },
           },
           {
-            urlPattern:
-              /^\/waic-deckbuilder\/(sheet2|sheet|sheet_nogrid)\.avif$/,
+            urlPattern: ({ url }) =>
+              url.origin === self.location.origin &&
+              [
+                "/waic-deckbuilder/sheet2.avif",
+                "/waic-deckbuilder/sheet.avif",
+                "/waic-deckbuilder/sheet_nogrid.avif",
+              ].includes(url.pathname),
             handler: "CacheFirst",
             options: {
               cacheName: "bg-cache",
               expiration: {
                 maxEntries: 3,
                 maxAgeSeconds: 60 * 60 * 24 * 30,
+                purgeOnQuotaError: true,
               },
               cacheableResponse: {
                 statuses: [0, 200],
