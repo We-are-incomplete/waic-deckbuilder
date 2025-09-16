@@ -79,7 +79,7 @@ defineExpose({ exportContainer });
   >
     <!-- デッキ名 -->
     <div
-      class="absolute top-[180px] left-1/2 -translate-x-1/2 z-10 w-full text-center font-exdeck text-[128px] font-bold text-[#353100]"
+      class="absolute top-[180px] left-1/2 -translate-x-1/2 z-10 w-full text-center font-deckimg text-[128px] font-bold text-[#353100]"
       style="line-height: 0"
     >
       「{{ deckName }}」
@@ -108,7 +108,7 @@ defineExpose({ exportContainer });
 
         <!-- カウントバッジ -->
         <div
-          class="mt-[32px] h-[34px] w-full text-center font-exdeck text-[36px] font-bold text-[#353100]"
+          class="mt-[32px] h-[34px] w-full text-center font-deckimg text-[36px] font-bold text-[#353100]"
           style="line-height: 0"
         >
           {{ item.count }}
