@@ -54,16 +54,19 @@ const favoriteCardIds = shallowRef<ReadonlySet<string>>(
 
 const persistFavorites = () => {
   if (typeof window === "undefined") return;
-  fromThrowable(() => {
-    window.localStorage.setItem(
-      FAVORITE_CARDS_STORAGE_KEY,
-      JSON.stringify([...favoriteCardIds.value].sort()),
-    );
-  }, (e) => {
-    // Safari private mode / QUOTA_EXCEEDED などは無視（UIを壊さない）
-    // エラーをログに出力することも可能だが、ここでは無視する
-    return e; // neverthrow の fromThrowable はエラーを返す必要がある
-  })();
+  fromThrowable(
+    () => {
+      window.localStorage.setItem(
+        FAVORITE_CARDS_STORAGE_KEY,
+        JSON.stringify([...favoriteCardIds.value].sort()),
+      );
+    },
+    (e) => {
+      // Safari private mode / QUOTA_EXCEEDED などは無視（UIを壊さない）
+      // エラーをログに出力することも可能だが、ここでは無視する
+      return e; // neverthrow の fromThrowable はエラーを返す必要がある
+    },
+  )();
 };
 
 // 参照の再代入でのみ発火（深い監視は不要）
