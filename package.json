@@ -8,7 +8,7 @@
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
     "lint": "oxlint",
-    "format": "prettier . --write",
+    "format": "prettier . --write --experimental-cli",
     "test": "vitest",
     "typecheck": "vue-tsc"
   },
@@ -39,5 +39,5 @@
     "vitest": "^3.2.4",
     "vue-tsc": "^3.0.7"
   },
-  "packageManager": "pnpm@10.15.1"
+  "packageManager": "pnpm@10.16.1"
 }
