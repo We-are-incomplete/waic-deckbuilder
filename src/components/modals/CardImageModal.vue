@@ -25,7 +25,7 @@
       </div>
 
       <!-- カード画像 -->
-      <div ref="imageContainer" class="touch-pan-y relative">
+      <div ref="imageContainer" class="relative" style="touch-action: none">
         <img
           v-if="imageSrc"
           :src="imageSrc"

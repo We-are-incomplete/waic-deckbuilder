@@ -38,11 +38,9 @@ const FAVORITE_CARDS_STORAGE_KEY = "waic-deckbuilder-favorite-cards";
 const loadFavoriteIds = (): string[] => {
   if (typeof window === "undefined") return [];
   const raw = window.localStorage.getItem(FAVORITE_CARDS_STORAGE_KEY) ?? "[]";
-  const parse = fromThrowable(
-    () => JSON.parse(raw) as unknown,
-    () => [],
-  );
-  const data = parse().valueOf();
+  const parse = fromThrowable(() => JSON.parse(raw) as unknown);
+  const result = parse();
+  const data = result.isOk() ? result.value : [];
   return Array.isArray(data)
     ? data.filter((x): x is string => typeof x === "string")
     : [];
@@ -54,14 +52,19 @@ const favoriteCardIds = shallowRef<ReadonlySet<string>>(
 
 const persistFavorites = () => {
   if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(
-      FAVORITE_CARDS_STORAGE_KEY,
-      JSON.stringify([...favoriteCardIds.value].sort()),
-    );
-  } catch {
-    // Safari private mode / QUOTA_EXCEEDED などは無視（UIを壊さない）
-  }
+  fromThrowable(
+    () => {
+      window.localStorage.setItem(
+        FAVORITE_CARDS_STORAGE_KEY,
+        JSON.stringify([...favoriteCardIds.value].sort()),
+      );
+    },
+    (e) => {
+      // Safari private mode / QUOTA_EXCEEDED などは無視（UIを壊さない）
+      if (import.meta.env.DEV) console.warn("persistFavorites failed", e);
+      return e; // neverthrow の fromThrowable はエラーを返す必要がある
+    },
+  )();
 };
 
 // 参照の再代入でのみ発火（深い監視は不要）
