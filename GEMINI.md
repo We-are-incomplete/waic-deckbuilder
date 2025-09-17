@@ -1,26 +1,9 @@
 ## Common Commands
 
 - `pnpm build` - Build the project
-- `pnpm test` - Run all tests
 - `pnpm lint` - Run linter
 - `pnpm typecheck` - Type check with vue-tsc
 - `pnpm format` - Format code with Prettier
-
-## テスト駆動開発
-
-t-wada の推奨するTDD を実施する。コードを生成するときは、それに対応するユニットテストを常に生成する。
-コードを追加で修正したとき、`pnpm test` がパスすることを常に確認する。
-vitest で実装と同じファイルにユニットテストを書く。
-
-## カバレッジに基づくテスト生成
-
-テストカバレッジ100%を目指す。
-
-1. `pnpx vitest --run --coverage` を実行して、現在のカバレッジを取得
-2. 今の状態から最もカバレッジが上がるテストコードを考察してから追加
-3. 再度カバレッジを計測して、数値が向上していることを確認
-
-ユーザーが満足するまで、テスト生成を繰り返す。
 
 ## 関数型ドメインモデリング
 
