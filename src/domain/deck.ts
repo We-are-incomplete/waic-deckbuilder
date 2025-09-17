@@ -49,7 +49,11 @@ export const createDeckCard = (
 ): Effect.Effect<DeckCard, DeckOperationError> => {
   if (count < 1) {
     return Effect.fail(
-      new DeckOperationError({ type: "InvalidCardCount", cardId: card.id, count }),
+      new DeckOperationError({
+        type: "InvalidCardCount",
+        cardId: card.id,
+        count,
+      }),
     );
   }
   if (count > GAME_CONSTANTS.MAX_CARD_COPIES) {
@@ -75,18 +79,26 @@ export const calculateDeckState = (cards: readonly DeckCard[]): DeckState => {
   }
 
   const totalCount = calculateTotalCards(cards);
-  const errors: string[] = [];
+  const errors: DeckOperationError[] = [];
 
   // カード枚数のバリデーション
   for (const deckCard of cards) {
     if (deckCard.count < 1) {
       errors.push(
-        `カード「${deckCard.card.name}」の枚数が無効です: ${deckCard.count}`,
+        new DeckOperationError({
+          type: "InvalidCardCount",
+          cardId: deckCard.card.id,
+          count: deckCard.count,
+        }),
       );
     }
     if (deckCard.count > GAME_CONSTANTS.MAX_CARD_COPIES) {
       errors.push(
-        `カード「${deckCard.card.name}」の枚数が上限を超えています: ${deckCard.count}/${GAME_CONSTANTS.MAX_CARD_COPIES}`,
+        new DeckOperationError({
+          type: "MaxCountExceeded",
+          cardId: deckCard.card.id,
+          maxCount: GAME_CONSTANTS.MAX_CARD_COPIES,
+        }),
       );
     }
   }
@@ -143,7 +155,9 @@ export const setCardCount = (
   const existingCard = deckMap.get(cardId);
 
   if (!existingCard) {
-    return Effect.fail(new DeckOperationError({ type: "CardNotFound", cardId }));
+    return Effect.fail(
+      new DeckOperationError({ type: "CardNotFound", cardId }),
+    );
   }
 
   if (count < 0) {
@@ -181,7 +195,9 @@ export const removeCardFromDeck = (
   const deckMap = createDeckCardMap(cards);
 
   if (!deckMap.has(cardId)) {
-    return Effect.fail(new DeckOperationError({ type: "CardNotFound", cardId }));
+    return Effect.fail(
+      new DeckOperationError({ type: "CardNotFound", cardId }),
+    );
   }
 
   deckMap.delete(cardId);
@@ -202,8 +218,13 @@ export const decrementCardCount = (
   cards: readonly DeckCard[],
   cardId: string,
 ): Effect.Effect<readonly DeckCard[], DeckOperationError> => {
-  const current = cards.find((dc) => dc.card.id === cardId)?.count ?? 0;
-  return setCardCount(cards, cardId, current - 1);
+  const existing = cards.find((dc) => dc.card.id === cardId);
+  if (!existing) {
+    return Effect.fail(
+      new DeckOperationError({ type: "CardNotFound", cardId }),
+    );
+  }
+  return setCardCount(cards, cardId, existing.count - 1);
 };
 
 // デッキ操作を実行

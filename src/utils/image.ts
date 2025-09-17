@@ -87,25 +87,20 @@ const setCacheEntry = (
     return Effect.fail("画像が指定されていません");
   }
 
-  // 既存のエントリーがあれば削除
-  if (cacheState.cache.has(key)) {
-    const index = cacheState.accessOrder.indexOf(key);
-    if (index > -1) {
-      cacheState.accessOrder.splice(index, 1);
+  return Effect.sync(() => {
+    // 既存のエントリーがあれば削除
+    if (cacheState.cache.has(key)) {
+      const index = cacheState.accessOrder.indexOf(key);
+      if (index > -1) {
+        cacheState.accessOrder.splice(index, 1);
+      }
     }
-  }
-
-  // 新しいエントリーを追加
-  cacheState.cache.set(key, {
-    image,
-    lastAccessed: Date.now(),
+    // 新しいエントリーを追加
+    cacheState.cache.set(key, { image, lastAccessed: Date.now() });
+    cacheState.accessOrder.push(key);
+    // サイズ制限の適用
+    evictIfNecessary();
   });
-  cacheState.accessOrder.push(key);
-
-  // サイズ制限をチェックし、必要に応じて古いエントリーを削除
-  evictIfNecessary();
-
-  return Effect.succeed(undefined);
 };
 
 /**
@@ -219,7 +214,9 @@ const destroyCache = (): void => {
 /**
  * カード画像URLを取得
  */
-export const getCardImageUrl = (cardId: string): Effect.Effect<string, string> => {
+export const getCardImageUrl = (
+  cardId: string,
+): Effect.Effect<string, string> => {
   if (!cardId) {
     return Effect.fail("カードIDが指定されていません");
   }
@@ -254,24 +251,24 @@ export const handleImageError = (event: Event): Effect.Effect<void, string> => {
   if (!(t instanceof HTMLImageElement)) {
     return Effect.fail("イベントターゲットが画像要素ではありません");
   }
-  const img = t;
-
-  img.onerror = null;
-  // サポート環境では低優先度での再取得を明示
-  try {
-    // @ts-ignore - 実装環境によっては存在しない
-    img.fetchPriority = "low";
-    img.decoding = "async";
-  } catch {}
-  img.src = `${getNormalizedBaseUrl()}placeholder.avif`;
-
-  return Effect.succeed(undefined);
+  return Effect.sync(() => {
+    const img = t;
+    img.onerror = null;
+    try {
+      // @ts-ignore
+      img.fetchPriority = "low";
+      img.decoding = "async";
+    } catch {}
+    img.src = `${getNormalizedBaseUrl()}placeholder.avif`;
+  });
 };
 
 /**
  * 画像のプリロード処理
  */
-export const preloadImages = (cards: readonly Card[]): Effect.Effect<void, string> => {
+export const preloadImages = (
+  cards: readonly Card[],
+): Effect.Effect<void, string> => {
   // SSR/非ブラウザ環境では何もしない
   if (import.meta.env.SSR || typeof window === "undefined") {
     return Effect.succeed(undefined);
@@ -294,21 +291,19 @@ export const preloadImages = (cards: readonly Card[]): Effect.Effect<void, strin
     return Effect.succeed(undefined); // 空配列は正常
   }
 
-  let currentIndex = 0;
+  return Effect.sync(() => {
+    let currentIndex = 0;
+    const processBatch = (deadline?: { timeRemaining: () => number }): void => {
+      while (
+        currentIndex < cards.length &&
+        (!deadline || deadline.timeRemaining() > 0)
+      ) {
+        // 同時実行の上限
+        if (cacheState.inflight.size >= PRELOAD_MAX_INFLIGHT) break;
+        const card = cards[currentIndex];
 
-  const processBatch = (deadline?: { timeRemaining: () => number }): void => {
-    while (
-      currentIndex < cards.length &&
-      (!deadline || deadline.timeRemaining() > 0)
-    ) {
-      // 同時実行の上限
-      if (cacheState.inflight.size >= PRELOAD_MAX_INFLIGHT) break;
-      const card = cards[currentIndex];
-
-      if (!hasCacheEntry(card.id) && !cacheState.inflight.has(card.id)) {
-        const urlResultEffect = getCardImageUrl(card.id);
-        const urlResult = Effect.runSync(Effect.either(urlResultEffect));
-        if (urlResult._tag === "Right") {
+        if (!hasCacheEntry(card.id) && !cacheState.inflight.has(card.id)) {
+          const url = getCardImageUrlSafe(card.id);
           const gen = cacheState.generation;
           cacheState.inflight.add(card.id);
           const img = new Image();
@@ -317,7 +312,8 @@ export const preloadImages = (cards: readonly Card[]): Effect.Effect<void, strin
           setLowFetchPriority(img);
           img.onload = () => {
             if (gen === cacheState.generation) {
-              setCacheEntry(card.id, img);
+              // 失敗時はログのみ（キー/画像は静的に正当）
+              Effect.runSync(setCacheEntry(card.id, img));
             }
             cacheState.inflight.delete(card.id);
             img.onload = null;
@@ -331,43 +327,34 @@ export const preloadImages = (cards: readonly Card[]): Effect.Effect<void, strin
             img.onload = null;
             img.onerror = null;
           };
-          img.src = urlResult.right;
+          img.src = url;
+        }
+        currentIndex++;
+      }
+
+      if (currentIndex < cards.length) {
+        if (
+          typeof window !== "undefined" &&
+          typeof (window as any).requestIdleCallback === "function"
+        ) {
+          (window as any).requestIdleCallback(processBatch);
         } else {
-          logger.warn(
-            `Preload skipped: invalid URL for card: ${card.id}`,
-            urlResult.left,
-          );
+          // requestIdleCallbackがサポートされていない場合のフォールバック
+          setTimeout(() => processBatch(), 100);
         }
       }
-      currentIndex++;
+    };
+
+    if (
+      typeof window !== "undefined" &&
+      typeof (window as any).requestIdleCallback === "function"
+    ) {
+      (window as any).requestIdleCallback(processBatch);
+    } else {
+      setTimeout(() => processBatch(), 100);
     }
-
-    if (currentIndex < cards.length) {
-      if (
-        typeof window !== "undefined" &&
-        typeof (window as any).requestIdleCallback === "function"
-      ) {
-        (window as any).requestIdleCallback(processBatch);
-      } else {
-        // requestIdleCallbackがサポートされていない場合のフォールバック
-        setTimeout(() => processBatch(), 100);
-      }
-    }
-  };
-
-  if (
-    typeof window !== "undefined" &&
-    typeof (window as any).requestIdleCallback === "function"
-  ) {
-    (window as any).requestIdleCallback(processBatch);
-  } else {
-    // requestIdleCallbackがサポートされていない場合の初期呼び出し
-    setTimeout(() => processBatch(), 100);
-  }
-
-  return Effect.succeed(undefined);
+  });
 };
-
 // キャッシュ管理用のユーティリティ関数をエクスポート
 export const clearImageCache = (): void => {
   clearCache();

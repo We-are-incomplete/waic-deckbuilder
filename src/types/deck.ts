@@ -35,7 +35,7 @@ export type DeckState =
       readonly type: "invalid";
       readonly cards: readonly DeckCard[];
       readonly totalCount: number;
-      readonly errors: readonly string[];
+      readonly errors: readonly DeckOperationError[];
     };
 
 /**
@@ -60,7 +60,7 @@ export class DeckOperationError extends Data.TaggedError("DeckOperationError")<{
  */
 export class DeckCodeError extends Data.TaggedError("DeckCodeError")<{
   readonly type: "generation" | "copy" | "validation" | "decode";
-  readonly message: string;
+  readonly message?: string;
   readonly invalidId?: string;
   readonly notFoundIds?: readonly string[];
   readonly originalError?: unknown;

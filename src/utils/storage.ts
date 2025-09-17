@@ -1,7 +1,7 @@
 /**
  * @file ストレージユーティリティ
  * - 目的: デッキ名/デッキカードの保存・読込・リセット
- * - 方針: 例外は投げず Effect の Effect を返す。純粋関数と副作用関数を分離。
+ * - 方針: 例外は投げず Effect を返す。純粋関数と副作用関数を分離。
  */
 import { Effect, Data } from "effect";
 import type { Card, DeckCard } from "../types";
@@ -13,7 +13,12 @@ export const DEFAULT_DECK_NAME = "新しいデッキ" as const;
 
 // ストレージ操作エラー型
 export class StorageError extends Data.TaggedError("StorageError")<{
-  readonly type: "notFound" | "saveError" | "resetError" | "readError" | "invalidData";
+  readonly type:
+    | "notFound"
+    | "saveError"
+    | "resetError"
+    | "readError"
+    | "invalidData";
   readonly key: string;
   readonly data?: unknown;
   readonly reason?: string;
@@ -72,7 +77,10 @@ const deckCardsStorage = useLocalStorage<
 >(STORAGE_KEYS.DECK_CARDS, [] as readonly { id: string; count: number }[], {
   serializer: {
     read: (raw: string): readonly { id: string; count: number }[] => {
-      const parsedEffect = Effect.try({ try: () => JSON.parse(raw) as unknown, catch: (e) => e });
+      const parsedEffect = Effect.try({
+        try: () => JSON.parse(raw) as unknown,
+        catch: (e) => e,
+      });
       const parsedResult = Effect.runSync(Effect.either(parsedEffect));
 
       if (parsedResult._tag === "Right") {
@@ -111,7 +119,7 @@ const deckCardsStorage = useLocalStorage<
       } catch {
         // noop: リセットに失敗しても空配列で返す
       }
-      return [] as { id: string; count: number }[];
+      return [] as readonly { id: string; count: number }[];
     },
     write: (value: readonly { id: string; count: number }[]) =>
       JSON.stringify(value),
@@ -132,20 +140,29 @@ export const saveDeckToLocalStorage = (
   deck: readonly DeckCard[],
 ): Effect.Effect<void, StorageError> => {
   if (!deck) {
-    return Effect.fail(new StorageError({
-      type: "invalidData",
-      key: STORAGE_KEYS.DECK_CARDS,
-      reason: "デッキが指定されていません",
-    }));
+    return Effect.fail(
+      new StorageError({
+        type: "invalidData",
+        key: STORAGE_KEYS.DECK_CARDS,
+        reason: "デッキが指定されていません",
+      }),
+    );
   }
 
-  try {
-    deckCardsStorage.value = serializeDeckCards(deck);
-    return Effect.succeed(undefined);
-  } catch (e) {
-    logger.error("デッキの保存に失敗しました", e, deck);
-    return Effect.fail(new StorageError({ type: "saveError", key: STORAGE_KEYS.DECK_CARDS, data: deck, originalError: e }));
-  }
+  return Effect.try({
+    try: () => {
+      deckCardsStorage.value = serializeDeckCards(deck);
+    },
+    catch: (e) => {
+      logger.error("デッキの保存に失敗しました", e, deck);
+      return new StorageError({
+        type: "saveError",
+        key: STORAGE_KEYS.DECK_CARDS,
+        data: deck,
+        originalError: e,
+      });
+    },
+  });
 };
 
 /**
@@ -155,51 +172,58 @@ export const loadDeckFromLocalStorage = (
   availableCards: readonly Card[],
 ): Effect.Effect<DeckCard[], StorageError> => {
   if (!availableCards) {
-    return Effect.fail(new StorageError({
-      type: "invalidData",
-      key: STORAGE_KEYS.DECK_CARDS,
-      reason: "利用可能なカードが指定されていません",
-    }));
+    return Effect.fail(
+      new StorageError({
+        type: "invalidData",
+        key: STORAGE_KEYS.DECK_CARDS,
+        reason: "利用可能なカードが指定されていません",
+      }),
+    );
   }
 
-  try {
-    const parsedDeck = deckCardsStorage.value;
-    const deckCards = deserializeDeckCards(parsedDeck, availableCards);
-    return Effect.succeed(deckCards);
-  } catch (e) {
-    const snapshot = (() => {
-      try {
-        return JSON.stringify(deckCardsStorage.value);
-      } catch {
-        return "[unserializable]";
-      }
-    })();
-    logger.error("保存されたデッキの読み込みに失敗しました", e, snapshot);
-    // エラー時はデッキカードのみクリーンアップ（デッキ名は保持）
-    const r = Effect.runSync(Effect.either(resetDeckCardsInLocalStorage()));
-    if (r._tag === "Left") {
-      logger.error("デッキカードのリセットに失敗しました", r.left);
-    }
-    return Effect.fail(new StorageError({
-      type: "readError",
-      key: STORAGE_KEYS.DECK_CARDS,
-      data: snapshot,
-      originalError: e,
-    }));
-  }
+  return Effect.try({
+    try: () => {
+      const parsedDeck = deckCardsStorage.value;
+      return deserializeDeckCards(parsedDeck, availableCards);
+    },
+    catch: (e) => {
+      const snapshot = (() => {
+        try {
+          return JSON.stringify(deckCardsStorage.value);
+        } catch {
+          return "[unserializable]";
+        }
+      })();
+      logger.error("保存されたデッキの読み込みに失敗しました", e, snapshot);
+      return new StorageError({
+        type: "readError",
+        key: STORAGE_KEYS.DECK_CARDS,
+        data: snapshot,
+        originalError: e,
+      });
+    },
+  }).pipe(
+    Effect.tapError(() =>
+      Effect.runSync(Effect.either(resetDeckCardsInLocalStorage())),
+    ),
+  );
 };
 
 /**
  * デッキ名をローカルストレージに保存
  */
-export const saveDeckName = (name: string): Effect.Effect<void, StorageError> => {
+export const saveDeckName = (
+  name: string,
+): Effect.Effect<void, StorageError> => {
   const n = name?.trim();
   if (!n) {
-    return Effect.fail(new StorageError({
-      type: "invalidData",
-      key: STORAGE_KEYS.DECK_NAME,
-      reason: "デッキ名が指定されていません",
-    }));
+    return Effect.fail(
+      new StorageError({
+        type: "invalidData",
+        key: STORAGE_KEYS.DECK_NAME,
+        reason: "デッキ名が指定されていません",
+      }),
+    );
   }
 
   try {
@@ -207,50 +231,74 @@ export const saveDeckName = (name: string): Effect.Effect<void, StorageError> =>
     return Effect.succeed(undefined);
   } catch (e) {
     logger.error("デッキ名の保存に失敗しました", e);
-    return Effect.fail(new StorageError({ type: "saveError", key: STORAGE_KEYS.DECK_NAME, data: name, originalError: e }));
+    return Effect.fail(
+      new StorageError({
+        type: "saveError",
+        key: STORAGE_KEYS.DECK_NAME,
+        data: name,
+        originalError: e,
+      }),
+    );
   }
 };
 
 /**
  * ローカルストレージからデッキ名を読み込み
  */
-export const loadDeckName = (): Effect.Effect<string, StorageError> => {
-  try {
-    const name = deckNameStorage.value;
-    return Effect.succeed(name || DEFAULT_DECK_NAME);
-  } catch (e) {
-    logger.error("デッキ名の読み込みに失敗しました", e);
-    return Effect.fail(new StorageError({
-      type: "readError",
-      key: STORAGE_KEYS.DECK_NAME,
-      data: String(e),
-      originalError: e,
-    }));
-  }
-};
+export const loadDeckName = (): Effect.Effect<string, StorageError> =>
+  Effect.try({
+    try: () => deckNameStorage.value || DEFAULT_DECK_NAME,
+    catch: (e) => {
+      logger.error("デッキ名の読み込みに失敗しました", e);
+      return new StorageError({
+        type: "readError",
+        key: STORAGE_KEYS.DECK_NAME,
+        data: String(e),
+        originalError: e,
+      });
+    },
+  });
 
 /**
  * デッキカードをローカルストレージで既定値（空配列）にリセット
  */
-export const resetDeckCardsInLocalStorage = (): Effect.Effect<void, StorageError> => {
+export const resetDeckCardsInLocalStorage = (): Effect.Effect<
+  void,
+  StorageError
+> => {
   try {
     deckCardsStorage.value = [] as readonly { id: string; count: number }[];
     return Effect.succeed(undefined);
   } catch (e) {
     logger.error("デッキカードのリセットに失敗しました", e, []);
-    return Effect.fail(new StorageError({ type: "resetError", key: STORAGE_KEYS.DECK_CARDS, originalError: e }));
+    return Effect.fail(
+      new StorageError({
+        type: "resetError",
+        key: STORAGE_KEYS.DECK_CARDS,
+        originalError: e,
+      }),
+    );
   }
 };
 
 /**
  * デッキ名をローカルストレージの既定値にリセット
  */
-export const resetDeckNameInLocalStorage = (): Effect.Effect<void, StorageError> => {
+export const resetDeckNameInLocalStorage = (): Effect.Effect<
+  void,
+  StorageError
+> => {
   try {
     deckNameStorage.value = DEFAULT_DECK_NAME;
     return Effect.succeed(undefined);
   } catch (e) {
     logger.error("デッキ名のリセットに失敗しました", e, DEFAULT_DECK_NAME);
-    return Effect.fail(new StorageError({ type: "resetError", key: STORAGE_KEYS.DECK_NAME, originalError: e }));
+    return Effect.fail(
+      new StorageError({
+        type: "resetError",
+        key: STORAGE_KEYS.DECK_NAME,
+        originalError: e,
+      }),
+    );
   }
 };

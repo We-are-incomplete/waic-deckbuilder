@@ -18,6 +18,7 @@ import {
   createVersionedState,
   createArraySortMemo,
   createErrorHandler,
+  deckOperationErrorToString,
   DEFAULT_DECK_NAME,
 } from "../utils";
 import {
@@ -104,7 +105,9 @@ export const useDeckStore = defineStore("deck", () => {
    * Vue 3.5最適化: デッキのエラーメッセージ
    */
   const deckErrors = computed<readonly string[]>(() => {
-    return deckState.value.type === "invalid" ? deckState.value.errors : [];
+    return deckState.value.type === "invalid"
+      ? deckState.value.errors.map(deckOperationErrorToString)
+      : [];
   });
 
   const applyOperation = (
@@ -298,10 +301,7 @@ export const useDeckStore = defineStore("deck", () => {
       const saveEffect = saveDeckName(name);
       const r = Effect.runSync(Effect.either(saveEffect));
       if (r._tag === "Left") {
-        errorHandler.handleRuntimeError(
-          "デッキ名の保存に失敗しました",
-          r.left,
-        );
+        errorHandler.handleRuntimeError("デッキ名の保存に失敗しました", r.left);
       }
     },
     500,
@@ -338,7 +338,9 @@ export const useDeckStore = defineStore("deck", () => {
     // 念のため後続の遅延保存を打ち切る
     debouncedSave.cancel?.();
     debouncedSaveName.cancel?.();
-    const r1 = Effect.runSync(Effect.either(saveDeckToLocalStorage(deckCards.value)));
+    const r1 = Effect.runSync(
+      Effect.either(saveDeckToLocalStorage(deckCards.value)),
+    );
     if (r1._tag === "Left")
       errorHandler.handleRuntimeError(
         "デッキの即時保存に失敗しました",

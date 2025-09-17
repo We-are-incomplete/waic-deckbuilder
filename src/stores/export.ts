@@ -71,12 +71,12 @@ export const useExportStore = defineStore("export", () => {
    */
   const waitForImagesLoaded = (
     container: HTMLElement,
-  ): Promise<Effect.Effect<void, ExportError>> => {
-    return new Promise((resolve) => {
+  ): Effect.Effect<void, ExportError> => {
+    return Effect.async<void, ExportError>((resume) => {
       const images = container.querySelectorAll<HTMLImageElement>("img");
 
       if (images.length === 0) {
-        resolve(Effect.succeed(undefined));
+        resume(Effect.succeed(undefined));
         return;
       }
 
@@ -99,7 +99,7 @@ export const useExportStore = defineStore("export", () => {
         if (hasErrorOccurred) return;
         hasErrorOccurred = true;
         cleanupListeners();
-        resolve(
+        resume(
           Effect.fail({
             type: "imageLoad",
             message: `画像の読み込みがタイムアウトしました (${loadedCount}/${images.length}枚読み込み済み)`,
@@ -114,7 +114,7 @@ export const useExportStore = defineStore("export", () => {
         loadedCount++;
         if (loadedCount === images.length) {
           cleanupListeners();
-          resolve(Effect.succeed(undefined));
+          resume(Effect.succeed(undefined));
         }
       };
 
@@ -122,7 +122,7 @@ export const useExportStore = defineStore("export", () => {
         if (hasErrorOccurred) return;
         hasErrorOccurred = true;
         cleanupListeners();
-        resolve(
+        resume(
           Effect.fail({
             type: "imageLoad",
             message: `画像の読み込みに失敗しました: ${redactUrl(
@@ -137,7 +137,7 @@ export const useExportStore = defineStore("export", () => {
         if (hasErrorOccurred) return;
         hasErrorOccurred = true;
         cleanupListeners();
-        resolve(
+        resume(
           Effect.fail({
             type: "imageLoad",
             message: `画像の読み込みに失敗しました: ${redactUrl(img.src)}`,
@@ -201,8 +201,9 @@ export const useExportStore = defineStore("export", () => {
       await nextTick();
 
       // すべての画像の読み込み完了を待つ
-      const imageLoadEffect = await waitForImagesLoaded(exportContainer);
-      const imageLoadResult = await Effect.runPromise(Effect.either(imageLoadEffect));
+      const imageLoadResult = await Effect.runPromise(
+        Effect.either(waitForImagesLoaded(exportContainer)),
+      );
 
       if (imageLoadResult._tag === "Left") {
         logger.error("画像の読み込みに失敗しました:", imageLoadResult.left);

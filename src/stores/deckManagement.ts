@@ -2,12 +2,18 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 import { useCookies } from "@vueuse/integrations/useCookies";
 import { useDeckCodeStore } from "./deckCode";
-import { Effect } from "effect";
+import { Effect, Either } from "effect";
+import { logger } from "../utils";
 
 interface SavedDeck {
   name: string;
   code: string;
 }
+
+const isSavedDeck = (u: unknown): u is SavedDeck =>
+  !!u &&
+  typeof (u as any).name === "string" &&
+  typeof (u as any).code === "string";
 
 export const useDeckManagementStore = defineStore("deckManagement", () => {
   const cookies = useCookies(["savedDecks"]);
@@ -26,17 +32,19 @@ export const useDeckManagementStore = defineStore("deckManagement", () => {
         if (!Array.isArray(stored)) {
           throw new Error("Stored decks is not an array.");
         }
+        if (!stored.every(isSavedDeck)) {
+          throw new Error("Invalid savedDecks element shape.");
+        }
         return stored as SavedDeck[];
       },
       catch: (e) => e as Error,
     });
 
     const storedDecksResult = Effect.runSync(Effect.either(storedDecksEffect));
-
-    if (storedDecksResult._tag === "Right") {
+    if (Either.isRight(storedDecksResult)) {
       savedDecks.value = storedDecksResult.right;
     } else {
-      console.error("Failed to load decks from cookie:", storedDecksResult.left);
+      logger.error("Failed to load decks from cookie:", storedDecksResult.left);
       savedDecks.value = [];
     }
   };

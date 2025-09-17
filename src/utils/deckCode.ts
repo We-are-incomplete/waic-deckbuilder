@@ -6,7 +6,7 @@
  * - KCG形式: "KCG-"で始まる圧縮形式のデッキコード
  *
  * エラーハンドリング:
- * - EffectのEffect型を使用してエラーを表現
+ * - Effectの型を使用してエラーを表現
  * - 例外をスローせず、エラーの詳細を型安全に返却
  */
 import type { Card, DeckCard } from "../types";
@@ -43,7 +43,12 @@ export const decodeDeckCode = (
   // 空文字列の場合は早期リターン
   if (!code || code.trim() === "") {
     logger.debug("デッキコードが空です");
-    return Effect.fail(new DeckCodeError({ type: "validation", message: "デッキコードが空です" }));
+    return Effect.fail(
+      new DeckCodeError({
+        type: "validation",
+        message: "デッキコードが空です",
+      }),
+    );
   }
 
   const cardIds = code.split("/").filter((id) => id.trim() !== ""); // 空文字列を除外
@@ -102,28 +107,34 @@ export const decodeKcgDeckCode = (
     // --- 1. 入力チェックと初期処理 ---
     if (!deckCode || !deckCode.startsWith("KCG-")) {
       logger.error("Invalid deck code format: Must start with 'KCG-'.");
-      return Effect.fail(new DeckCodeError({
-        type: "validation",
-        message: "デッキコードは'KCG-'で始まる必要があります",
-      }));
+      return Effect.fail(
+        new DeckCodeError({
+          type: "validation",
+          message: "デッキコードは'KCG-'で始まる必要があります",
+        }),
+      );
     }
 
     const rawPayloadWithVersion = deckCode.substring(4);
     if (rawPayloadWithVersion.length === 0) {
       logger.error("Invalid deck code: Payload is empty.");
-      return Effect.fail(new DeckCodeError({
-        type: "validation",
-        message: "デッキコードのペイロードが空です",
-      }));
+      return Effect.fail(
+        new DeckCodeError({
+          type: "validation",
+          message: "デッキコードのペイロードが空です",
+        }),
+      );
     }
 
     for (const char of rawPayloadWithVersion) {
       if (CHAR_MAP.indexOf(char) === -1) {
         logger.error(`Invalid character in deck code: ${char}`);
-        return Effect.fail(new DeckCodeError({
-          type: "validation",
-          message: `デッキコードに無効な文字が含まれています: ${char}`,
-        }));
+        return Effect.fail(
+          new DeckCodeError({
+            type: "validation",
+            message: `デッキコードに無効な文字が含まれています: ${char}`,
+          }),
+        );
       }
     }
 
@@ -241,10 +252,12 @@ export const decodeKcgDeckCode = (
       [];
     if (finalNumericString.length % 5 !== 0) {
       logger.error("Final numeric string length is not a multiple of 5.");
-      return Effect.fail(new DeckCodeError({
-        type: "validation",
-        message: "最終的な数値文字列の長さが5の倍数ではありません",
-      }));
+      return Effect.fail(
+        new DeckCodeError({
+          type: "validation",
+          message: "最終的な数値文字列の長さが5の倍数ではありません",
+        }),
+      );
     }
 
     for (let i = 0; i < finalNumericString.length; i += 5) {
@@ -323,11 +336,13 @@ export const decodeKcgDeckCode = (
     return Effect.succeed(deckListOutput);
   } catch (error) {
     logger.error("KCGデッキコードのデコード中にエラーが発生:", error);
-    return Effect.fail(new DeckCodeError({
-      type: "decode",
-      message: "デッキコードのデコード中に予期しないエラーが発生しました",
-      originalError: error,
-    }));
+    return Effect.fail(
+      new DeckCodeError({
+        type: "decode",
+        message: "デッキコードのデコード中に予期しないエラーが発生しました",
+        originalError: error,
+      }),
+    );
   }
 };
 
@@ -413,10 +428,12 @@ export const encodeKcgDeckCode = (
 
     const o = binaryString.match(/.{1,3}/g);
     if (!o) {
-      return Effect.fail(new DeckCodeError({
-        type: "generation",
-        message: "バイナリ文字列の分割に失敗しました",
-      }));
+      return Effect.fail(
+        new DeckCodeError({
+          type: "generation",
+          message: "バイナリ文字列の分割に失敗しました",
+        }),
+      );
     }
     const i = o.map((e) => parseInt(e, 2));
 
@@ -442,10 +459,12 @@ export const encodeKcgDeckCode = (
     return Effect.succeed(`KCG-${U[s][c]}${u}`);
   } catch (error) {
     logger.error("KCGデッキコードのエンコード中にエラーが発生:", error);
-    return Effect.fail(new DeckCodeError({
-      type: "generation",
-      message: "デッキコードのエンコード中に予期しないエラーが発生しました",
-      originalError: error,
-    }));
+    return Effect.fail(
+      new DeckCodeError({
+        type: "generation",
+        message: "デッキコードのエンコード中に予期しないエラーが発生しました",
+        originalError: error,
+      }),
+    );
   }
 };

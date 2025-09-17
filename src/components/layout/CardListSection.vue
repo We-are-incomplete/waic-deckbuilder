@@ -41,7 +41,8 @@ const loadFavoriteIds = (): string[] => {
   const parseEffect = Effect.try({
     try: () => JSON.parse(raw) as unknown,
     catch: (e) => {
-      if (import.meta.env.DEV) console.warn("JSON parse error for favorites", e);
+      if (import.meta.env.DEV)
+        console.warn("JSON parse error for favorites", e);
       return new Error("Failed to parse favorite cards from storage", {
         cause: e,
       });
@@ -69,18 +70,20 @@ const favoriteCardIds = shallowRef<ReadonlySet<string>>(
 const persistFavorites = () => {
   if (typeof window === "undefined") return;
   Effect.runSync(
-    Effect.try({
-      try: () => {
-        window.localStorage.setItem(
-          FAVORITE_CARDS_STORAGE_KEY,
-          JSON.stringify([...favoriteCardIds.value].sort()),
-        );
-      },
-      catch: (e) => {
-        if (import.meta.env.DEV) console.warn("persistFavorites failed", e);
-        return new Error("Failed to persist favorites", { cause: e });
-      },
-    }),
+    Effect.either(
+      Effect.try({
+        try: () => {
+          window.localStorage.setItem(
+            FAVORITE_CARDS_STORAGE_KEY,
+            JSON.stringify([...favoriteCardIds.value].sort()),
+          );
+        },
+        catch: (e) => {
+          if (import.meta.env.DEV) console.warn("persistFavorites failed", e);
+          return new Error("Failed to persist favorites", { cause: e });
+        },
+      }),
+    ),
   );
 };
 

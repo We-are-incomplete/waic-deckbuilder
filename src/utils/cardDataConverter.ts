@@ -21,8 +21,14 @@ interface CsvCardRow {
 }
 
 // カードデータ変換エラー型
-export class CardDataConverterError extends Data.TaggedError("CardDataConverterError")<{
-  readonly type: "FetchError" | "EmptyCsvError" | "ParseError" | "ValidationError";
+export class CardDataConverterError extends Data.TaggedError(
+  "CardDataConverterError",
+)<{
+  readonly type:
+    | "FetchError"
+    | "EmptyCsvError"
+    | "ParseError"
+    | "ValidationError";
   readonly message: string;
   readonly originalError?: unknown;
 }> {}
@@ -164,18 +170,21 @@ export function loadCardsFromCsv(
         originalError: error,
       });
     },
-  }).pipe(
-    Effect.andThen((csvText) => parseCsv(csvText)),
-  );
+  }).pipe(Effect.andThen((csvText) => parseCsv(csvText)));
 }
 
-function parseCsv(csvText: string): Effect.Effect<Card[], CardDataConverterError> {
+function parseCsv(
+  csvText: string,
+): Effect.Effect<Card[], CardDataConverterError> {
   if (import.meta.env?.DEV) logger.debug("Parsing CSV text with PapaParse...");
   const parseResult = Papa.parse<CsvCardRow>(csvText, {
     header: true, // ヘッダー行をオブジェクトのキーとして使用
     skipEmptyLines: true, // 空行をスキップ
     transform: (value, field) => {
       // 各フィールドの値を変換
+      if (field === "id" || field === "name" || field === "kind") {
+        return typeof value === "string" ? value.trim() : value;
+      }
       if (field === "type") {
         return tokenizeCardTypes(value);
       }
@@ -219,8 +228,17 @@ function parseCsv(csvText: string): Effect.Effect<Card[], CardDataConverterError
     }
 
     // CardTypeの検証
+    const rawTypes = Array.isArray(row.type) ? row.type : [];
+    if (rawTypes.length === 0) {
+      return Effect.fail(
+        new CardDataConverterError({
+          type: "ValidationError",
+          message: `CardTypeが空です (ID: ${row.id}). 少なくとも1つ必要です。`,
+        }),
+      );
+    }
     const types: CardType[] = [];
-    for (const typeValue of row.type) {
+    for (const typeValue of rawTypes) {
       if (isCardType(typeValue)) {
         types.push(typeValue);
       } else {
@@ -232,17 +250,31 @@ function parseCsv(csvText: string): Effect.Effect<Card[], CardDataConverterError
         );
       }
     }
+    // 重複タイプの禁止
+    if (new Set(types).size !== types.length) {
+      return Effect.fail(
+        new CardDataConverterError({
+          type: "ValidationError",
+          message: `CardTypeが重複しています (ID: ${row.id}): ${types.join("/")}`,
+        }),
+      );
+    }
 
     // transform後は string[] で正規化済み
     const tags: string[] = row.tags;
 
+    const normalizedEffect =
+      typeof row.effect === "string" && row.effect.trim().length > 0
+        ? row.effect.trim()
+        : undefined;
+    const tagsUnique = Array.isArray(tags) ? [...new Set(tags)] : [];
     cards.push({
       id: row.id.trim(),
       name: row.name.trim(),
       kind: row.kind, // 型ガードによりCardKindとして扱える
       type: types,
-      effect: row.effect,
-      tags: tags,
+      effect: normalizedEffect,
+      tags: tagsUnique,
     });
   }
 

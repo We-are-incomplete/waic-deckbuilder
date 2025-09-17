@@ -54,7 +54,10 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
         } else {
           const errorMessage = "KCG形式デッキコードの生成に失敗しました";
           logger.error(errorMessage + ":", kcgEncodeResult.left);
-          error.value = new DeckCodeError({ type: "generation", message: errorMessage });
+          error.value = new DeckCodeError({
+            type: "generation",
+            message: errorMessage,
+          });
           isGeneratingCode.value = false;
           return;
         }
@@ -73,7 +76,10 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
     } catch (e) {
       const errorMessage = "デッキコードの生成に失敗しました";
       logger.error(errorMessage + ":", e);
-      error.value = new DeckCodeError({ type: "generation", message: errorMessage });
+      error.value = new DeckCodeError({
+        type: "generation",
+        message: errorMessage,
+      });
     } finally {
       isGeneratingCode.value = false;
     }
@@ -151,8 +157,10 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
   /**
    * KCG形式のデッキコードをDeckCard配列に変換
    */
-  const convertKcgCardIdsToDeckCards =
-    (cardIds: readonly string[], availableCards: readonly Card[]): { deckCards: DeckCard[]; missingCardIds: string[] } => {
+  const convertKcgCardIdsToDeckCards = (
+    cardIds: readonly string[],
+    availableCards: readonly Card[],
+  ): { deckCards: DeckCard[]; missingCardIds: string[] } => {
     // availableCardsをMapに変換して高速ルックアップを可能にする
     const availableCardsMap = new Map<string, Card>();
     for (const card of availableCards) {
@@ -202,7 +210,10 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
     if (!importDeckCode.value || importDeckCode.value.trim() === "") {
       const warningMessage = "デッキコードが空です";
       logger.warn(warningMessage);
-      error.value = new DeckCodeError({ type: "validation", message: warningMessage });
+      error.value = new DeckCodeError({
+        type: "validation",
+        message: warningMessage,
+      });
       return;
     }
 
@@ -213,7 +224,10 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
     if (trimmedCode.length > MAX_DECK_CODE_LENGTH) {
       const warningMessage = `デッキコードが長すぎます（最大${MAX_DECK_CODE_LENGTH}文字）`;
       logger.warn(warningMessage);
-      error.value = new DeckCodeError({ type: "validation", message: warningMessage });
+      error.value = new DeckCodeError({
+        type: "validation",
+        message: warningMessage,
+      });
       return;
     }
 
@@ -264,13 +278,19 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
                 warningMessage += `\n見つからないカードID: ${result.missingCardIds.join(", ")}`;
               }
               logger.warn(warningMessage);
-              error.value = new DeckCodeError({ type: "decode", message: warningMessage });
+              error.value = new DeckCodeError({
+                type: "decode",
+                message: warningMessage,
+              });
             }
           } else {
             const warningMessage =
               "デッキコードからカード情報を取得できませんでした。";
             logger.warn(warningMessage);
-            error.value = new DeckCodeError({ type: "decode", message: warningMessage });
+            error.value = new DeckCodeError({
+              type: "decode",
+              message: warningMessage,
+            });
           }
         } else {
           // KCGデコードエラーの処理
@@ -286,7 +306,10 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
               errorMessage = "KCG形式のデッキコードのデコードに失敗しました";
           }
           logger.warn(errorMessage);
-          error.value = new DeckCodeError({ type: "decode", message: errorMessage });
+          error.value = new DeckCodeError({
+            type: "decode",
+            message: errorMessage,
+          });
         }
       } else if (format === "slash") {
         // スラッシュ区切り形式の処理（既存の処理）
@@ -303,7 +326,10 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
         ) {
           const warningMessage = "無効なデッキコード形式です";
           logger.warn(warningMessage);
-          error.value = new DeckCodeError({ type: "validation", message: warningMessage });
+          error.value = new DeckCodeError({
+            type: "validation",
+            message: warningMessage,
+          });
           return;
         }
 
@@ -338,7 +364,10 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
               warningMessage += `\n見つからないカードID: ${missingCardIds.join(", ")}`;
             }
             logger.warn(warningMessage);
-            error.value = new DeckCodeError({ type: "decode", message: warningMessage });
+            error.value = new DeckCodeError({
+              type: "decode",
+              message: warningMessage,
+            });
           }
         } else {
           // スラッシュ区切りデコードエラーの処理
@@ -347,26 +376,32 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
             case "validation":
               errorMessage = decodeResult.left.message;
               break;
-            case "decode":
-              errorMessage = `無効なカードIDが含まれています: ${decodeResult.left.invalidId}`;
-              break;
             default:
               errorMessage = "デッキコードのデコードに失敗しました";
           }
           logger.warn(errorMessage);
-          error.value = new DeckCodeError({ type: "decode", message: errorMessage });
+          error.value = new DeckCodeError({
+            type: "decode",
+            message: errorMessage,
+          });
         }
       } else {
         // 未知の形式
         const warningMessage =
           "サポートされていないデッキコード形式です。スラッシュ区切り形式またはKCG形式（KCG-で始まる）を使用してください。";
         logger.warn(warningMessage);
-        error.value = new DeckCodeError({ type: "validation", message: warningMessage });
+        error.value = new DeckCodeError({
+          type: "validation",
+          message: warningMessage,
+        });
       }
     } catch (e) {
       const errorMessage = "デッキコードの復元に失敗しました";
       logger.error(errorMessage + ":", e);
-      error.value = new DeckCodeError({ type: "decode", message: errorMessage });
+      error.value = new DeckCodeError({
+        type: "decode",
+        message: errorMessage,
+      });
     }
   };
 
@@ -391,4 +426,3 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
     setImportDeckCode,
   };
 });
-

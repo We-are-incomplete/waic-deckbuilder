@@ -1,10 +1,11 @@
 /**
  * @file エラーハンドリングユーティリティ
  * - 目的: アプリケーション全体のエラーを一元的に処理し、ログ記録と適切なエラー型への変換を行う。
- * - 方針: 例外は投げず Effect の Effect とエラーADTを使用する。
+ * - 方針: 例外は投げず Effect とエラーADTを使用する。
  */
 import { Data, Effect } from "effect";
 import { logger } from "./logger";
+import { DeckOperationError } from "../types/deck";
 
 // エラーの種類を定義
 export class AppError extends Data.TaggedError("AppError")<{
@@ -56,7 +57,7 @@ export const createErrorHandler = () => {
       message: fullMessage,
       originalError,
     });
-    logError(baseMessage, originalError);
+    logError(fullMessage, originalError);
     return Effect.fail(error);
   };
 
@@ -89,6 +90,24 @@ export const createErrorHandler = () => {
   };
 };
 
+/**
+ * DeckOperationError をユーザーフレンドリーな文字列に変換する
+ */
+export const deckOperationErrorToString = (
+  error: DeckOperationError,
+): string => {
+  switch (error.type) {
+    case "CardNotFound":
+      return `カードが見つかりません: ${error.cardId}`;
+    case "MaxCountExceeded":
+      return `最大枚数を超過しました: ${error.cardId} (最大: ${error.maxCount})`;
+    case "InvalidCardCount":
+      return `不正なカード枚数です: ${error.cardId} (指定: ${error.count})`;
+    default:
+      return `不明なエラー: ${JSON.stringify(error)}`;
+  }
+};
+
 // 共通のエラーハンドラーインスタンスを生成
 const commonErrorHandler = createErrorHandler();
 
@@ -113,17 +132,22 @@ export const safeSyncOperation = <T>(
 
   return Effect.try({
     try: operation,
-    catch: (error) => new AppError({ type: "RuntimeError", message: createErrorMessage(errorMessage, error), originalError: error }),
+    catch: (error) =>
+      new AppError({
+        type: "RuntimeError",
+        message: createErrorMessage(errorMessage, error),
+        originalError: error,
+      }),
   });
 };
 
 /**
  * 非同期操作を安全に実行するヘルパー関数
  */
-export const safeAsyncOperation = async <T>(
+export const safeAsyncOperation = <T>(
   operation: () => Promise<T>,
   errorMessage: string,
-): Promise<Effect.Effect<T, AppError>> => {
+): Effect.Effect<T, AppError> => {
   if (!operation) {
     return commonErrorHandler.handleValidationError(
       ERROR_MESSAGES.VALIDATION.OPERATION_NOT_PROVIDED,
@@ -138,6 +162,11 @@ export const safeAsyncOperation = async <T>(
 
   return Effect.tryPromise({
     try: operation,
-    catch: (error) => new AppError({ type: "AsyncError", message: createErrorMessage(errorMessage, error), originalError: error }),
+    catch: (error) =>
+      new AppError({
+        type: "AsyncError",
+        message: createErrorMessage(errorMessage, error),
+        originalError: error,
+      }),
   });
 };

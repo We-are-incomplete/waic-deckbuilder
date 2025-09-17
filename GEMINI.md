@@ -82,8 +82,8 @@ More Examples:
 
 **方針:**
 
-  * 従来の`throw`による例外処理を避け、`Effect.fail`や`Effect.die`を用いてエラーを`Effect`の値として扱います。
-  * 関数の依存関係は引数で渡すのではなく、`Context`と`Layer`を用いて`R`型パラメータで管理します。
+- 従来の`throw`による例外処理を避け、`Effect.fail`や`Effect.die`を用いてエラーを`Effect`の値として扱います。
+- 関数の依存関係は引数で渡すのではなく、`Context`と`Layer`を用いて`R`型パラメータで管理します。
 
 ## 2\. コーディングスタイル
 
@@ -115,7 +115,7 @@ import { Effect, Console, pipe } from "effect";
 const program = pipe(
   Console.log("Hello"),
   Effect.andThen(() => Effect.succeed(1)),
-  Effect.andThen((n) => Console.log(`Got: ${n}`))
+  Effect.andThen((n) => Console.log(`Got: ${n}`)),
 );
 ```
 
@@ -139,9 +139,9 @@ Effect.map((x) => myFunction(x));
 
 **方針:**
 
-  * `run*`系の関数は、アプリケーションのエントリーポイントなど、\*\*プログラムの境界（Edge）\*\*でのみ呼び出します。アプリケーションのコアロジックは`Effect`型の値として合成していくべきです。
-  * Node.js環境では、`CTRL+C`などによるシグナルを適切に処理し、リソースを安全に解放するために`NodeRuntime.runMain`を使用します。
-  * 非同期処理を含む可能性がある場合は、原則として`Effect.runPromise`や`Effect.runFork`を使用します。`Effect.runSync`は、非同期処理が含まれないことが確実な場合にのみ限定的に使用します。
+- `run*`系の関数は、アプリケーションのエントリーポイントなど、\*\*プログラムの境界（Edge）\*\*でのみ呼び出します。アプリケーションのコアロジックは`Effect`型の値として合成していくべきです。
+- Node.js環境では、`CTRL+C`などによるシグナルを適切に処理し、リソースを安全に解放するために`NodeRuntime.runMain`を使用します。
+- 非同期処理を含む可能性がある場合は、原則として`Effect.runPromise`や`Effect.runFork`を使用します。`Effect.runSync`は、非同期処理が含まれないことが確実な場合にのみ限定的に使用します。
 
 ## 4\. エラーハンドリング戦略
 
@@ -153,10 +153,10 @@ Effect.map((x) => myFunction(x));
 
 **方針:**
 
-  * `Effect.fail`で発生させ、`E`型パラメータで追跡します。
-  * 識別のために、`Data.TaggedError`を継承したカスタムエラークラスを作成することを強く推奨します。これにより、`catchTag`やパターンマッチングで特定のエラーを安全に処理できます。
-  * エラーからの回復には`Effect.catchAll`や`Effect.catchTag`、エラーを値として扱いたい場合は`Effect.either`を使用します。
-  * 複数の処理で発生しうる全てのエラーを集約したい場合は、デフォルトの"fail-fast"動作ではなく`Effect.validateAll`や`Effect.partition`を検討します。
+- `Effect.fail`で発生させ、`E`型パラメータで追跡します。
+- 識別のために、`Data.TaggedError`を継承したカスタムエラークラスを作成することを強く推奨します。これにより、`catchTag`やパターンマッチングで特定のエラーを安全に処理できます。
+- エラーからの回復には`Effect.catchAll`や`Effect.catchTag`、エラーを値として扱いたい場合は`Effect.either`を使用します。
+- 複数の処理で発生しうる全てのエラーを集約したい場合は、デフォルトの"fail-fast"動作ではなく`Effect.validateAll`や`Effect.partition`を検討します。
 
 ### 4.2. 予測されないエラー (Unexpected Errors / Defects)
 
@@ -164,8 +164,8 @@ Effect.map((x) => myFunction(x));
 
 **方針:**
 
-  * `Effect.die`で発生させます。これは`E`型パラメータでは追跡されません。
-  * 原則として`Defect`はアプリケーションロジック内で**キャッチすべきではありません**。アプリケーションの最上位（エントリーポイント）でロギングするなどの目的でのみ`catchAllCause`などを使って捕捉します。
+- `Effect.die`で発生させます。これは`E`型パラメータでは追跡されません。
+- 原則として`Defect`はアプリケーションロジック内で**キャッチすべきではありません**。アプリケーションの最上位（エントリーポイント）でロギングするなどの目的でのみ`catchAllCause`などを使って捕捉します。
 
 ## 5\. 依存性の管理 (DI)
 
@@ -173,10 +173,10 @@ Effect.map((x) => myFunction(x));
 
 **方針:**
 
-  * サービスのインターフェースは`Context.Tag`を用いて定義します。
-  * サービスの具体的な実装は`Layer`として定義します。サービスが他のサービスに依存する場合、その依存関係は`Layer`の`RequirementsIn`（第3型引数）で表現されます。
-  * アプリケーションコードで利用する具体的なサービス（例: 本番用DBクライアント）は、ボイラープレートを削減できる`Effect.Service`を使って定義することを推奨します。
-  * `Layer`は参照によってメモ化されます。同じ`Layer`インスタンスを複数回`provide`しても、構築処理は一度しか実行されません。毎回新しいインスタンスが必要な場合は`Layer.fresh`を使用します。
+- サービスのインターフェースは`Context.Tag`を用いて定義します。
+- サービスの具体的な実装は`Layer`として定義します。サービスが他のサービスに依存する場合、その依存関係は`Layer`の`RequirementsIn`（第3型引数）で表現されます。
+- アプリケーションコードで利用する具体的なサービス（例: 本番用DBクライアント）は、ボイラープレートを削減できる`Effect.Service`を使って定義することを推奨します。
+- `Layer`は参照によってメモ化されます。同じ`Layer`インスタンスを複数回`provide`しても、構築処理は一度しか実行されません。毎回新しいインスタンスが必要な場合は`Layer.fresh`を使用します。
 
 ## 6\. リソース管理
 
@@ -184,8 +184,8 @@ Effect.map((x) => myFunction(x));
 
 **方針:**
 
-  * リソースの取得と解放は`Effect.acquireUseRelease`または`Effect.scoped`内で`Effect.acquireRelease`を用いて定義します。これにより、処理の成功、失敗、中断にかかわらず、解放処理が必ず実行されることが保証されます。
-  * `Effect.addFinalizer`や`Effect.onExit`を使うことで、スコープ終了時のクリーンアップ処理を追加できます。
+- リソースの取得と解放は`Effect.acquireUseRelease`または`Effect.scoped`内で`Effect.acquireRelease`を用いて定義します。これにより、処理の成功、失敗、中断にかかわらず、解放処理が必ず実行されることが保証されます。
+- `Effect.addFinalizer`や`Effect.onExit`を使うことで、スコープ終了時のクリーンアップ処理を追加できます。
 
 ## 7\. 状態管理
 
@@ -193,9 +193,9 @@ Effect.map((x) => myFunction(x));
 
 **方針:**
 
-  * 単純なアトミックな更新には`Ref`を使用します。
-  * 状態の更新に副作用（例: API呼び出し）が伴う場合は`SynchronizedRef`を使用します。
-  * 状態の変更をストリームとして購読し、複数のコンシューマに配信したい場合は`SubscriptionRef`を使用します。
+- 単純なアトミックな更新には`Ref`を使用します。
+- 状態の更新に副作用（例: API呼び出し）が伴う場合は`SynchronizedRef`を使用します。
+- 状態の変更をストリームとして購読し、複数のコンシューマに配信したい場合は`SubscriptionRef`を使用します。
 
 ## 8\. データ構造とバリデーション
 
@@ -203,9 +203,9 @@ Effect.map((x) => myFunction(x));
 
 **方針:**
 
-  * 値に基づいた等価性比較が必要な場合は、JavaScript標準の`{}`や`[]`の代わりに`Data.struct`や`Data.array`、`HashSet`を使用します。
-  * `null`や`undefined`が許容される値は`Option`型で表現します。
-  * 成功または失敗のいずれかの結果を表す値には`Either`型を使用します。
+- 値に基づいた等価性比較が必要な場合は、JavaScript標準の`{}`や`[]`の代わりに`Data.struct`や`Data.array`、`HashSet`を使用します。
+- `null`や`undefined`が許容される値は`Option`型で表現します。
+- 成功または失敗のいずれかの結果を表す値には`Either`型を使用します。
 
 ### 8.2. `effect/Schema`によるバリデーション
 
@@ -213,14 +213,14 @@ Effect.map((x) => myFunction(x));
 
 **方針:**
 
-  * `Schema.Struct`や`Schema.Class`でデータの構造を定義します。
-  * `Schema.decodeUnknown*`系の関数を使って、安全に`unknown`型の値をパースします。
-  * `Schema.transform`やフィルタ (`minLength`, `pattern`など) を活用して、データの変換とバリデーションを宣言的に記述します。
+- `Schema.Struct`や`Schema.Class`でデータの構造を定義します。
+- `Schema.decodeUnknown*`系の関数を使って、安全に`unknown`型の値をパースします。
+- `Schema.transform`やフィルタ (`minLength`, `pattern`など) を活用して、データの変換とバリデーションを宣言的に記述します。
 
 ## 9\. 可観測性 (Observability)
 
 **方針:**
 
-  * **ロギング:** `console.log`の代わりに`Effect.log`を使用します。これにより、ログレベル、Fiber ID、スパンなどの構造化された情報が付与され、ログのフィルタリングや分析が容易になります。
-  * **トレーシング:** パフォーマンス分析やデバッグのために、主要な処理のまとまりを`Effect.withSpan`で囲み、トレーススパンを生成します。
-  * **メトリクス:** リクエスト数やレイテンシなどの定量的なデータを収集するには`Metric`を利用します。
+- **ロギング:** `console.log`の代わりに`Effect.log`を使用します。これにより、ログレベル、Fiber ID、スパンなどの構造化された情報が付与され、ログのフィルタリングや分析が容易になります。
+- **トレーシング:** パフォーマンス分析やデバッグのために、主要な処理のまとまりを`Effect.withSpan`で囲み、トレーススパンを生成します。
+- **メトリクス:** リクエスト数やレイテンシなどの定量的なデータを収集するには`Metric`を利用します。

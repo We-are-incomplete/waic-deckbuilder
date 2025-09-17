@@ -21,7 +21,9 @@ import { CARD_KINDS, CARD_TYPES } from "../constants";
  * - `DuplicateTypes`: 重複
  * - `DuplicateTags`: 重複するタグが存在する。
  */
-export class CardValidationError extends Data.TaggedError("CardValidationError")<{
+export class CardValidationError extends Data.TaggedError(
+  "CardValidationError",
+)<{
   readonly type:
     | "InvalidId"
     | "InvalidName"
@@ -43,28 +45,39 @@ export const createCard = (
 ): Effect.Effect<Card, CardValidationError> => {
   // ID検証
   if (!id || id.trim().length === 0) {
-    return Effect.fail(new CardValidationError({ type: "InvalidId", value: id }));
+    return Effect.fail(
+      new CardValidationError({ type: "InvalidId", value: id }),
+    );
   }
 
   // 名前検証
   if (!name || name.trim().length === 0) {
-    return Effect.fail(new CardValidationError({ type: "InvalidName", value: name }));
+    return Effect.fail(
+      new CardValidationError({ type: "InvalidName", value: name }),
+    );
   }
 
   // 種別検証（実行時）
   if (!CARD_KINDS.includes(kind)) {
-    return Effect.fail(new CardValidationError({ type: "InvalidKind", value: kind }));
+    return Effect.fail(
+      new CardValidationError({ type: "InvalidKind", value: kind }),
+    );
   }
 
   // 空配列/重複チェック
-  if (type.length === 0) return Effect.fail(new CardValidationError({ type: "EmptyTypeList" }));
+  if (type.length === 0)
+    return Effect.fail(new CardValidationError({ type: "EmptyTypeList" }));
   if (new Set(type).size !== type.length)
-    return Effect.fail(new CardValidationError({ type: "DuplicateTypes", value: type }));
+    return Effect.fail(
+      new CardValidationError({ type: "DuplicateTypes", value: type }),
+    );
 
   // タイプ検証（実行時）
   for (const t of type) {
     if (!CARD_TYPES.includes(t)) {
-      return Effect.fail(new CardValidationError({ type: "InvalidType", value: t }));
+      return Effect.fail(
+        new CardValidationError({ type: "InvalidType", value: t }),
+      );
     }
   }
 
@@ -77,7 +90,12 @@ export const createCard = (
   if (processedTags && processedTags.length > 0) {
     const uniqueTags = new Set(processedTags);
     if (uniqueTags.size !== processedTags.length) {
-      return Effect.fail(new CardValidationError({ type: "DuplicateTags", value: processedTags }));
+      return Effect.fail(
+        new CardValidationError({
+          type: "DuplicateTags",
+          value: processedTags,
+        }),
+      );
     }
     finalTags = [...uniqueTags];
   }

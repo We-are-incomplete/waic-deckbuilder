@@ -1,3 +1,8 @@
+/**
+ * spec: メモ化キー生成とインデックスキャッシュのユーティリティ。
+ * 同期・純粋な関数で構成し、副作用は内部に閉じ込める。
+ */
+
 import { ref, type Ref } from "vue";
 import { useMemoize } from "@vueuse/core";
 import { Effect } from "effect";
@@ -5,16 +10,15 @@ import { Effect } from "effect";
 let unserializableCounter = 0;
 
 /**
- * 共通のメモ化とキャッシュユーティリティ
- */
-
-/**
  * 安全に基準値をシリアライズし、失敗時はフォールバックキーを返す
  */
 function safeCriteriaSerialize<C>(criteria: C): string {
-  const result = Effect.runSync(Effect.either(Effect.try({ try: () => JSON.stringify(criteria), catch: (e) => e })));
-
-  if (result._tag === "Right") {
+  const result = Effect.runSync(
+    Effect.either(
+      Effect.try({ try: () => JSON.stringify(criteria), catch: (e) => e }),
+    ),
+  );
+  if (result._tag === "Right" && typeof result.right === "string") {
     return result.right;
   }
 
@@ -49,19 +53,20 @@ export function createVersionedState(): VersionedState {
 /**
  * 配列のユニークキー生成（WeakMapベース）
  */
-export class ArrayKeyGenerator {
-  private arrayMemoIds: WeakMap<readonly unknown[], string> = new WeakMap();
-  private uniqueKeyCounter = 0;
-
-  generateKey<T>(array: readonly T[]): string {
-    let memoId = this.arrayMemoIds.get(array);
-    if (!memoId) {
-      memoId = `array_key_${++this.uniqueKeyCounter}`;
-      this.arrayMemoIds.set(array, memoId);
-    }
-    return memoId;
-  }
-}
+export const createArrayKeyGenerator = () => {
+  const arrayMemoIds = new WeakMap<readonly unknown[], string>();
+  let uniqueKeyCounter = 0;
+  return {
+    generateKey<T>(array: readonly T[]): string {
+      let memoId = arrayMemoIds.get(array);
+      if (!memoId) {
+        memoId = `array_key_${++uniqueKeyCounter}`;
+        arrayMemoIds.set(array, memoId);
+      }
+      return memoId;
+    },
+  };
+};
 
 /**
  * 共通のメモ化された検索関数ファクトリ
@@ -89,53 +94,51 @@ export function createVersionedMemoizedFunction<TInput, TOutput>(
 }
 
 /**
- * Set ベースのインデックスキャッシュマネージャー
+ * Set ベースのインデックスキャッシュマネージャーを生成する関数
  */
-export class IndexCacheManager<K, V> {
-  private cache: Map<K, Set<V>>;
+export function createIndexCacheManager<K, V>() {
+  const cache = new Map<K, Set<V>>();
 
-  constructor() {
-    this.cache = new Map();
-  }
+  return {
+    addToIndex(key: K, value: V): void {
+      let set = cache.get(key);
+      if (!set) {
+        set = new Set();
+        cache.set(key, set);
+      }
+      set.add(value);
+    },
 
-  addToIndex(key: K, value: V): void {
-    let set = this.cache.get(key);
-    if (!set) {
-      set = new Set();
-      this.cache.set(key, set);
-    }
-    set.add(value);
-  }
+    removeFromIndex(key: K, value: V): boolean {
+      const set = cache.get(key);
+      return set ? set.delete(value) : false;
+    },
 
-  removeFromIndex(key: K, value: V): boolean {
-    const set = this.cache.get(key);
-    return set ? set.delete(value) : false;
-  }
+    getFromIndex(key: K): Set<V> | undefined {
+      return cache.get(key);
+    },
 
-  getFromIndex(key: K): Set<V> | undefined {
-    return this.cache.get(key);
-  }
+    hasIndex(key: K): boolean {
+      return cache.has(key);
+    },
 
-  hasIndex(key: K): boolean {
-    return this.cache.has(key);
-  }
+    hasValue(key: K, value: V): boolean {
+      const set = cache.get(key);
+      return !!set && set.has(value);
+    },
 
-  hasValue(key: K, value: V): boolean {
-    const set = this.cache.get(key);
-    return !!set && set.has(value);
-  }
+    clearIndex(): void {
+      cache.clear();
+    },
 
-  clearIndex(): void {
-    this.cache.clear();
-  }
+    deleteIndex(key: K): boolean {
+      return cache.delete(key);
+    },
 
-  deleteIndex(key: K): boolean {
-    return this.cache.delete(key);
-  }
-
-  get size(): number {
-    return this.cache.size;
-  }
+    get size(): number {
+      return cache.size;
+    },
+  };
 }
 
 /**
@@ -146,7 +149,7 @@ export class IndexCacheManager<K, V> {
 export const createArraySortMemo = <T>(
   sortFn: (array: readonly T[]) => readonly T[],
 ) => {
-  const keyGen = new ArrayKeyGenerator();
+  const keyGen = createArrayKeyGenerator();
   return createMemoizedFunction(sortFn, (array) => keyGen.generateKey(array));
 };
 
@@ -155,7 +158,7 @@ export const createSearchMemo = <T>(
   searchFn: (items: readonly T[], query: string) => readonly T[],
   versionRef: Ref<number>,
 ) => {
-  const keyGen = new ArrayKeyGenerator();
+  const keyGen = createArrayKeyGenerator();
   const memoized = createVersionedMemoizedFunction(
     ({ items, query }: { items: readonly T[]; query: string }) =>
       searchFn(items, query),
@@ -170,7 +173,7 @@ export const createSearchMemo = <T>(
 export const createFilterMemo = <T, C>(
   filterFn: (items: readonly T[], criteria: C) => readonly T[],
 ) => {
-  const keyGen = new ArrayKeyGenerator();
+  const keyGen = createArrayKeyGenerator();
   return createMemoizedFunction(
     ({ items, criteria }: { items: readonly T[]; criteria: C }) =>
       filterFn(items, criteria),
