@@ -8,7 +8,6 @@ import { createNaturalSort, createKindSort, createTypeSort } from "../utils";
  * - カードの種類、タイプ、IDに基づいた標準的な比較ロジック
  * - カード配列およびデッキカード配列をソートする関数
  * - 副作用を避け、不変データ構造を優先する関数型アプローチを採用
- * - エラーハンドリングは不要なため、neverthrowは使用しない
  */
 
 // ソート関数インスタンス（シングルトン）

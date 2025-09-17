@@ -1,29 +1,21 @@
 import { ref, type Ref } from "vue";
 import { useMemoize } from "@vueuse/core";
-import { fromThrowable } from "neverthrow";
+import { Effect } from "effect";
+
+let unserializableCounter = 0;
 
 /**
  * 共通のメモ化とキャッシュユーティリティ
  */
 
 /**
- * 安全なJSON.stringify（循環参照エラーに対応）
- */
-const safeJsonStringify = fromThrowable(JSON.stringify);
-
-/**
- * フォールバックキー生成用のカウンター
- */
-let unserializableCounter = 0;
-
-/**
  * 安全に基準値をシリアライズし、失敗時はフォールバックキーを返す
  */
 function safeCriteriaSerialize<C>(criteria: C): string {
-  const result = safeJsonStringify(criteria);
+  const result = Effect.runSync(Effect.either(Effect.try({ try: () => JSON.stringify(criteria), catch: (e) => e })));
 
-  if (result.isOk()) {
-    return result.value;
+  if (result._tag === "Right") {
+    return result.right;
   }
 
   // シリアライゼーション失敗時のフォールバック

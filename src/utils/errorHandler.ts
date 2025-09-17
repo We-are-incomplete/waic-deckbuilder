@@ -1,13 +1,18 @@
-import { err, ok, Result, fromThrowable, fromAsyncThrowable } from "neverthrow";
+/**
+ * @file エラーハンドリングユーティリティ
+ * - 目的: アプリケーション全体のエラーを一元的に処理し、ログ記録と適切なエラー型への変換を行う。
+ * - 方針: 例外は投げず Effect の Effect とエラーADTを使用する。
+ */
+import { Data, Effect } from "effect";
 import { logger } from "./logger";
 
 // エラーの種類を定義
-export type AppError = {
-  type: "validation" | "runtime" | "async";
-  message: string;
-  details?: unknown;
-  originalError?: unknown;
-};
+export class AppError extends Data.TaggedError("AppError")<{
+  readonly type: "ValidationError" | "RuntimeError" | "AsyncError";
+  readonly message: string;
+  readonly details?: unknown;
+  readonly originalError?: unknown;
+}> {}
 
 // エラーメッセージの定数
 export const ERROR_MESSAGES = {
@@ -16,22 +21,6 @@ export const ERROR_MESSAGES = {
     ERROR_MESSAGE_NOT_PROVIDED: "エラーメッセージが提供されていません",
   },
 } as const;
-
-// エラーハンドラーインターフェース
-export interface ErrorHandler {
-  handleValidationError: (
-    message: string,
-    details?: unknown,
-  ) => Result<never, AppError>;
-  handleRuntimeError: (
-    baseMessage: string,
-    originalError: unknown,
-  ) => Result<never, AppError>;
-  handleAsyncError: (
-    baseMessage: string,
-    originalError: unknown,
-  ) => Result<never, AppError>;
-}
 
 // ログ出力関数
 const logError = (message: string, error?: unknown): void => {
@@ -57,18 +46,18 @@ const createErrorMessage = (baseMessage: string, error: unknown): string => {
 export const createErrorHandler = () => {
   // 共通のエラーハンドリングヘルパー
   const handleError = (
-    type: AppError["type"],
+    type: AppError["type"], // AppErrorのtypeプロパティを使用
     baseMessage: string,
     originalError: unknown,
-  ): Result<never, AppError> => {
+  ): Effect.Effect<never, AppError> => {
     const fullMessage = createErrorMessage(baseMessage, originalError);
-    const error: AppError = {
-      type,
+    const error = new AppError({
+      type: type,
       message: fullMessage,
       originalError,
-    };
+    });
     logError(baseMessage, originalError);
-    return err(error);
+    return Effect.fail(error);
   };
 
   return {
@@ -76,26 +65,26 @@ export const createErrorHandler = () => {
     handleValidationError: (
       message: string,
       details?: unknown,
-    ): Result<never, AppError> => {
-      const error: AppError = { type: "validation", message, details };
+    ): Effect.Effect<never, AppError> => {
+      const error = new AppError({ type: "ValidationError", message, details });
       logError(message, details);
-      return err(error);
+      return Effect.fail(error);
     },
 
     // ランタイムエラーを処理
     handleRuntimeError: (
       baseMessage: string,
       originalError: unknown,
-    ): Result<never, AppError> => {
-      return handleError("runtime", baseMessage, originalError);
+    ): Effect.Effect<never, AppError> => {
+      return handleError("RuntimeError", baseMessage, originalError);
     },
 
     // 非同期エラーを処理
     handleAsyncError: (
       baseMessage: string,
       originalError: unknown,
-    ): Result<never, AppError> => {
-      return handleError("async", baseMessage, originalError);
+    ): Effect.Effect<never, AppError> => {
+      return handleError("AsyncError", baseMessage, originalError);
     },
   };
 };
@@ -109,7 +98,7 @@ const commonErrorHandler = createErrorHandler();
 export const safeSyncOperation = <T>(
   operation: () => T,
   errorMessage: string,
-): Result<T, AppError> => {
+): Effect.Effect<T, AppError> => {
   if (!operation) {
     return commonErrorHandler.handleValidationError(
       ERROR_MESSAGES.VALIDATION.OPERATION_NOT_PROVIDED,
@@ -122,14 +111,10 @@ export const safeSyncOperation = <T>(
     );
   }
 
-  const safeOperation = fromThrowable(operation, (error: unknown) => error);
-  const result = safeOperation();
-
-  if (result.isErr()) {
-    return commonErrorHandler.handleRuntimeError(errorMessage, result.error);
-  }
-
-  return ok(result.value);
+  return Effect.try({
+    try: operation,
+    catch: (error) => new AppError({ type: "RuntimeError", message: createErrorMessage(errorMessage, error), originalError: error }),
+  });
 };
 
 /**
@@ -138,7 +123,7 @@ export const safeSyncOperation = <T>(
 export const safeAsyncOperation = async <T>(
   operation: () => Promise<T>,
   errorMessage: string,
-): Promise<Result<T, AppError>> => {
+): Promise<Effect.Effect<T, AppError>> => {
   if (!operation) {
     return commonErrorHandler.handleValidationError(
       ERROR_MESSAGES.VALIDATION.OPERATION_NOT_PROVIDED,
@@ -151,12 +136,8 @@ export const safeAsyncOperation = async <T>(
     );
   }
 
-  const safeAsyncOp = fromAsyncThrowable(operation, (error: unknown) => error);
-  const result = await safeAsyncOp();
-
-  if (result.isErr()) {
-    return commonErrorHandler.handleAsyncError(errorMessage, result.error);
-  }
-
-  return ok(result.value);
+  return Effect.tryPromise({
+    try: operation,
+    catch: (error) => new AppError({ type: "AsyncError", message: createErrorMessage(errorMessage, error), originalError: error }),
+  });
 };

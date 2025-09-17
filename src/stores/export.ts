@@ -1,14 +1,15 @@
 /**
  * エクスポートストアの仕様
- * 目的: デッキDOMをPNGとして保存する。副作用(I/O)はこの層に集約し、外部例外は neverthrow の Result で返す。
+ * 目的: デッキDOMをPNGとして保存する。副作用(I/O)はこの層に集約し、外部例外は Effect の Effect で返す。
  * 範囲: 画像読み込み待ち・タイムアウト・イベントクリーンアップの整合性保証。
  */
 import { defineStore } from "pinia";
 import { ref, nextTick, readonly } from "vue";
 import html2canvas from "html2canvas-pro";
 import { generateFileName, downloadCanvas, logger } from "../utils";
-import { ok, err, fromPromise, fromThrowable, type Result } from "neverthrow";
+
 import { useEventListener } from "@vueuse/core";
+import { Effect } from "effect";
 
 // エクスポートストア専用のエラー型
 type ExportError =
@@ -70,12 +71,12 @@ export const useExportStore = defineStore("export", () => {
    */
   const waitForImagesLoaded = (
     container: HTMLElement,
-  ): Promise<Result<void, ExportError>> => {
+  ): Promise<Effect.Effect<void, ExportError>> => {
     return new Promise((resolve) => {
       const images = container.querySelectorAll<HTMLImageElement>("img");
 
       if (images.length === 0) {
-        resolve(ok(undefined));
+        resolve(Effect.succeed(undefined));
         return;
       }
 
@@ -99,7 +100,7 @@ export const useExportStore = defineStore("export", () => {
         hasErrorOccurred = true;
         cleanupListeners();
         resolve(
-          err({
+          Effect.fail({
             type: "imageLoad",
             message: `画像の読み込みがタイムアウトしました (${loadedCount}/${images.length}枚読み込み済み)`,
             originalError: new Error("timeout"),
@@ -113,7 +114,7 @@ export const useExportStore = defineStore("export", () => {
         loadedCount++;
         if (loadedCount === images.length) {
           cleanupListeners();
-          resolve(ok(undefined));
+          resolve(Effect.succeed(undefined));
         }
       };
 
@@ -122,7 +123,7 @@ export const useExportStore = defineStore("export", () => {
         hasErrorOccurred = true;
         cleanupListeners();
         resolve(
-          err({
+          Effect.fail({
             type: "imageLoad",
             message: `画像の読み込みに失敗しました: ${redactUrl(
               (error.target as HTMLImageElement)?.src,
@@ -137,7 +138,7 @@ export const useExportStore = defineStore("export", () => {
         hasErrorOccurred = true;
         cleanupListeners();
         resolve(
-          err({
+          Effect.fail({
             type: "imageLoad",
             message: `画像の読み込みに失敗しました: ${redactUrl(img.src)}`,
             originalError: new Error("already-complete-broken"),
@@ -177,16 +178,16 @@ export const useExportStore = defineStore("export", () => {
   const saveDeckAsPng = async (
     deckName: string,
     exportContainer: HTMLElement,
-  ): Promise<Result<void, ExportError>> => {
+  ): Promise<Effect.Effect<void, ExportError>> => {
     if (isSaving.value) {
-      return err({
+      return Effect.fail({
         type: "concurrency",
         message: "現在エクスポート処理中です。完了後に再度お試しください。",
         originalError: null,
       });
     }
     if (!exportContainer) {
-      return err({
+      return Effect.fail({
         type: "unknown",
         message: "エクスポートコンテナが見つかりません",
         originalError: null,
@@ -200,49 +201,55 @@ export const useExportStore = defineStore("export", () => {
       await nextTick();
 
       // すべての画像の読み込み完了を待つ
-      const imageLoadResult = await waitForImagesLoaded(exportContainer);
-      if (imageLoadResult.isErr()) {
-        logger.error("画像の読み込みに失敗しました:", imageLoadResult.error);
-        return imageLoadResult; // 画像読み込みエラーを伝播
+      const imageLoadEffect = await waitForImagesLoaded(exportContainer);
+      const imageLoadResult = await Effect.runPromise(Effect.either(imageLoadEffect));
+
+      if (imageLoadResult._tag === "Left") {
+        logger.error("画像の読み込みに失敗しました:", imageLoadResult.left);
+        return Effect.fail(imageLoadResult.left); // 画像読み込みエラーを伝播
       }
 
-      // Canvas生成 (neverthrow でラップ)
-      const canvasResult = await fromPromise(
-        html2canvas(exportContainer, {
-          scale: 1,
-          useCORS: true,
-          logging: false,
-          allowTaint: false,
-        }),
-        (e): ExportError => ({
+      // Canvas生成 (Effect.tryPromise でラップ)
+      const canvasEffect = Effect.tryPromise({
+        try: () =>
+          html2canvas(exportContainer, {
+            scale: 1,
+            useCORS: true,
+            logging: false,
+            allowTaint: false,
+          }),
+        catch: (e): ExportError => ({
           type: "html2canvas",
           message: "デッキ画像の保存に失敗しました",
           originalError: e,
         }),
-      );
-      if (canvasResult.isErr()) return err(canvasResult.error);
-      const canvas = canvasResult.value;
+      });
+      const canvasResult = await Effect.runPromise(Effect.either(canvasEffect));
 
-      // ダウンロード（fromThrowableでラップ）
+      if (canvasResult._tag === "Left") return Effect.fail(canvasResult.left);
+      const canvas = canvasResult.right;
+
+      // ダウンロード（Effect.try でラップ）
       const filename = generateFileName(deckName);
-      const download = fromThrowable(
-        downloadCanvas,
-        (e): ExportError => ({
+      const downloadEffect = Effect.try({
+        try: () => downloadCanvas(canvas, filename),
+        catch: (e): ExportError => ({
           type: "unknown",
           message: "デッキ画像の保存に失敗しました",
           originalError: e,
         }),
-      );
-      const dl = download(canvas, filename);
-      if (dl.isErr()) {
-        return err(dl.error);
+      });
+      const dl = Effect.runSync(Effect.either(downloadEffect));
+
+      if (dl._tag === "Left") {
+        return Effect.fail(dl.left);
       }
 
       logger.info(`デッキ画像を保存しました: ${filename}`);
     } catch (e) {
       const errorMessage = "デッキ画像の保存に失敗しました";
       logger.error(errorMessage + ":", e);
-      return err({
+      return Effect.fail({
         type: "unknown",
         message: errorMessage,
         originalError: e,
@@ -250,7 +257,7 @@ export const useExportStore = defineStore("export", () => {
     } finally {
       isSaving.value = false;
     }
-    return ok(undefined);
+    return Effect.succeed(undefined);
   };
 
   return {

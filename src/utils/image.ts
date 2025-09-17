@@ -5,9 +5,9 @@
  * - 事前プリロード（requestIdleCallback フォールバック）
  * 注意: DOM を扱う関数（プリロード/クリーンアップ）は SSR では呼び出さない
  */
-import { ok, err, type Result } from "neverthrow";
 import type { Card } from "../types";
 import { logger } from "./logger";
+import { Effect } from "effect";
 
 type NetworkInformationLite = { saveData?: boolean };
 
@@ -78,13 +78,13 @@ export const startImageCacheMaintenance = (): void => {
 const setCacheEntry = (
   key: string,
   image: HTMLImageElement,
-): Result<void, string> => {
+): Effect.Effect<void, string> => {
   if (!key) {
-    return err("キーが指定されていません");
+    return Effect.fail("キーが指定されていません");
   }
 
   if (!image) {
-    return err("画像が指定されていません");
+    return Effect.fail("画像が指定されていません");
   }
 
   // 既存のエントリーがあれば削除
@@ -105,7 +105,7 @@ const setCacheEntry = (
   // サイズ制限をチェックし、必要に応じて古いエントリーを削除
   evictIfNecessary();
 
-  return ok(undefined);
+  return Effect.succeed(undefined);
 };
 
 /**
@@ -219,12 +219,12 @@ const destroyCache = (): void => {
 /**
  * カード画像URLを取得
  */
-export const getCardImageUrl = (cardId: string): Result<string, string> => {
+export const getCardImageUrl = (cardId: string): Effect.Effect<string, string> => {
   if (!cardId) {
-    return err("カードIDが指定されていません");
+    return Effect.fail("カードIDが指定されていません");
   }
 
-  return ok(
+  return Effect.succeed(
     `${getNormalizedBaseUrl()}cards/${encodeURIComponent(cardId)}.avif`,
   );
 };
@@ -233,26 +233,26 @@ export const getCardImageUrl = (cardId: string): Result<string, string> => {
  * カード画像URLを安全に取得
  */
 export const getCardImageUrlSafe = (cardId: string): string => {
-  const result = getCardImageUrl(cardId);
-  if (result.isOk()) {
-    return result.value;
+  const result = Effect.runSync(Effect.either(getCardImageUrl(cardId)));
+  if (result._tag === "Right") {
+    return result.right;
   }
   // エラーをログに記録
-  logger.warn(`Failed to get image URL for card: ${cardId}`, result.error);
+  logger.warn(`Failed to get image URL for card: ${cardId}`, result.left);
   return `${getNormalizedBaseUrl()}placeholder.avif`;
 };
 
 /**
  * 画像エラー時の処理
  */
-export const handleImageError = (event: Event): Result<void, string> => {
+export const handleImageError = (event: Event): Effect.Effect<void, string> => {
   if (!event || !event.target) {
-    return err("イベントまたはターゲットが指定されていません");
+    return Effect.fail("イベントまたはターゲットが指定されていません");
   }
 
   const t = event.target;
   if (!(t instanceof HTMLImageElement)) {
-    return err("イベントターゲットが画像要素ではありません");
+    return Effect.fail("イベントターゲットが画像要素ではありません");
   }
   const img = t;
 
@@ -265,23 +265,23 @@ export const handleImageError = (event: Event): Result<void, string> => {
   } catch {}
   img.src = `${getNormalizedBaseUrl()}placeholder.avif`;
 
-  return ok(undefined);
+  return Effect.succeed(undefined);
 };
 
 /**
  * 画像のプリロード処理
  */
-export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
+export const preloadImages = (cards: readonly Card[]): Effect.Effect<void, string> => {
   // SSR/非ブラウザ環境では何もしない
   if (import.meta.env.SSR || typeof window === "undefined") {
-    return ok(undefined);
+    return Effect.succeed(undefined);
   }
   // 省データモード/低速回線ではスキップ
   const conn = (navigator as unknown as { connection?: NetworkInformationLite })
     .connection;
   if (conn?.saveData) {
     logger.info("Preload skipped due to saveData mode");
-    return ok(undefined);
+    return Effect.succeed(undefined);
   }
   // 有効なら低優先度で取得
   const setLowFetchPriority = (img: HTMLImageElement): void => {
@@ -291,7 +291,7 @@ export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
     } catch {}
   };
   if (!cards || cards.length === 0) {
-    return ok(undefined); // 空配列は正常
+    return Effect.succeed(undefined); // 空配列は正常
   }
 
   let currentIndex = 0;
@@ -306,8 +306,9 @@ export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
       const card = cards[currentIndex];
 
       if (!hasCacheEntry(card.id) && !cacheState.inflight.has(card.id)) {
-        const urlResult = getCardImageUrl(card.id);
-        if (urlResult.isOk()) {
+        const urlResultEffect = getCardImageUrl(card.id);
+        const urlResult = Effect.runSync(Effect.either(urlResultEffect));
+        if (urlResult._tag === "Right") {
           const gen = cacheState.generation;
           cacheState.inflight.add(card.id);
           const img = new Image();
@@ -330,11 +331,11 @@ export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
             img.onload = null;
             img.onerror = null;
           };
-          img.src = urlResult.value;
+          img.src = urlResult.right;
         } else {
           logger.warn(
             `Preload skipped: invalid URL for card: ${card.id}`,
-            urlResult.error,
+            urlResult.left,
           );
         }
       }
@@ -364,7 +365,7 @@ export const preloadImages = (cards: readonly Card[]): Result<void, string> => {
     setTimeout(() => processBatch(), 100);
   }
 
-  return ok(undefined);
+  return Effect.succeed(undefined);
 };
 
 // キャッシュ管理用のユーティリティ関数をエクスポート

@@ -1,10 +1,10 @@
 /**
  * spec: デッキ機能のドメイン型(ADT)と不変条件を定義するモジュール。
- * - 例外は投げず neverthrow の Result とエラーADTを使用する。
+ * - 例外は投げず Effect の Effect とエラーADTを使用する。
  * - UI文言は保持せず、構造化エラーで表現する。
  */
 import type { Card } from "./card";
-import type { Result } from "neverthrow";
+import { Data } from "effect";
 
 /**
  * デッキ内のカードとその枚数を表すインターフェース。
@@ -39,28 +39,17 @@ export type DeckState =
     };
 
 /**
- * デッキ操作の結果を表す型。成功時は `T`、失敗時は `DeckOperationError` を返す。
- */
-export type DeckOperationResult<T> = Result<T, DeckOperationError>;
-
-/**
  * デッキ操作中に発生しうるエラーを表す代数的データ型。
- * - `cardNotFound`: 指定されたカードが見つからない。
- * - `maxCountExceeded`: カードの最大枚数制限を超過した。
- * - `invalidCardCount`: 不正なカード枚数が指定された。
+ * - `CardNotFound`: 指定されたカードが見つからない。
+ * - `MaxCountExceeded`: カードの最大枚数制限を超過した。
+ * - `InvalidCardCount`: 不正なカード枚数が指定された。
  */
-export type DeckOperationError =
-  | { readonly type: "cardNotFound"; readonly cardId: string }
-  | {
-      readonly type: "maxCountExceeded";
-      readonly cardId: string;
-      readonly maxCount: number;
-    }
-  | {
-      readonly type: "invalidCardCount";
-      readonly cardId: string;
-      readonly count: number;
-    };
+export class DeckOperationError extends Data.TaggedError("DeckOperationError")<{
+  readonly type: "CardNotFound" | "MaxCountExceeded" | "InvalidCardCount";
+  readonly cardId: string;
+  readonly maxCount?: number;
+  readonly count?: number;
+}> {}
 
 /**
  * デッキコードの生成、コピー、検証、デコード中に発生しうるエラーを表す代数的データ型。
@@ -69,11 +58,13 @@ export type DeckOperationError =
  * - `validation`: デッキコード検証時のエラー。
  * - `decode`: デッキコードデコード時のエラー。
  */
-export type DeckCodeError =
-  | { readonly type: "generation"; readonly message: string }
-  | { readonly type: "copy"; readonly message: string }
-  | { readonly type: "validation"; readonly message: string }
-  | { readonly type: "decode"; readonly message: string };
+export class DeckCodeError extends Data.TaggedError("DeckCodeError")<{
+  readonly type: "generation" | "copy" | "validation" | "decode";
+  readonly message: string;
+  readonly invalidId?: string;
+  readonly notFoundIds?: readonly string[];
+  readonly originalError?: unknown;
+}> {}
 
 /**
  * デッキに対する変更操作を表す代数的データ型。

@@ -17,7 +17,6 @@
     "@vueuse/integrations": "^13.9.0",
     "effect": "^3.17.13",
     "html2canvas-pro": "^1.5.11",
-    "neverthrow": "^8.2.0",
     "papaparse": "^5.5.3",
     "pinia": "^3.0.3",
     "tailwindcss": "^4.1.13",

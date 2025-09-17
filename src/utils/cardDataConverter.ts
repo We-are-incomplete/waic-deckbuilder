@@ -2,12 +2,12 @@
  * @file cardDataConverter.ts
  * @brief CSV形式のカードデータを読み込み、パースしてCardオブジェクトの配列に変換するユーティリティ。
  *        外部のCSVファイルからカードデータを取得し、アプリケーションで利用可能な形式に整形する機能を提供します。
- *        neverthrow Result型を使用して、成功または失敗の結果を明示的に扱います。
+ *        EffectのEffect型を使用して、成功または失敗の結果を明示的に扱います。
  */
 
 import type { Card, CardKind, CardType } from "../types";
 import { CARD_KINDS, CARD_TYPES } from "../constants";
-import { type Result, ok, err } from "neverthrow";
+import { Effect, Data } from "effect";
 import { logger } from "./logger";
 import Papa from "papaparse";
 
@@ -19,6 +19,13 @@ interface CsvCardRow {
   effect: string;
   tags: string[];
 }
+
+// カードデータ変換エラー型
+export class CardDataConverterError extends Data.TaggedError("CardDataConverterError")<{
+  readonly type: "FetchError" | "EmptyCsvError" | "ParseError" | "ValidationError";
+  readonly message: string;
+  readonly originalError?: unknown;
+}> {}
 
 // 長いトークンを優先するためにソート
 const TYPE_TOKENS = [...CARD_TYPES].sort((a, b) => b.length - a.length);
@@ -102,53 +109,67 @@ function isCardType(value: string): value is CardType {
   return (CARD_TYPES as readonly string[]).includes(value);
 }
 
-export async function loadCardsFromCsv(
+export function loadCardsFromCsv(
   csvPath: string,
-): Promise<Result<Card[], Error>> {
+): Effect.Effect<Card[], CardDataConverterError> {
   if (import.meta.env?.DEV)
     logger.debug("Attempting to fetch CSV from:", csvPath);
 
-  try {
-    // 通常のfetch APIを使用（useFetchの代わり）
-    const response = await fetch(csvPath, {
-      method: "GET",
-      headers: {
-        Accept: "text/csv,text/plain,*/*",
-        "Cache-Control": "no-cache",
-      },
-    });
+  return Effect.tryPromise({
+    try: async () => {
+      const response = await fetch(csvPath, {
+        method: "GET",
+        headers: {
+          Accept: "text/csv,text/plain,*/*",
+          "Cache-Control": "no-cache",
+        },
+      });
 
-    if (!response.ok) {
-      return err(
-        new Error(
+      if (!response.ok) {
+        throw new Error(
           `HTTP error! status: ${response.status} ${response.statusText}`,
-        ),
-      );
-    }
+        );
+      }
 
-    const csvText = await response.text();
+      const csvText = await response.text();
 
-    if (!csvText || csvText.trim().length === 0) {
-      return err(new Error("CSVデータが空です。"));
-    }
+      if (!csvText || csvText.trim().length === 0) {
+        throw new Error("CSVデータが空です。");
+      }
 
-    if (import.meta.env?.DEV)
-      logger.debug("CSV data fetched successfully, length:", csvText.length);
+      if (import.meta.env?.DEV)
+        logger.debug("CSV data fetched successfully, length:", csvText.length);
 
-    // papaparse を使用してCSVをパース
-    const parseResult = parseCsv(csvText);
-    return parseResult;
-  } catch (error) {
-    logger.error("Fetch error:", error); // デバッグログ
-    return err(
-      new Error(
-        `ネットワークエラー: ${error instanceof Error ? error.message : String(error)}`,
-      ),
-    );
-  }
+      return csvText;
+    },
+    catch: (error) => {
+      logger.error("Fetch error:", error);
+      if (error instanceof Error && error.message.startsWith("HTTP error!")) {
+        return new CardDataConverterError({
+          type: "FetchError",
+          message: "カードデータの取得に失敗しました",
+          originalError: error,
+        });
+      }
+      if (error instanceof Error && error.message === "CSVデータが空です。") {
+        return new CardDataConverterError({
+          type: "EmptyCsvError",
+          message: "CSVデータが空です。",
+          originalError: error,
+        });
+      }
+      return new CardDataConverterError({
+        type: "FetchError",
+        message: `ネットワークエラー: ${error instanceof Error ? error.message : String(error)}`,
+        originalError: error,
+      });
+    },
+  }).pipe(
+    Effect.andThen((csvText) => parseCsv(csvText)),
+  );
 }
 
-function parseCsv(csvText: string): Result<Card[], Error> {
+function parseCsv(csvText: string): Effect.Effect<Card[], CardDataConverterError> {
   if (import.meta.env?.DEV) logger.debug("Parsing CSV text with PapaParse...");
   const parseResult = Papa.parse<CsvCardRow>(csvText, {
     header: true, // ヘッダー行をオブジェクトのキーとして使用
@@ -167,25 +188,33 @@ function parseCsv(csvText: string): Result<Card[], Error> {
 
   if (parseResult.errors.length > 0) {
     logger.error("PapaParse errors:", parseResult.errors);
-    return err(new Error(`CSVパースエラー: ${parseResult.errors[0].message}`));
+    return Effect.fail(
+      new CardDataConverterError({
+        type: "ParseError",
+        message: `CSVパースエラー: ${parseResult.errors[0].message}`,
+        originalError: parseResult.errors[0],
+      }),
+    );
   }
 
   const cards: Card[] = [];
   for (const row of parseResult.data) {
     // CardKindの検証
     if (!isCardKind(row.kind)) {
-      return err(
-        new Error(
-          `不正なCardKindが見つかりました: ${row.kind} (ID: ${row.id}). 有効な値: ${CARD_KINDS.join(", ")}`,
-        ),
+      return Effect.fail(
+        new CardDataConverterError({
+          type: "ValidationError",
+          message: `不正なCardKindが見つかりました: ${row.kind} (ID: ${row.id}). 有効な値: ${CARD_KINDS.join(", ")}`,
+        }),
       );
     }
 
     if (!row.id?.trim() || !row.name?.trim()) {
-      return err(
-        new Error(
-          `必須フィールド欠落: id/name が空です (ID: ${row.id ?? "N/A"})`,
-        ),
+      return Effect.fail(
+        new CardDataConverterError({
+          type: "ValidationError",
+          message: `必須フィールド欠落: id/name が空です (ID: ${row.id ?? "N/A"})`,
+        }),
       );
     }
 
@@ -195,10 +224,11 @@ function parseCsv(csvText: string): Result<Card[], Error> {
       if (isCardType(typeValue)) {
         types.push(typeValue);
       } else {
-        return err(
-          new Error(
-            `不正なCardTypeが見つかりました: ${typeValue} (ID: ${row.id}). 有効な値: ${CARD_TYPES.join(", ")}`,
-          ),
+        return Effect.fail(
+          new CardDataConverterError({
+            type: "ValidationError",
+            message: `不正なCardTypeが見つかりました: ${typeValue} (ID: ${row.id}). 有効な値: ${CARD_TYPES.join(", ")}`,
+          }),
         );
       }
     }
@@ -218,5 +248,5 @@ function parseCsv(csvText: string): Result<Card[], Error> {
 
   if (import.meta.env?.DEV)
     logger.debug("Successfully parsed cards:", cards.length);
-  return ok(cards);
+  return Effect.succeed(cards);
 }
