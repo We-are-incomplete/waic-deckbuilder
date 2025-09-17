@@ -15,6 +15,7 @@
     "@tailwindcss/vite": "^4.1.13",
     "@vueuse/core": "^13.9.0",
     "@vueuse/integrations": "^13.9.0",
+    "effect": "^3.17.13",
     "html2canvas-pro": "^1.5.11",
     "neverthrow": "^8.2.0",
     "papaparse": "^5.5.3",
