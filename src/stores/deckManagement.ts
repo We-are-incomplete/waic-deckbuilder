@@ -2,12 +2,18 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 import { useCookies } from "@vueuse/integrations/useCookies";
 import { useDeckCodeStore } from "./deckCode";
-import { Result } from "neverthrow";
+import { Effect, Either } from "effect";
+import { logger } from "../utils";
 
 interface SavedDeck {
   name: string;
   code: string;
 }
+
+const isSavedDeck = (u: unknown): u is SavedDeck =>
+  !!u &&
+  typeof (u as any).name === "string" &&
+  typeof (u as any).code === "string";
 
 export const useDeckManagementStore = defineStore("deckManagement", () => {
   const cookies = useCookies(["savedDecks"]);
@@ -17,8 +23,8 @@ export const useDeckManagementStore = defineStore("deckManagement", () => {
 
   // 初期化時にCookieからデッキを読み込む
   const loadDecksFromCookie = () => {
-    const storedDecksResult: Result<SavedDeck[], Error> = Result.fromThrowable(
-      () => {
+    const storedDecksEffect = Effect.try({
+      try: () => {
         const stored = cookies.get("savedDecks");
         if (stored === undefined || stored === null) {
           return [];
@@ -26,20 +32,21 @@ export const useDeckManagementStore = defineStore("deckManagement", () => {
         if (!Array.isArray(stored)) {
           throw new Error("Stored decks is not an array.");
         }
+        if (!stored.every(isSavedDeck)) {
+          throw new Error("Invalid savedDecks element shape.");
+        }
         return stored as SavedDeck[];
       },
-      (e) => e as Error,
-    )();
+      catch: (e) => e as Error,
+    });
 
-    storedDecksResult.match(
-      (decks) => {
-        savedDecks.value = decks;
-      },
-      (error) => {
-        console.error("Failed to load decks from cookie:", error);
-        savedDecks.value = [];
-      },
-    );
+    const storedDecksResult = Effect.runSync(Effect.either(storedDecksEffect));
+    if (Either.isRight(storedDecksResult)) {
+      savedDecks.value = storedDecksResult.right;
+    } else {
+      logger.error("Failed to load decks from cookie:", storedDecksResult.left);
+      savedDecks.value = [];
+    }
   };
 
   // デッキをCookieに保存する

@@ -1,14 +1,14 @@
 /**
  * @file カードストア
  * - 取得/検証/キャッシュ/プリロードのオーケストレーション
- * - neverthrow Result で例外を外部に漏らさない
+ * - Effectで例外を外部に漏らさない
  */
 import { defineStore } from "pinia";
 import { ref, shallowRef, readonly, computed, markRaw, triggerRef } from "vue";
 import type { Card } from "../types";
 import { preloadImages, loadCardsFromCsv, logger } from "../utils";
 import * as CardDomain from "../domain";
-import { ok, err, type Result } from "neverthrow";
+import { Effect } from "effect";
 import { useMemoize } from "@vueuse/core";
 
 // カードストア専用のエラー型
@@ -59,46 +59,43 @@ export const useCardsStore = defineStore("cards", () => {
 
   // CardStoreErrorに変換するヘルパー関数
   const mapErrorToCardStoreError = (e: unknown): CardStoreError => {
-    if (e instanceof Error) {
-      const errorMessage = e.message ?? "";
-      // HTTP エラー: "HTTP error! status: <code>"
-      const statusMatch = errorMessage.match(/^HTTP error! status:\s+(\d+)/);
-      if (statusMatch) {
-        const status = parseInt(statusMatch[1], 10);
-        return {
-          type: "fetch",
-          status,
-          message: "カードデータの取得に失敗しました",
-        };
-      }
-      // パース系
+    // TaggedError(CardDataConverterError) 由来
+    if (e && typeof e === "object") {
+      const tagged = e as { _tag?: string; type?: string; message?: string };
       if (
-        errorMessage.startsWith("CSVデータが空です。") ||
-        errorMessage.startsWith("CSVパースエラー:")
+        tagged._tag === "CardDataConverterError" &&
+        typeof tagged.type === "string"
       ) {
-        return {
-          type: "parse",
-          message: "カードデータの解析に失敗しました",
-        };
-      }
-      // バリデーション系
-      if (
-        errorMessage.includes("不正なCardKindが見つかりました:") ||
-        errorMessage.includes("必須フィールド欠落:") ||
-        errorMessage.includes("不正なCardTypeが見つかりました:")
-      ) {
-        return {
-          type: "validation",
-          message: "カードデータの検証に失敗しました",
-        };
-      }
-      // ネットワーク系
-      if (errorMessage.startsWith("ネットワークエラー:")) {
-        return {
-          type: "fetch",
-          status: 0, // ネットワークエラーはHTTPステータスがないため0
-          message: "ネットワークエラーによりカードデータの取得に失敗しました",
-        };
+        switch (tagged.type) {
+          case "FetchError":
+            return {
+              type: "fetch",
+              status: 0,
+              message: tagged.message ?? "カードデータの取得に失敗しました",
+            };
+          case "EmptyCsvError":
+            return {
+              type: "parse",
+              message: tagged.message ?? "カードデータの解析に失敗しました",
+            };
+          case "ParseError":
+            return {
+              type: "parse",
+              message: tagged.message ?? "カードデータの解析に失敗しました",
+            };
+          case "ValidationError":
+            return {
+              type: "validation",
+              message: tagged.message ?? "カードデータが不正です",
+            };
+          // 将来の型追加にも安全にデフォルトで対応
+          default:
+            return {
+              type: "fetch",
+              status: 500,
+              message: tagged.message ?? "不明なカードデータの読み込みエラー",
+            };
+        }
       }
     } else if (typeof e === "string") {
       // ensureValidCardsからのエラー（string）
@@ -145,11 +142,11 @@ export const useCardsStore = defineStore("cards", () => {
   /**
    * 有効なカードデータの存在を検証
    */
-  const ensureValidCards = (cards: Card[]): Result<Card[], string> => {
+  const ensureValidCards = (cards: Card[]): Effect.Effect<Card[], string> => {
     if (cards.length === 0) {
-      return err("有効なカードデータが見つかりませんでした");
+      return Effect.fail("有効なカードデータが見つかりませんでした");
     }
-    return ok(cards);
+    return Effect.succeed(cards);
   };
 
   /**
@@ -305,36 +302,48 @@ export const useCardsStore = defineStore("cards", () => {
     error.value = null;
 
     try {
-      const csvLoadResult = await loadCardsFromCsv(
+      const csvLoadEffect = loadCardsFromCsv(
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBSkAVMH16J4iOgia3JKSwgpNG9gIWGu5a7OzdnuPmM2lvYW0MjchCBvy1i4ZS8aXJEPooubEivEfc/pub?gid=1598481515&single=true&output=csv",
       );
-      if (csvLoadResult.isErr()) {
-        const mapped = mapErrorToCardStoreError(csvLoadResult.error);
+
+      // Effect を実行し、結果をパターンマッチングで処理
+      const csvLoadResult = await Effect.runPromise(
+        Effect.either(csvLoadEffect),
+      );
+
+      if (csvLoadResult._tag === "Left") {
+        const mapped = mapErrorToCardStoreError(csvLoadResult.left);
         error.value = mapped;
         logger.error("カードデータの読み込みエラー:", mapped, {
-          cause: csvLoadResult.error,
+          cause: csvLoadResult.left,
         });
         return;
       }
-      const validCards = validateCards(csvLoadResult.value);
-      const ensured = ensureValidCards(validCards);
-      if (ensured.isErr()) {
-        const mapped = mapErrorToCardStoreError(ensured.error);
+
+      const validCards = validateCards(csvLoadResult.right);
+      const ensuredEffect = ensureValidCards(validCards);
+      const ensuredResult = Effect.runSync(Effect.either(ensuredEffect));
+
+      if (ensuredResult._tag === "Left") {
+        const mapped = mapErrorToCardStoreError(ensuredResult.left);
         error.value = mapped;
         logger.error("カードデータの読み込みエラー:", mapped, {
-          cause: ensured.error,
+          cause: ensuredResult.left,
         });
         return;
       }
+
       // 成功パス
       cardsVersion.value++;
-      const checkedCards = ensured.value;
+      const checkedCards = ensuredResult.right;
       availableCards.value = readonly(checkedCards);
       updateCaches(checkedCards);
-      const preloadResult = preloadImages(checkedCards);
-      if (preloadResult.isErr()) {
-        logger.warn("画像のプリロードに失敗しました:", preloadResult.error);
-      }
+
+      Effect.runSync(
+        Effect.catchAll(preloadImages(checkedCards), (err) =>
+          Effect.sync(() => logger.warn("画像プリロード失敗:", err)),
+        ),
+      );
       logger.info(`${checkedCards.length}枚のカードを読み込みました`);
     } catch (e) {
       const mapped = mapErrorToCardStoreError(e);

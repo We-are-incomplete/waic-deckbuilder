@@ -2,7 +2,7 @@
  * DeckStore（src/stores/deck.ts）
  * 目的: デッキ（カード配列・名称・派生状態）の集中管理とローカルストレージ永続化。
  * 公開API: add/increment/decrement/remove/reset/initialize/set 等（下部参照）。
- * 例外方針: 例外は投げず neverthrow の Result を受け取り errorHandler に委譲。
+ * 例外方針: 例外は投げず、Effectで失敗を表現し errorHandler に委譲。
  * 不変条件: DeckCard 配列は参照整合性を保ち、外部からは readonly で公開。
  */
 import { defineStore } from "pinia";
@@ -18,6 +18,7 @@ import {
   createVersionedState,
   createArraySortMemo,
   createErrorHandler,
+  deckOperationErrorToString,
   DEFAULT_DECK_NAME,
 } from "../utils";
 import {
@@ -26,6 +27,10 @@ import {
   sortDeckCards,
 } from "../domain";
 import { useDebounceFn, useEventListener } from "@vueuse/core";
+import { Effect } from "effect";
+
+const effectToEither = <A, E>(eff: Effect.Effect<A, E>) =>
+  Effect.runSync(Effect.either(eff));
 
 /**
  * デッキの軽量ハッシュを生成する純粋関数
@@ -103,19 +108,23 @@ export const useDeckStore = defineStore("deck", () => {
    * Vue 3.5最適化: デッキのエラーメッセージ
    */
   const deckErrors = computed<readonly string[]>(() => {
-    return deckState.value.type === "invalid" ? deckState.value.errors : [];
+    return deckState.value.type === "invalid"
+      ? deckState.value.errors.map(deckOperationErrorToString)
+      : [];
   });
 
   const applyOperation = (
     operation: Parameters<typeof executeDeckOperation>[1],
     onErrMsg: string,
   ): boolean => {
-    const result = executeDeckOperation(deckCards.value, operation);
-    if (result.isErr()) {
-      errorHandler.handleValidationError(onErrMsg, result.error);
+    const result = effectToEither(
+      executeDeckOperation(deckCards.value, operation),
+    );
+    if (result._tag === "Left") {
+      errorHandler.handleValidationError(onErrMsg, result.left);
       return false;
     }
-    updateDeckCardsWithVersion(result.value);
+    updateDeckCardsWithVersion(result.right);
     return true;
   };
 
@@ -160,37 +169,61 @@ export const useDeckStore = defineStore("deck", () => {
     const prev = suppressSave;
     suppressSave = true;
     try {
-      const loadDeckResult = loadDeckFromLocalStorage(availableCards);
-      if (loadDeckResult.isErr()) {
+      // デッキカードの読み込み
+      const loadDeckResult = effectToEither(
+        loadDeckFromLocalStorage(availableCards),
+      );
+
+      if (loadDeckResult._tag === "Left") {
         updateDeckCardsWithVersion([]);
         errorHandler.handleRuntimeError(
           "デッキの読み込みに失敗しました",
-          loadDeckResult.error,
+          loadDeckResult.left,
         );
       } else {
-        const s = calculateDeckState(loadDeckResult.value);
-        if (s.type === "invalid") {
-          updateDeckCardsWithVersion([]);
-          errorHandler.handleValidationError(
-            "保存されたデッキが不正です",
-            s.errors,
-          );
-        } else if (s.type === "empty") {
-          updateDeckCardsWithVersion([]);
-        } else {
-          updateDeckCardsWithVersion(s.cards);
+        const s = calculateDeckState(loadDeckResult.right);
+        switch (s.type) {
+          case "invalid":
+            updateDeckCardsWithVersion([]);
+            errorHandler.handleValidationError(
+              "保存されたデッキが不正です",
+              s.errors,
+            );
+            // 永続化された不正データをクリアして再発を防止
+            const rr = effectToEither(resetDeckCardsInLocalStorage());
+            if (rr._tag === "Left") {
+              errorHandler.handleRuntimeError(
+                "不正デッキのクリアに失敗しました",
+                rr.left,
+              );
+            }
+            break;
+          case "empty":
+            updateDeckCardsWithVersion([]);
+            break;
+          default:
+            updateDeckCardsWithVersion(s.cards);
         }
       }
 
-      const loadNameResult = loadDeckName();
-      if (loadNameResult.isErr()) {
+      // デッキ名の読み込み（独立して処理）
+      const loadNameResult = effectToEither(loadDeckName());
+
+      if (loadNameResult._tag === "Left") {
         deckName.value = DEFAULT_DECK_NAME;
         errorHandler.handleRuntimeError(
           "デッキ名の読み込みに失敗しました",
-          loadNameResult.error,
+          loadNameResult.left,
         );
+        const rn = effectToEither(resetDeckNameInLocalStorage());
+        if (rn._tag === "Left") {
+          errorHandler.handleRuntimeError(
+            "デッキ名のクリアに失敗しました",
+            rn.left,
+          );
+        }
       } else {
-        const n = loadNameResult.value.trim();
+        const n = loadNameResult.right.trim();
         deckName.value = n || DEFAULT_DECK_NAME;
       }
     } finally {
@@ -215,11 +248,11 @@ export const useDeckStore = defineStore("deck", () => {
    * Vue 3.5最適化: デッキカードをリセット
    */
   const resetDeckCards = () => {
-    const r = resetDeckCardsInLocalStorage();
-    if (r.isErr()) {
+    const r = effectToEither(resetDeckCardsInLocalStorage());
+    if (r._tag === "Left") {
       errorHandler.handleRuntimeError(
         "デッキカードのリセットに失敗しました",
-        r.error,
+        r.left,
       );
       return;
     }
@@ -236,11 +269,11 @@ export const useDeckStore = defineStore("deck", () => {
    * デッキ名をリセット
    */
   const resetDeckName = () => {
-    const r = resetDeckNameInLocalStorage();
-    if (r.isErr()) {
+    const r = effectToEither(resetDeckNameInLocalStorage());
+    if (r._tag === "Left") {
       errorHandler.handleRuntimeError(
         "デッキ名のリセットに失敗しました",
-        r.error,
+        r.left,
       );
       return;
     }
@@ -268,6 +301,14 @@ export const useDeckStore = defineStore("deck", () => {
     deckName.value = n;
   };
 
+  const runAndReport = <E>(
+    eff: Effect.Effect<unknown, E>,
+    msg: string,
+  ): void => {
+    const r = effectToEither(eff);
+    if (r._tag === "Left") errorHandler.handleRuntimeError(msg, r.left);
+  };
+
   // Vue 3.5の新機能: より効率的なデバウンス処理
   // maxWaitオプションで最大待機時間を制限し、ページアンロード時の保存漏れを防ぐ
   type FlushableFn<T extends unknown[]> = ((...args: T) => void) & {
@@ -276,10 +317,7 @@ export const useDeckStore = defineStore("deck", () => {
   };
   const debouncedSave = useDebounceFn(
     (cards: readonly DeckCard[]) => {
-      const r = saveDeckToLocalStorage(cards);
-      if (r.isErr()) {
-        errorHandler.handleRuntimeError("デッキの保存に失敗しました", r.error);
-      }
+      runAndReport(saveDeckToLocalStorage(cards), "デッキの保存に失敗しました");
     },
     500,
     { maxWait: 2000 },
@@ -287,13 +325,7 @@ export const useDeckStore = defineStore("deck", () => {
 
   const debouncedSaveName = useDebounceFn(
     (name: string) => {
-      const r = saveDeckName(name);
-      if (r.isErr()) {
-        errorHandler.handleRuntimeError(
-          "デッキ名の保存に失敗しました",
-          r.error,
-        );
-      }
+      runAndReport(saveDeckName(name), "デッキ名の保存に失敗しました");
     },
     500,
     { maxWait: 2000 },
@@ -329,17 +361,17 @@ export const useDeckStore = defineStore("deck", () => {
     // 念のため後続の遅延保存を打ち切る
     debouncedSave.cancel?.();
     debouncedSaveName.cancel?.();
-    const r1 = saveDeckToLocalStorage(deckCards.value);
-    if (r1.isErr())
+    const r1 = effectToEither(saveDeckToLocalStorage(deckCards.value));
+    if (r1._tag === "Left")
       errorHandler.handleRuntimeError(
         "デッキの即時保存に失敗しました",
-        r1.error,
+        r1.left,
       );
-    const r2 = saveDeckName(deckName.value);
-    if (r2.isErr())
+    const r2 = effectToEither(saveDeckName(deckName.value));
+    if (r2._tag === "Left")
       errorHandler.handleRuntimeError(
         "デッキ名の即時保存に失敗しました",
-        r2.error,
+        r2.left,
       );
   };
 

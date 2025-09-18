@@ -10,8 +10,8 @@ import { computed, shallowRef, watch, onMounted, onBeforeUnmount } from "vue";
 import { GAME_CONSTANTS } from "../../constants";
 import type { Card, DeckCard } from "../../types";
 import { handleImageError, getCardImageUrlSafe } from "../../utils";
-import { fromThrowable } from "neverthrow";
 import { useLongPressImageModal } from "../../composables/useLongPressImageModal";
+import { Effect } from "effect";
 
 interface Props {
   availableCards: readonly Card[];
@@ -38,12 +38,29 @@ const FAVORITE_CARDS_STORAGE_KEY = "waic-deckbuilder-favorite-cards";
 const loadFavoriteIds = (): string[] => {
   if (typeof window === "undefined") return [];
   const raw = window.localStorage.getItem(FAVORITE_CARDS_STORAGE_KEY) ?? "[]";
-  const parse = fromThrowable(() => JSON.parse(raw) as unknown);
-  const result = parse();
-  const data = result.isOk() ? result.value : [];
-  return Array.isArray(data)
-    ? data.filter((x): x is string => typeof x === "string")
-    : [];
+  const parseEffect = Effect.try({
+    try: () => JSON.parse(raw) as unknown,
+    catch: (e) => {
+      if (import.meta.env.DEV)
+        console.warn("JSON parse error for favorites", e);
+      return new Error("Failed to parse favorite cards from storage", {
+        cause: e,
+      });
+    },
+  });
+
+  const result = Effect.runSync(
+    Effect.either(parseEffect), // Effect.either で成功/失敗をEither型で取得
+  );
+
+  if (result._tag === "Right") {
+    const data = result.right;
+    return Array.isArray(data)
+      ? data.filter((x): x is string => typeof x === "string")
+      : [];
+  } else {
+    return [];
+  }
 };
 
 const favoriteCardIds = shallowRef<ReadonlySet<string>>(
@@ -52,19 +69,22 @@ const favoriteCardIds = shallowRef<ReadonlySet<string>>(
 
 const persistFavorites = () => {
   if (typeof window === "undefined") return;
-  fromThrowable(
-    () => {
-      window.localStorage.setItem(
-        FAVORITE_CARDS_STORAGE_KEY,
-        JSON.stringify([...favoriteCardIds.value].sort()),
-      );
-    },
-    (e) => {
-      // Safari private mode / QUOTA_EXCEEDED などは無視（UIを壊さない）
-      if (import.meta.env.DEV) console.warn("persistFavorites failed", e);
-      return e; // neverthrow の fromThrowable はエラーを返す必要がある
-    },
-  )();
+  Effect.runSync(
+    Effect.either(
+      Effect.try({
+        try: () => {
+          window.localStorage.setItem(
+            FAVORITE_CARDS_STORAGE_KEY,
+            JSON.stringify([...favoriteCardIds.value].sort()),
+          );
+        },
+        catch: (e) => {
+          if (import.meta.env.DEV) console.warn("persistFavorites failed", e);
+          return new Error("Failed to persist favorites", { cause: e });
+        },
+      }),
+    ),
+  );
 };
 
 // 参照の再代入でのみ発火（深い監視は不要）
@@ -142,6 +162,10 @@ const handleCardClick = (card: Card) => {
 };
 
 const { setCardRef } = useLongPressImageModal(openImageModal, displayedCards);
+
+const onListImageError = (e: Event) => {
+  Effect.runSync(Effect.either(handleImageError(e)));
+};
 </script>
 
 <template>
@@ -279,7 +303,7 @@ const { setCardRef } = useLongPressImageModal(openImageModal, displayedCards);
         >
           <img
             :src="getCardImageUrlSafe(card.id)"
-            @error="handleImageError"
+            @error="onListImageError"
             :alt="card.name"
             loading="lazy"
             crossorigin="anonymous"

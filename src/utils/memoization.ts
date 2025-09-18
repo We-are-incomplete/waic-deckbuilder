@@ -1,32 +1,55 @@
+/**
+ * spec: メモ化キー生成とインデックスキャッシュのユーティリティ。
+ * 同期・純粋な関数で構成し、副作用は内部に閉じ込める。
+ * Effect を使用してエラーを安全に処理し、例外はスローしない。
+ */
+
 import { ref, type Ref } from "vue";
 import { useMemoize } from "@vueuse/core";
-import { fromThrowable } from "neverthrow";
+import { Effect } from "effect";
 
-/**
- * 共通のメモ化とキャッシュユーティリティ
- */
-
-/**
- * 安全なJSON.stringify（循環参照エラーに対応）
- */
-const safeJsonStringify = fromThrowable(JSON.stringify);
-
-/**
- * フォールバックキー生成用のカウンター
- */
 let unserializableCounter = 0;
+const unserializableKeyMap = new WeakMap<object, string>();
+const symbolKeyMap = new Map<symbol, string>();
 
 /**
  * 安全に基準値をシリアライズし、失敗時はフォールバックキーを返す
  */
 function safeCriteriaSerialize<C>(criteria: C): string {
-  const result = safeJsonStringify(criteria);
-
-  if (result.isOk()) {
-    return result.value;
+  const serialized = Effect.runSync(
+    Effect.tryPromise({
+      try: () => Promise.resolve(JSON.stringify(criteria)),
+      catch: () => null,
+    }).pipe(Effect.orElseSucceed(() => null)),
+  );
+  if (typeof serialized === "string") return serialized;
+  // オブジェクト/関数は恒等で安定化
+  if (
+    criteria &&
+    (typeof criteria === "object" || typeof criteria === "function")
+  ) {
+    let key = unserializableKeyMap.get(criteria as object);
+    if (!key) {
+      key = `<UNSERIALIZABLE_CRITERIA_${++unserializableCounter}>`;
+      unserializableKeyMap.set(criteria as object, key);
+    }
+    return key;
   }
-
-  // シリアライゼーション失敗時のフォールバック
+  // プリミティブ等の安定化
+  if (typeof criteria === "bigint") {
+    return `bigint:${criteria.toString()}`;
+  }
+  if (typeof criteria === "symbol") {
+    let key = symbolKeyMap.get(criteria);
+    if (!key) {
+      key = `<SYMBOL_${++unserializableCounter}>`;
+      symbolKeyMap.set(criteria, key);
+    }
+    return key;
+  }
+  if (typeof criteria === "undefined") {
+    return "undefined";
+  }
   return `<UNSERIALIZABLE_CRITERIA_${++unserializableCounter}>`;
 }
 
@@ -57,19 +80,19 @@ export function createVersionedState(): VersionedState {
 /**
  * 配列のユニークキー生成（WeakMapベース）
  */
-export class ArrayKeyGenerator {
-  private arrayMemoIds: WeakMap<readonly unknown[], string> = new WeakMap();
-  private uniqueKeyCounter = 0;
-
-  generateKey<T>(array: readonly T[]): string {
-    let memoId = this.arrayMemoIds.get(array);
-    if (!memoId) {
-      memoId = `array_key_${++this.uniqueKeyCounter}`;
-      this.arrayMemoIds.set(array, memoId);
-    }
-    return memoId;
-  }
-}
+export const createArrayKeyGenerator = () => {
+  const arrayMemoIds = new WeakMap<readonly unknown[], string>();
+  let uniqueKeyCounter = 0;
+  return {
+    generateKey<T>(array: readonly T[]): string {
+      const existing = arrayMemoIds.get(array);
+      if (existing) return existing;
+      const memoId = `array_key_${++uniqueKeyCounter}`;
+      arrayMemoIds.set(array, memoId);
+      return memoId;
+    },
+  };
+};
 
 /**
  * 共通のメモ化された検索関数ファクトリ
@@ -97,53 +120,57 @@ export function createVersionedMemoizedFunction<TInput, TOutput>(
 }
 
 /**
- * Set ベースのインデックスキャッシュマネージャー
+ * Set ベースのインデックスキャッシュマネージャーを生成する関数
  */
-export class IndexCacheManager<K, V> {
-  private cache: Map<K, Set<V>>;
+export function createIndexCacheManager<K, V>() {
+  const cache = new Map<K, Set<V>>();
 
-  constructor() {
-    this.cache = new Map();
-  }
+  return {
+    addToIndex(key: K, value: V): void {
+      let set = cache.get(key);
+      if (!set) {
+        set = new Set();
+        cache.set(key, set);
+      }
+      set.add(value);
+    },
 
-  addToIndex(key: K, value: V): void {
-    let set = this.cache.get(key);
-    if (!set) {
-      set = new Set();
-      this.cache.set(key, set);
-    }
-    set.add(value);
-  }
+    removeFromIndex(key: K, value: V): boolean {
+      const set = cache.get(key);
+      return set ? set.delete(value) : false;
+    },
 
-  removeFromIndex(key: K, value: V): boolean {
-    const set = this.cache.get(key);
-    return set ? set.delete(value) : false;
-  }
+    getFromIndex(key: K): Set<V> | undefined {
+      return cache.get(key);
+    },
 
-  getFromIndex(key: K): Set<V> | undefined {
-    return this.cache.get(key);
-  }
+    // 内部状態を守りたい場合のスナップショット取得用
+    getFromIndexSnapshot(key: K): ReadonlySet<V> | undefined {
+      const set = cache.get(key);
+      return set ? new Set(set) : undefined;
+    },
 
-  hasIndex(key: K): boolean {
-    return this.cache.has(key);
-  }
+    hasIndex(key: K): boolean {
+      return cache.has(key);
+    },
 
-  hasValue(key: K, value: V): boolean {
-    const set = this.cache.get(key);
-    return !!set && set.has(value);
-  }
+    hasValue(key: K, value: V): boolean {
+      const set = cache.get(key);
+      return !!set && set.has(value);
+    },
 
-  clearIndex(): void {
-    this.cache.clear();
-  }
+    clearIndex(): void {
+      cache.clear();
+    },
 
-  deleteIndex(key: K): boolean {
-    return this.cache.delete(key);
-  }
+    deleteIndex(key: K): boolean {
+      return cache.delete(key);
+    },
 
-  get size(): number {
-    return this.cache.size;
-  }
+    get size(): number {
+      return cache.size;
+    },
+  };
 }
 
 /**
@@ -154,7 +181,7 @@ export class IndexCacheManager<K, V> {
 export const createArraySortMemo = <T>(
   sortFn: (array: readonly T[]) => readonly T[],
 ) => {
-  const keyGen = new ArrayKeyGenerator();
+  const keyGen = createArrayKeyGenerator();
   return createMemoizedFunction(sortFn, (array) => keyGen.generateKey(array));
 };
 
@@ -163,7 +190,7 @@ export const createSearchMemo = <T>(
   searchFn: (items: readonly T[], query: string) => readonly T[],
   versionRef: Ref<number>,
 ) => {
-  const keyGen = new ArrayKeyGenerator();
+  const keyGen = createArrayKeyGenerator();
   const memoized = createVersionedMemoizedFunction(
     ({ items, query }: { items: readonly T[]; query: string }) =>
       searchFn(items, query),
@@ -178,7 +205,7 @@ export const createSearchMemo = <T>(
 export const createFilterMemo = <T, C>(
   filterFn: (items: readonly T[], criteria: C) => readonly T[],
 ) => {
-  const keyGen = new ArrayKeyGenerator();
+  const keyGen = createArrayKeyGenerator();
   return createMemoizedFunction(
     ({ items, criteria }: { items: readonly T[]; criteria: C }) =>
       filterFn(items, criteria),

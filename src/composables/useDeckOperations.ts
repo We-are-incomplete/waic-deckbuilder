@@ -8,7 +8,8 @@ import type { Card, DeckCard, DeckOperation } from "../types";
 import * as DeckDomain from "../domain";
 import { useCardsStore, useDeckStore } from "../stores";
 import { useMemoize } from "@vueuse/core";
-import { createErrorHandler } from "../utils";
+import { createErrorHandler, deckOperationErrorToString } from "../utils";
+import { Effect } from "effect";
 
 /**
  * 安全なハッシュ関数（64bitバージョン）
@@ -134,7 +135,7 @@ export const useDeckOperations = () => {
         return {
           totalCount: state.totalCount,
           isValid: false,
-          validationErrors: state.errors,
+          validationErrors: state.errors.map(deckOperationErrorToString),
         };
     }
   });
@@ -142,28 +143,11 @@ export const useDeckOperations = () => {
   /**
    * カードをデッキに安全に追加（最適化版）
    */
-  const addCardToDeck = (card: Card): boolean => {
-    const result = DeckDomain.executeDeckOperation(deckStore.deckCards, {
-      type: "addCard",
-      card: card,
-    });
-
-    if (result.isOk()) {
-      deckStore.setDeckCards([...result.value]);
-      return true;
-    }
-
-    switch (result.error.type) {
-      case "maxCountExceeded":
-        errorHandler.handleValidationError(
-          `カード「${card.name}」は既に最大枚数です`,
-        );
-        break;
-      default:
-        errorHandler.handleValidationError("カードの追加に失敗しました");
-    }
-    return false;
-  };
+  const addCardToDeck = (card: Card): boolean =>
+    executeDeckOperationSafely(
+      { type: "addCard", card },
+      "カードの追加に失敗しました",
+    );
 
   /**
    * デッキ操作を安全に実行する共通ヘルパー関数
@@ -173,19 +157,21 @@ export const useDeckOperations = () => {
     operation: T,
     errorMessage: string,
   ): boolean => {
-    const result = DeckDomain.executeDeckOperation(
+    const resultEffect = DeckDomain.executeDeckOperation(
       deckStore.deckCards,
       operation,
     );
 
-    if (result.isOk()) {
-      deckStore.setDeckCards([...result.value]);
+    const result = Effect.runSync(Effect.either(resultEffect));
+
+    if (result._tag === "Right") {
+      deckStore.setDeckCards([...result.right]);
       return true;
     }
 
     errorHandler.handleValidationError(
-      `${errorMessage}: ${result.error.type}`,
-      result.error,
+      `${errorMessage}: ${deckOperationErrorToString(result.left)}`,
+      result.left,
     );
     return false;
   };

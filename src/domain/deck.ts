@@ -6,18 +6,13 @@
  * - デッキカードのバリデーションと生成
  * - デッキの状態（空、有効、無効）の計算
  * - 副作用を避け、不変データ構造を優先する関数型アプローチを採用
- * - エラーハンドリングにはneverthrowのResult型を使用し、例外をスローしない
+ * - エラーハンドリングにはEffectのEffect型を使用し、例外をスローしない
  * - パフォーマンス最適化のためにMapベースの内部処理を活用
  */
-import { ok, err, type Result } from "neverthrow";
+import { Effect } from "effect";
 import { GAME_CONSTANTS } from "../constants";
-import type {
-  Card,
-  DeckCard,
-  DeckState,
-  DeckOperation,
-  DeckOperationError,
-} from "../types";
+import type { Card, DeckCard, DeckState, DeckOperation } from "../types";
+import { DeckOperationError } from "../types/deck"; // 更新されたDeckOperationErrorをインポート
 
 // =============================================================================
 // Map ベースのパフォーマンス最適化関数
@@ -51,19 +46,27 @@ const mapToDeckCards = (map: Map<string, DeckCard>): readonly DeckCard[] => {
 export const createDeckCard = (
   card: Card,
   count: number,
-): Result<DeckCard, DeckOperationError> => {
+): Effect.Effect<DeckCard, DeckOperationError> => {
   if (count < 1) {
-    return err({ type: "invalidCardCount", cardId: card.id, count });
+    return Effect.fail(
+      new DeckOperationError({
+        type: "InvalidCardCount",
+        cardId: card.id,
+        count,
+      }),
+    );
   }
   if (count > GAME_CONSTANTS.MAX_CARD_COPIES) {
-    return err({
-      type: "maxCountExceeded",
-      cardId: card.id,
-      maxCount: GAME_CONSTANTS.MAX_CARD_COPIES,
-    });
+    return Effect.fail(
+      new DeckOperationError({
+        type: "MaxCountExceeded",
+        cardId: card.id,
+        maxCount: GAME_CONSTANTS.MAX_CARD_COPIES,
+      }),
+    );
   }
 
-  return ok({ card, count });
+  return Effect.succeed({ card, count });
 };
 
 export const calculateTotalCards = (cards: readonly DeckCard[]): number => {
@@ -76,18 +79,27 @@ export const calculateDeckState = (cards: readonly DeckCard[]): DeckState => {
   }
 
   const totalCount = calculateTotalCards(cards);
-  const errors: string[] = [];
+  const errors: DeckOperationError[] = [];
 
   // カード枚数のバリデーション
   for (const deckCard of cards) {
     if (deckCard.count < 1) {
       errors.push(
-        `カード「${deckCard.card.name}」の枚数が無効です: ${deckCard.count}`,
+        new DeckOperationError({
+          type: "InvalidCardCount",
+          cardId: deckCard.card.id,
+          count: deckCard.count,
+        }),
       );
     }
     if (deckCard.count > GAME_CONSTANTS.MAX_CARD_COPIES) {
       errors.push(
-        `カード「${deckCard.card.name}」の枚数が上限を超えています: ${deckCard.count}/${GAME_CONSTANTS.MAX_CARD_COPIES}`,
+        new DeckOperationError({
+          type: "MaxCountExceeded",
+          cardId: deckCard.card.id,
+          maxCount: GAME_CONSTANTS.MAX_CARD_COPIES,
+          count: deckCard.count,
+        }),
       );
     }
   }
@@ -103,17 +115,19 @@ export const calculateDeckState = (cards: readonly DeckCard[]): DeckState => {
 export const addCardToDeck = (
   cards: readonly DeckCard[],
   cardToAdd: Card,
-): Result<readonly DeckCard[], DeckOperationError> => {
+): Effect.Effect<readonly DeckCard[], DeckOperationError> => {
   const deckMap = createDeckCardMap(cards);
   const existingCard = deckMap.get(cardToAdd.id);
 
   if (existingCard) {
     if (existingCard.count >= GAME_CONSTANTS.MAX_CARD_COPIES) {
-      return err({
-        type: "maxCountExceeded",
-        cardId: cardToAdd.id,
-        maxCount: GAME_CONSTANTS.MAX_CARD_COPIES,
-      });
+      return Effect.fail(
+        new DeckOperationError({
+          type: "MaxCountExceeded",
+          cardId: cardToAdd.id,
+          maxCount: GAME_CONSTANTS.MAX_CARD_COPIES,
+        }),
+      );
     }
 
     const updatedCard = {
@@ -122,15 +136,13 @@ export const addCardToDeck = (
     };
     deckMap.set(cardToAdd.id, updatedCard);
 
-    return ok(mapToDeckCards(deckMap));
+    return Effect.succeed(mapToDeckCards(deckMap));
   } else {
-    const newDeckCardResult = createDeckCard(cardToAdd, 1);
-    if (newDeckCardResult.isErr()) {
-      return err(newDeckCardResult.error);
-    }
-
-    deckMap.set(cardToAdd.id, newDeckCardResult.value);
-    return ok(mapToDeckCards(deckMap));
+    return Effect.gen(function* () {
+      const newDeckCard = yield* createDeckCard(cardToAdd, 1);
+      deckMap.set(cardToAdd.id, newDeckCard);
+      return mapToDeckCards(deckMap);
+    });
   }
 };
 
@@ -139,75 +151,97 @@ export const setCardCount = (
   cards: readonly DeckCard[],
   cardId: string,
   count: number,
-): Result<readonly DeckCard[], DeckOperationError> => {
+): Effect.Effect<readonly DeckCard[], DeckOperationError> => {
   const deckMap = createDeckCardMap(cards);
   const existingCard = deckMap.get(cardId);
 
   if (!existingCard) {
-    return err({ type: "cardNotFound", cardId });
+    return Effect.fail(
+      new DeckOperationError({ type: "CardNotFound", cardId }),
+    );
   }
 
   if (count < 0) {
-    return err({ type: "invalidCardCount", cardId, count });
+    return Effect.fail(
+      new DeckOperationError({ type: "InvalidCardCount", cardId, count }),
+    );
   }
 
   if (count === 0) {
     deckMap.delete(cardId);
-    return ok(mapToDeckCards(deckMap));
+    return Effect.succeed(mapToDeckCards(deckMap));
+  }
+  // 変更なしなら配列再生成を回避
+  if (count === existingCard.count) {
+    return Effect.succeed(cards);
   }
 
   if (count > GAME_CONSTANTS.MAX_CARD_COPIES) {
-    return err({
-      type: "maxCountExceeded",
-      cardId,
-      maxCount: GAME_CONSTANTS.MAX_CARD_COPIES,
-    });
+    return Effect.fail(
+      new DeckOperationError({
+        type: "MaxCountExceeded",
+        cardId,
+        maxCount: GAME_CONSTANTS.MAX_CARD_COPIES,
+      }),
+    );
   }
 
   const updatedCard = { ...existingCard, count };
   deckMap.set(cardId, updatedCard);
 
-  return ok(mapToDeckCards(deckMap));
+  return Effect.succeed(mapToDeckCards(deckMap));
 };
 
 // カードをデッキから削除（Mapベース最適化版）
 export const removeCardFromDeck = (
   cards: readonly DeckCard[],
   cardId: string,
-): Result<readonly DeckCard[], DeckOperationError> => {
+): Effect.Effect<readonly DeckCard[], DeckOperationError> => {
   const deckMap = createDeckCardMap(cards);
 
   if (!deckMap.has(cardId)) {
-    return err({ type: "cardNotFound", cardId });
+    return Effect.fail(
+      new DeckOperationError({ type: "CardNotFound", cardId }),
+    );
   }
 
   deckMap.delete(cardId);
-  return ok(mapToDeckCards(deckMap));
+  return Effect.succeed(mapToDeckCards(deckMap));
 };
 
 // カード枚数を増やす（Mapベース最適化版）
 export const incrementCardCount = (
   cards: readonly DeckCard[],
   cardId: string,
-): Result<readonly DeckCard[], DeckOperationError> => {
-  const current = cards.find((dc) => dc.card.id === cardId)?.count ?? 0;
-  return setCardCount(cards, cardId, current + 1);
+): Effect.Effect<readonly DeckCard[], DeckOperationError> => {
+  const existing = cards.find((dc) => dc.card.id === cardId);
+  if (!existing) {
+    return Effect.fail(
+      new DeckOperationError({ type: "CardNotFound", cardId }),
+    );
+  }
+  return setCardCount(cards, cardId, existing.count + 1);
 };
 
 // カード枚数を減らす（Mapベース最適化版）
 export const decrementCardCount = (
   cards: readonly DeckCard[],
   cardId: string,
-): Result<readonly DeckCard[], DeckOperationError> => {
-  const current = cards.find((dc) => dc.card.id === cardId)?.count ?? 0;
-  return setCardCount(cards, cardId, current - 1);
+): Effect.Effect<readonly DeckCard[], DeckOperationError> => {
+  const existing = cards.find((dc) => dc.card.id === cardId);
+  if (!existing) {
+    return Effect.fail(
+      new DeckOperationError({ type: "CardNotFound", cardId }),
+    );
+  }
+  return setCardCount(cards, cardId, existing.count - 1);
 };
 
 // デッキ操作を実行
 export const executeDeckOperation = (
   cards: readonly DeckCard[],
   operation: DeckOperation,
-): Result<readonly DeckCard[], DeckOperationError> => {
+): Effect.Effect<readonly DeckCard[], DeckOperationError> => {
   switch (operation.type) {
     case "addCard":
       return addCardToDeck(cards, operation.card);
@@ -220,6 +254,6 @@ export const executeDeckOperation = (
     case "setCount":
       return setCardCount(cards, operation.cardId, operation.count);
     case "clear":
-      return ok([]);
+      return Effect.succeed([] as readonly DeckCard[]);
   }
 };

@@ -5,28 +5,35 @@
  * - カードのバリデーションと生成
  * - カード名、種別、タイプ、タグによるフィルタリング
  * - 副作用を避け、不変データ構造を優先する関数型アプローチを採用
- * - エラーハンドリングにはneverthrowのResult型を使用し、例外をスローしない
+ * - エラーハンドリングにはEffectのEffect型を使用し、例外をスローしない
  */
-import { ok, err, type Result } from "neverthrow";
+import { Effect, Data } from "effect";
 import type { Card, CardKind, CardType } from "../types";
 import { CARD_KINDS, CARD_TYPES } from "../constants";
 
 /**
  * カードの検証中に発生しうるエラーを表す代数的データ型。
- * - `invalidId`: カードIDが無効。
- * - `invalidName`: カード名が無効。
- * - `invalidKind`: カード種別が無効。
- * - `invalidType`: カードタイプが無効。
- * - `duplicateTags`: 重複するタグが存在する。
+ * - `InvalidId`: カードIDが無効。
+ * - `InvalidName`: カード名が無効。
+ * - `InvalidKind`: カード種別が無効。
+ * - `InvalidType`: カードタイプが無効。
+ * - `EmptyTypeList`: 空配列
+ * - `DuplicateTypes`: 重複
+ * - `DuplicateTags`: 重複するタグが存在する。
  */
-export type CardValidationError =
-  | { readonly type: "invalidId"; readonly id: string }
-  | { readonly type: "invalidName"; readonly name: string }
-  | { readonly type: "invalidKind"; readonly kind: string }
-  | { readonly type: "invalidType"; readonly cardType: string }
-  | { readonly type: "emptyTypeList" } // 空配列
-  | { readonly type: "duplicateTypes" } // 重複
-  | { readonly type: "duplicateTags"; readonly tags: readonly string[] };
+export class CardValidationError extends Data.TaggedError(
+  "CardValidationError",
+)<{
+  readonly type:
+    | "InvalidId"
+    | "InvalidName"
+    | "InvalidKind"
+    | "InvalidType"
+    | "EmptyTypeList"
+    | "DuplicateTypes"
+    | "DuplicateTags";
+  readonly value?: string | readonly string[];
+}> {}
 
 // カード作成関数
 export const createCard = (
@@ -35,31 +42,42 @@ export const createCard = (
   kind: CardKind,
   type: readonly CardType[],
   tags?: readonly string[],
-): Result<Card, CardValidationError> => {
+): Effect.Effect<Card, CardValidationError> => {
   // ID検証
   if (!id || id.trim().length === 0) {
-    return err({ type: "invalidId", id });
+    return Effect.fail(
+      new CardValidationError({ type: "InvalidId", value: id }),
+    );
   }
 
   // 名前検証
   if (!name || name.trim().length === 0) {
-    return err({ type: "invalidName", name });
+    return Effect.fail(
+      new CardValidationError({ type: "InvalidName", value: name }),
+    );
   }
 
   // 種別検証（実行時）
   if (!CARD_KINDS.includes(kind)) {
-    return err({ type: "invalidKind", kind });
+    return Effect.fail(
+      new CardValidationError({ type: "InvalidKind", value: kind }),
+    );
   }
 
   // 空配列/重複チェック
-  if (type.length === 0) return err({ type: "emptyTypeList" });
+  if (type.length === 0)
+    return Effect.fail(new CardValidationError({ type: "EmptyTypeList" }));
   if (new Set(type).size !== type.length)
-    return err({ type: "duplicateTypes" });
+    return Effect.fail(
+      new CardValidationError({ type: "DuplicateTypes", value: type }),
+    );
 
   // タイプ検証（実行時）
   for (const t of type) {
     if (!CARD_TYPES.includes(t)) {
-      return err({ type: "invalidType", cardType: t });
+      return Effect.fail(
+        new CardValidationError({ type: "InvalidType", value: t }),
+      );
     }
   }
 
@@ -72,12 +90,17 @@ export const createCard = (
   if (processedTags && processedTags.length > 0) {
     const uniqueTags = new Set(processedTags);
     if (uniqueTags.size !== processedTags.length) {
-      return err({ type: "duplicateTags", tags: processedTags });
+      return Effect.fail(
+        new CardValidationError({
+          type: "DuplicateTags",
+          value: processedTags,
+        }),
+      );
     }
     finalTags = [...uniqueTags];
   }
 
-  return ok({
+  return Effect.succeed({
     id: id.trim(),
     name: name.trim(),
     kind,

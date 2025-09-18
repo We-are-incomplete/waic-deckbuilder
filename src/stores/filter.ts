@@ -10,7 +10,7 @@ import { searchCardsByName, sortCards } from "../domain";
 import {
   createArraySortMemo,
   createFilterMemo,
-  ArrayKeyGenerator,
+  createArrayKeyGenerator,
   createMemoizedFunction,
 } from "../utils";
 
@@ -88,7 +88,7 @@ export const useFilterStore = defineStore("filter", () => {
     return tags;
   };
 
-  const arrayKeyGen = new ArrayKeyGenerator();
+  const arrayKeyGen = createArrayKeyGenerator();
   const memoizedTagExtraction = createMemoizedFunction(
     extractTagsFromCards,
     (cards) => arrayKeyGen.generateKey(cards),

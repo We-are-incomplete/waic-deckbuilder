@@ -1,13 +1,19 @@
-import { err, ok, Result, fromThrowable, fromAsyncThrowable } from "neverthrow";
+/**
+ * @file エラーハンドリングユーティリティ
+ * - 目的: アプリケーション全体のエラーを一元的に処理し、ログ記録と適切なエラー型への変換を行う。
+ * - 方針: 例外は投げず Effect とエラーADTを使用する。
+ */
+import { Data, Effect } from "effect";
 import { logger } from "./logger";
+import { DeckOperationError } from "../types/deck";
 
 // エラーの種類を定義
-export type AppError = {
-  type: "validation" | "runtime" | "async";
-  message: string;
-  details?: unknown;
-  originalError?: unknown;
-};
+export class AppError extends Data.TaggedError("AppError")<{
+  readonly type: "ValidationError" | "RuntimeError" | "AsyncError";
+  readonly message: string;
+  readonly details?: unknown;
+  readonly originalError?: unknown;
+}> {}
 
 // エラーメッセージの定数
 export const ERROR_MESSAGES = {
@@ -16,22 +22,6 @@ export const ERROR_MESSAGES = {
     ERROR_MESSAGE_NOT_PROVIDED: "エラーメッセージが提供されていません",
   },
 } as const;
-
-// エラーハンドラーインターフェース
-export interface ErrorHandler {
-  handleValidationError: (
-    message: string,
-    details?: unknown,
-  ) => Result<never, AppError>;
-  handleRuntimeError: (
-    baseMessage: string,
-    originalError: unknown,
-  ) => Result<never, AppError>;
-  handleAsyncError: (
-    baseMessage: string,
-    originalError: unknown,
-  ) => Result<never, AppError>;
-}
 
 // ログ出力関数
 const logError = (message: string, error?: unknown): void => {
@@ -50,25 +40,25 @@ const createErrorMessage = (baseMessage: string, error: unknown): string => {
   if (typeof error === "string") {
     return `${baseMessage}: ${error}`;
   }
-  return baseMessage;
+  try {
+    return `${baseMessage}: ${JSON.stringify(error)}`;
+  } catch {
+    return `${baseMessage}: ${String(error)}`;
+  }
 };
 
 // エラーハンドリング関数を関数型で実装
 export const createErrorHandler = () => {
   // 共通のエラーハンドリングヘルパー
   const handleError = (
-    type: AppError["type"],
+    type: AppError["type"], // AppErrorのtypeプロパティを使用
     baseMessage: string,
     originalError: unknown,
-  ): Result<never, AppError> => {
+  ): Effect.Effect<never, AppError> => {
     const fullMessage = createErrorMessage(baseMessage, originalError);
-    const error: AppError = {
-      type,
-      message: fullMessage,
-      originalError,
-    };
-    logError(baseMessage, originalError);
-    return err(error);
+    const error = new AppError({ type, message: fullMessage, originalError });
+    logError(fullMessage, originalError);
+    return Effect.fail(error);
   };
 
   return {
@@ -76,28 +66,46 @@ export const createErrorHandler = () => {
     handleValidationError: (
       message: string,
       details?: unknown,
-    ): Result<never, AppError> => {
-      const error: AppError = { type: "validation", message, details };
+    ): Effect.Effect<never, AppError> => {
+      const error = new AppError({ type: "ValidationError", message, details });
       logError(message, details);
-      return err(error);
+      return Effect.fail(error);
     },
 
     // ランタイムエラーを処理
     handleRuntimeError: (
       baseMessage: string,
       originalError: unknown,
-    ): Result<never, AppError> => {
-      return handleError("runtime", baseMessage, originalError);
+    ): Effect.Effect<never, AppError> => {
+      return handleError("RuntimeError", baseMessage, originalError);
     },
 
     // 非同期エラーを処理
     handleAsyncError: (
       baseMessage: string,
       originalError: unknown,
-    ): Result<never, AppError> => {
-      return handleError("async", baseMessage, originalError);
+    ): Effect.Effect<never, AppError> => {
+      return handleError("AsyncError", baseMessage, originalError);
     },
   };
+};
+
+/**
+ * DeckOperationError をユーザーフレンドリーな文字列に変換する
+ */
+export const deckOperationErrorToString = (
+  error: DeckOperationError,
+): string => {
+  switch (error.type) {
+    case "CardNotFound":
+      return `カードが見つかりません: ${error.cardId}`;
+    case "MaxCountExceeded":
+      return `最大枚数を超過しました: ${error.cardId} (最大: ${error.maxCount ?? "不明"})`;
+    case "InvalidCardCount":
+      return `不正なカード枚数です: ${error.cardId} (指定: ${error.count ?? "不明"})`;
+    default:
+      return `不明なエラー: ${"type" in (error as any) ? (error as any).type : String(error)}`;
+  }
 };
 
 // 共通のエラーハンドラーインスタンスを生成
@@ -109,7 +117,7 @@ const commonErrorHandler = createErrorHandler();
 export const safeSyncOperation = <T>(
   operation: () => T,
   errorMessage: string,
-): Result<T, AppError> => {
+): Effect.Effect<T, AppError> => {
   if (!operation) {
     return commonErrorHandler.handleValidationError(
       ERROR_MESSAGES.VALIDATION.OPERATION_NOT_PROVIDED,
@@ -122,23 +130,24 @@ export const safeSyncOperation = <T>(
     );
   }
 
-  const safeOperation = fromThrowable(operation, (error: unknown) => error);
-  const result = safeOperation();
-
-  if (result.isErr()) {
-    return commonErrorHandler.handleRuntimeError(errorMessage, result.error);
-  }
-
-  return ok(result.value);
+  return Effect.try({
+    try: operation,
+    catch: (error) =>
+      new AppError({
+        type: "RuntimeError",
+        message: createErrorMessage(errorMessage, error),
+        originalError: error,
+      }),
+  });
 };
 
 /**
  * 非同期操作を安全に実行するヘルパー関数
  */
-export const safeAsyncOperation = async <T>(
+export const safeAsyncOperation = <T>(
   operation: () => Promise<T>,
   errorMessage: string,
-): Promise<Result<T, AppError>> => {
+): Effect.Effect<T, AppError> => {
   if (!operation) {
     return commonErrorHandler.handleValidationError(
       ERROR_MESSAGES.VALIDATION.OPERATION_NOT_PROVIDED,
@@ -151,12 +160,13 @@ export const safeAsyncOperation = async <T>(
     );
   }
 
-  const safeAsyncOp = fromAsyncThrowable(operation, (error: unknown) => error);
-  const result = await safeAsyncOp();
-
-  if (result.isErr()) {
-    return commonErrorHandler.handleAsyncError(errorMessage, result.error);
-  }
-
-  return ok(result.value);
+  return Effect.tryPromise({
+    try: operation,
+    catch: (error) =>
+      new AppError({
+        type: "AsyncError",
+        message: createErrorMessage(errorMessage, error),
+        originalError: error,
+      }),
+  });
 };

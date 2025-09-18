@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import type { DeckCard } from "../../types";
 import { handleImageError, getCardImageUrlSafe } from "../../utils";
+import { Effect } from "effect";
 
 interface Props {
   deckName: string;
@@ -62,6 +63,10 @@ const getBackgroundImageUrl = (cardCount: number): string => {
 
 // 親コンポーネントからrefを取得できるように公開
 defineExpose({ exportContainer });
+
+const onImageError = (e: Event) => {
+  Effect.runSync(Effect.either(handleImageError(e)));
+};
 </script>
 
 <template>
@@ -103,7 +108,7 @@ defineExpose({ exportContainer });
           :alt="item.card.name"
           class="w-full h-full object-cover rounded-lg"
           crossorigin="anonymous"
-          @error="handleImageError"
+          @error="onImageError"
         />
 
         <!-- カウントバッジ -->
