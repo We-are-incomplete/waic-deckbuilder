@@ -315,7 +315,15 @@ export const preloadImages = (
           img.onload = () => {
             if (gen === cacheState.generation) {
               // 失敗時はログのみ（キー/画像は静的に正当）
-              Effect.runSync(Effect.either(setCacheEntry(card.id, img)));
+              const cacheResult = Effect.runSync(
+                Effect.either(setCacheEntry(card.id, img)),
+              );
+              if (cacheResult._tag === "Left") {
+                logger.warn(
+                  `Failed to cache preloaded image for card: ${card.id}`,
+                  cacheResult.left,
+                );
+              }
             }
             cacheState.inflight.delete(card.id);
             img.onload = null;

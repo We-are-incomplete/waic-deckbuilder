@@ -1,6 +1,7 @@
 /**
  * spec: メモ化キー生成とインデックスキャッシュのユーティリティ。
  * 同期・純粋な関数で構成し、副作用は内部に閉じ込める。
+ * Effect を使用してエラーを安全に処理し、例外はスローしない。
  */
 
 import { ref, type Ref } from "vue";
@@ -16,16 +17,10 @@ const symbolKeyMap = new Map<symbol, string>();
  */
 function safeCriteriaSerialize<C>(criteria: C): string {
   const serialized = Effect.runSync(
-    Effect.match(
-      Effect.try({
-        try: () => JSON.stringify(criteria),
-        catch: () => null,
-      }),
-      {
-        onSuccess: (s) => s,
-        onFailure: () => null,
-      },
-    ),
+    Effect.tryPromise({
+      try: () => Promise.resolve(JSON.stringify(criteria)),
+      catch: () => null,
+    }).pipe(Effect.orElseSucceed(() => null)),
   );
   if (typeof serialized === "string") return serialized;
   // オブジェクト/関数は恒等で安定化

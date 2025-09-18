@@ -179,19 +179,23 @@ export const useDeckStore = defineStore("deck", () => {
           "デッキの読み込みに失敗しました",
           loadDeckResult.left,
         );
-      } else {
-        const s = calculateDeckState(loadDeckResult.right);
-        if (s.type === "invalid") {
+        return;
+      }
+
+      const s = calculateDeckState(loadDeckResult.right);
+      switch (s.type) {
+        case "invalid":
           updateDeckCardsWithVersion([]);
           errorHandler.handleValidationError(
             "保存されたデッキが不正です",
             s.errors,
           );
-        } else if (s.type === "empty") {
+          break;
+        case "empty":
           updateDeckCardsWithVersion([]);
-        } else {
+          break;
+        default:
           updateDeckCardsWithVersion(s.cards);
-        }
       }
 
       const loadNameResult = runEitherSync(loadDeckName());
