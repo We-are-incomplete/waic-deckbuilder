@@ -215,10 +215,15 @@ const clearCache = (): void => {
 /**
  * キャッシュの統計情報を取得
  */
-const getCacheStats = (): { size: number; maxSize: number } => {
+const getCacheStats = (): {
+  size: number;
+  maxSize: number;
+  inflight: number;
+} => {
   return {
     size: cacheState.cache.size,
     maxSize: MAX_CACHE_SIZE,
+    inflight: cacheState.inflight.size,
   };
 };
 
@@ -288,7 +293,6 @@ export const handleImageError = (
     const img = t;
     img.onerror = null;
     try {
-      // @ts-ignore
       img.fetchPriority = "low";
       img.decoding = "async";
     } catch {}
@@ -316,7 +320,6 @@ export const preloadImages = (
   // 有効なら低優先度で取得
   const setLowFetchPriority = (img: HTMLImageElement): void => {
     try {
-      // @ts-ignore
       img.fetchPriority = "low";
     } catch {}
   };
@@ -372,17 +375,6 @@ export const preloadImages = (
             cacheState.inflight.delete(card.id);
             img.onload = null;
             img.onerror = null;
-            // 次バッチを即時スケジュール
-            if (currentIndex < uniqueCards.length) {
-              if (
-                typeof window !== "undefined" &&
-                typeof (window as any).requestIdleCallback === "function"
-              ) {
-                (window as any).requestIdleCallback(processBatch);
-              } else {
-                setTimeout(() => processBatch(), 0);
-              }
-            }
           };
           img.onerror = () => {
             if (gen === cacheState.generation) {
@@ -391,17 +383,6 @@ export const preloadImages = (
             cacheState.inflight.delete(card.id);
             img.onload = null;
             img.onerror = null;
-            // 失敗時も次バッチを即時スケジュール
-            if (currentIndex < uniqueCards.length) {
-              if (
-                typeof window !== "undefined" &&
-                typeof (window as any).requestIdleCallback === "function"
-              ) {
-                (window as any).requestIdleCallback(processBatch);
-              } else {
-                setTimeout(() => processBatch(), 0);
-              }
-            }
           };
           img.src = url;
         }
