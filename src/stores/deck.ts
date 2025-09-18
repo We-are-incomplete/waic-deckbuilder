@@ -169,6 +169,7 @@ export const useDeckStore = defineStore("deck", () => {
     const prev = suppressSave;
     suppressSave = true;
     try {
+      // デッキカードの読み込み
       const loadDeckResult = effectToEither(
         loadDeckFromLocalStorage(availableCards),
       );
@@ -179,19 +180,16 @@ export const useDeckStore = defineStore("deck", () => {
           "デッキの読み込みに失敗しました",
           loadDeckResult.left,
         );
-        return;
-      }
-
-      const s = calculateDeckState(loadDeckResult.right);
-      switch (s.type) {
-        case "invalid":
-          updateDeckCardsWithVersion([]);
-          errorHandler.handleValidationError(
-            "保存されたデッキが不正です",
-            s.errors,
-          );
-          // 永続化された不正データをクリアして再発を防止
-          {
+      } else {
+        const s = calculateDeckState(loadDeckResult.right);
+        switch (s.type) {
+          case "invalid":
+            updateDeckCardsWithVersion([]);
+            errorHandler.handleValidationError(
+              "保存されたデッキが不正です",
+              s.errors,
+            );
+            // 永続化された不正データをクリアして再発を防止
             const rr = effectToEither(resetDeckCardsInLocalStorage());
             if (rr._tag === "Left") {
               errorHandler.handleRuntimeError(
@@ -199,15 +197,16 @@ export const useDeckStore = defineStore("deck", () => {
                 rr.left,
               );
             }
-          }
-          break;
-        case "empty":
-          updateDeckCardsWithVersion([]);
-          break;
-        default:
-          updateDeckCardsWithVersion(s.cards);
+            break;
+          case "empty":
+            updateDeckCardsWithVersion([]);
+            break;
+          default:
+            updateDeckCardsWithVersion(s.cards);
+        }
       }
 
+      // デッキ名の読み込み（独立して処理）
       const loadNameResult = effectToEither(loadDeckName());
 
       if (loadNameResult._tag === "Left") {
@@ -302,10 +301,12 @@ export const useDeckStore = defineStore("deck", () => {
     deckName.value = n;
   };
 
-  const runAndReport = <A, E>(eff: Effect.Effect<A, E>, msg: string) => {
+  const runAndReport = <E>(
+    eff: Effect.Effect<unknown, E>,
+    msg: string,
+  ): void => {
     const r = effectToEither(eff);
     if (r._tag === "Left") errorHandler.handleRuntimeError(msg, r.left);
-    return r;
   };
 
   // Vue 3.5の新機能: より効率的なデバウンス処理

@@ -107,6 +107,12 @@ const setCacheEntry = (
     return Effect.fail(new ImageError.InvalidKey({ key }));
   }
 
+  if (!(image instanceof HTMLImageElement) || image.naturalWidth <= 0) {
+    return Effect.fail(
+      new ImageError.InvalidImage({ reason: "empty or not loaded" }),
+    );
+  }
+
   return Effect.sync(() => {
     // 既存のエントリーがあれば削除
     if (cacheState.cache.has(key)) {
@@ -246,6 +252,9 @@ export const getCardImageUrl = (
   );
 };
 
+const getPlaceholderSrc = (): string =>
+  `${getNormalizedBaseUrl()}placeholder.avif`;
+
 /**
  * カード画像URLを安全に取得
  */
@@ -256,7 +265,7 @@ export const getCardImageUrlSafe = (cardId: string): string => {
   }
   // エラーをログに記録
   logger.warn(`Failed to get image URL for card: ${cardId}`, result.left);
-  return `${getNormalizedBaseUrl()}placeholder.avif`;
+  return getPlaceholderSrc();
 };
 
 /**
@@ -283,7 +292,7 @@ export const handleImageError = (
       img.fetchPriority = "low";
       img.decoding = "async";
     } catch {}
-    img.src = `${getNormalizedBaseUrl()}placeholder.avif`;
+    img.src = getPlaceholderSrc();
   });
 };
 
@@ -363,6 +372,17 @@ export const preloadImages = (
             cacheState.inflight.delete(card.id);
             img.onload = null;
             img.onerror = null;
+            // 次バッチを即時スケジュール
+            if (currentIndex < uniqueCards.length) {
+              if (
+                typeof window !== "undefined" &&
+                typeof (window as any).requestIdleCallback === "function"
+              ) {
+                (window as any).requestIdleCallback(processBatch);
+              } else {
+                setTimeout(() => processBatch(), 0);
+              }
+            }
           };
           img.onerror = () => {
             if (gen === cacheState.generation) {
@@ -371,6 +391,17 @@ export const preloadImages = (
             cacheState.inflight.delete(card.id);
             img.onload = null;
             img.onerror = null;
+            // 失敗時も次バッチを即時スケジュール
+            if (currentIndex < uniqueCards.length) {
+              if (
+                typeof window !== "undefined" &&
+                typeof (window as any).requestIdleCallback === "function"
+              ) {
+                (window as any).requestIdleCallback(processBatch);
+              } else {
+                setTimeout(() => processBatch(), 0);
+              }
+            }
           };
           img.src = url;
         }
