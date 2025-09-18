@@ -63,6 +63,10 @@ const getBackgroundImageUrl = (cardCount: number): string => {
 
 // 親コンポーネントからrefを取得できるように公開
 defineExpose({ exportContainer });
+
+const onImageError = (e: Event) => {
+  Effect.runSync(Effect.either(handleImageError(e)));
+};
 </script>
 
 <template>
@@ -104,7 +108,7 @@ defineExpose({ exportContainer });
           :alt="item.card.name"
           class="w-full h-full object-cover rounded-lg"
           crossorigin="anonymous"
-          @error="(e) => Effect.runSync(Effect.either(handleImageError(e)))"
+          @error="onImageError"
         />
 
         <!-- カウントバッジ -->

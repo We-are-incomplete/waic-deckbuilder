@@ -293,7 +293,9 @@ export const preloadImages = (
 
   return Effect.sync(() => {
     let currentIndex = 0;
+    const startGen = cacheState.generation;
     const processBatch = (deadline?: { timeRemaining: () => number }): void => {
+      if (cacheState.generation !== startGen) return;
       while (
         currentIndex < cards.length &&
         (!deadline || deadline.timeRemaining() > 0)

@@ -162,6 +162,10 @@ const handleCardClick = (card: Card) => {
 };
 
 const { setCardRef } = useLongPressImageModal(openImageModal, displayedCards);
+
+const onListImageError = (e: Event) => {
+  Effect.runSync(Effect.either(handleImageError(e)));
+};
 </script>
 
 <template>
@@ -299,7 +303,7 @@ const { setCardRef } = useLongPressImageModal(openImageModal, displayedCards);
         >
           <img
             :src="getCardImageUrlSafe(card.id)"
-            @error="(e) => Effect.runSync(Effect.either(handleImageError(e)))"
+            @error="onListImageError"
             :alt="card.name"
             loading="lazy"
             crossorigin="anonymous"

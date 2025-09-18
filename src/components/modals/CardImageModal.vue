@@ -32,7 +32,7 @@
           :alt="imageAltText"
           crossorigin="anonymous"
           class="max-w-full max-h-full object-contain shadow-2xl"
-          @error="(e) => Effect.runSync(Effect.either(handleImageError(e)))"
+          @error="onModalImageError"
           @load="isImageLoading = false"
         />
         <!-- 画面読み上げソフト用の見出し -->
@@ -209,6 +209,10 @@ onMounted(() => {
 onUnmounted(() => {
   restoreFocus();
 });
+
+const onModalImageError = (e: Event) => {
+  Effect.runSync(Effect.either(handleImageError(e)));
+};
 </script>
 
 <style scoped>

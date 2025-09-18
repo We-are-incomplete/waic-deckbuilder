@@ -87,6 +87,10 @@ defineExpose({
   resetDeck,
   updateDeckName,
 });
+
+const onDeckImageError = (e: Event) => {
+  Effect.runSync(Effect.either(handleImageError(e)));
+};
 </script>
 
 <template>
@@ -247,7 +251,7 @@ defineExpose({
         >
           <img
             :src="getCardImageUrlSafe(item.card.id)"
-            @error="(e) => Effect.runSync(Effect.either(handleImageError(e)))"
+            @error="onDeckImageError"
             :alt="item.card.name"
             loading="lazy"
             crossorigin="anonymous"

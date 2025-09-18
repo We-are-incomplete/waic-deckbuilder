@@ -339,9 +339,7 @@ export const useDeckStore = defineStore("deck", () => {
     // 念のため後続の遅延保存を打ち切る
     debouncedSave.cancel?.();
     debouncedSaveName.cancel?.();
-    const r1 = Effect.runSync(
-      Effect.either(saveDeckToLocalStorage(deckCards.value)),
-    );
+    const r1 = runEitherSync(saveDeckToLocalStorage(deckCards.value));
     if (r1._tag === "Left")
       errorHandler.handleRuntimeError(
         "デッキの即時保存に失敗しました",

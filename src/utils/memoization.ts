@@ -9,16 +9,23 @@ import { Effect } from "effect";
 
 let unserializableCounter = 0;
 const unserializableKeyMap = new WeakMap<object, string>();
+const symbolKeyMap = new Map<symbol, string>();
 
 /**
  * 安全に基準値をシリアライズし、失敗時はフォールバックキーを返す
  */
 function safeCriteriaSerialize<C>(criteria: C): string {
   const serialized = Effect.runSync(
-    Effect.try({
-      try: () => JSON.stringify(criteria),
-      catch: () => null,
-    }),
+    Effect.match(
+      Effect.try({
+        try: () => JSON.stringify(criteria),
+        catch: () => null,
+      }),
+      {
+        onSuccess: (s) => s,
+        onFailure: () => null,
+      },
+    ),
   );
   if (typeof serialized === "string") return serialized;
   // オブジェクト/関数は恒等で安定化
@@ -33,7 +40,21 @@ function safeCriteriaSerialize<C>(criteria: C): string {
     }
     return key;
   }
-  // プリミティブ等は汎用フォールバック
+  // プリミティブ等の安定化
+  if (typeof criteria === "bigint") {
+    return `bigint:${criteria.toString()}`;
+  }
+  if (typeof criteria === "symbol") {
+    let key = symbolKeyMap.get(criteria);
+    if (!key) {
+      key = `<SYMBOL_${++unserializableCounter}>`;
+      symbolKeyMap.set(criteria, key);
+    }
+    return key;
+  }
+  if (typeof criteria === "undefined") {
+    return "undefined";
+  }
   return `<UNSERIALIZABLE_CRITERIA_${++unserializableCounter}>`;
 }
 
@@ -69,11 +90,10 @@ export const createArrayKeyGenerator = () => {
   let uniqueKeyCounter = 0;
   return {
     generateKey<T>(array: readonly T[]): string {
-      let memoId = arrayMemoIds.get(array);
-      if (!memoId) {
-        memoId = `array_key_${++uniqueKeyCounter}`;
-        arrayMemoIds.set(array, memoId);
-      }
+      const existing = arrayMemoIds.get(array);
+      if (existing) return existing;
+      const memoId = `array_key_${++uniqueKeyCounter}`;
+      arrayMemoIds.set(array, memoId);
       return memoId;
     },
   };

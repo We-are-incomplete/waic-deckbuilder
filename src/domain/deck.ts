@@ -171,6 +171,10 @@ export const setCardCount = (
     deckMap.delete(cardId);
     return Effect.succeed(mapToDeckCards(deckMap));
   }
+  // 変更なしなら配列再生成を回避
+  if (count === existingCard.count) {
+    return Effect.succeed(cards);
+  }
 
   if (count > GAME_CONSTANTS.MAX_CARD_COPIES) {
     return Effect.fail(
@@ -210,8 +214,13 @@ export const incrementCardCount = (
   cards: readonly DeckCard[],
   cardId: string,
 ): Effect.Effect<readonly DeckCard[], DeckOperationError> => {
-  const current = cards.find((dc) => dc.card.id === cardId)?.count ?? 0;
-  return setCardCount(cards, cardId, current + 1);
+  const existing = cards.find((dc) => dc.card.id === cardId);
+  if (!existing) {
+    return Effect.fail(
+      new DeckOperationError({ type: "CardNotFound", cardId }),
+    );
+  }
+  return setCardCount(cards, cardId, existing.count + 1);
 };
 
 // カード枚数を減らす（Mapベース最適化版）
@@ -245,6 +254,6 @@ export const executeDeckOperation = (
     case "setCount":
       return setCardCount(cards, operation.cardId, operation.count);
     case "clear":
-      return Effect.succeed([]);
+      return Effect.succeed([] as readonly DeckCard[]);
   }
 };
