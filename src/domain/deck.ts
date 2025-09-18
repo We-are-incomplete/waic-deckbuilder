@@ -98,6 +98,7 @@ export const calculateDeckState = (cards: readonly DeckCard[]): DeckState => {
           type: "MaxCountExceeded",
           cardId: deckCard.card.id,
           maxCount: GAME_CONSTANTS.MAX_CARD_COPIES,
+          count: deckCard.count,
         }),
       );
     }

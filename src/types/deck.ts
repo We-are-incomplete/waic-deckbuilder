@@ -1,6 +1,6 @@
 /**
  * spec: デッキ機能のドメイン型(ADT)と不変条件を定義するモジュール。
- * - 例外は投げず Effect の Effect とエラーADTを使用する。
+ * - 例外は投げず、EffectとエラーADTを使用する。
  * - UI文言は保持せず、構造化エラーで表現する。
  */
 import type { Card } from "./card";

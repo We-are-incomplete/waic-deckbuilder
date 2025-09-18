@@ -2,7 +2,7 @@
  * DeckStore（src/stores/deck.ts）
  * 目的: デッキ（カード配列・名称・派生状態）の集中管理とローカルストレージ永続化。
  * 公開API: add/increment/decrement/remove/reset/initialize/set 等（下部参照）。
- * 例外方針: 例外は投げず Effect の Effect を受け取り errorHandler に委譲。
+ * 例外方針: 例外は投げず、Effectで失敗を表現し errorHandler に委譲。
  * 不変条件: DeckCard 配列は参照整合性を保ち、外部からは readonly で公開。
  */
 import { defineStore } from "pinia";
@@ -28,6 +28,9 @@ import {
 } from "../domain";
 import { useDebounceFn, useEventListener } from "@vueuse/core";
 import { Effect } from "effect";
+
+const runEitherSync = <A, E>(eff: Effect.Effect<A, E>) =>
+  Effect.runSync(Effect.either(eff));
 
 /**
  * デッキの軽量ハッシュを生成する純粋関数
@@ -114,8 +117,9 @@ export const useDeckStore = defineStore("deck", () => {
     operation: Parameters<typeof executeDeckOperation>[1],
     onErrMsg: string,
   ): boolean => {
-    const resultEffect = executeDeckOperation(deckCards.value, operation);
-    const result = Effect.runSync(Effect.either(resultEffect));
+    const result = runEitherSync(
+      executeDeckOperation(deckCards.value, operation),
+    );
     if (result._tag === "Left") {
       errorHandler.handleValidationError(onErrMsg, result.left);
       return false;
@@ -165,8 +169,9 @@ export const useDeckStore = defineStore("deck", () => {
     const prev = suppressSave;
     suppressSave = true;
     try {
-      const loadDeckEffect = loadDeckFromLocalStorage(availableCards);
-      const loadDeckResult = Effect.runSync(Effect.either(loadDeckEffect));
+      const loadDeckResult = runEitherSync(
+        loadDeckFromLocalStorage(availableCards),
+      );
 
       if (loadDeckResult._tag === "Left") {
         updateDeckCardsWithVersion([]);
@@ -189,8 +194,7 @@ export const useDeckStore = defineStore("deck", () => {
         }
       }
 
-      const loadNameEffect = loadDeckName();
-      const loadNameResult = Effect.runSync(Effect.either(loadNameEffect));
+      const loadNameResult = runEitherSync(loadDeckName());
 
       if (loadNameResult._tag === "Left") {
         deckName.value = DEFAULT_DECK_NAME;
@@ -224,8 +228,7 @@ export const useDeckStore = defineStore("deck", () => {
    * Vue 3.5最適化: デッキカードをリセット
    */
   const resetDeckCards = () => {
-    const resetEffect = resetDeckCardsInLocalStorage();
-    const r = Effect.runSync(Effect.either(resetEffect));
+    const r = runEitherSync(resetDeckCardsInLocalStorage());
     if (r._tag === "Left") {
       errorHandler.handleRuntimeError(
         "デッキカードのリセットに失敗しました",
@@ -246,7 +249,7 @@ export const useDeckStore = defineStore("deck", () => {
    * デッキ名をリセット
    */
   const resetDeckName = () => {
-    const r = Effect.runSync(Effect.either(resetDeckNameInLocalStorage()));
+    const r = runEitherSync(resetDeckNameInLocalStorage());
     if (r._tag === "Left") {
       errorHandler.handleRuntimeError(
         "デッキ名のリセットに失敗しました",
@@ -286,8 +289,7 @@ export const useDeckStore = defineStore("deck", () => {
   };
   const debouncedSave = useDebounceFn(
     (cards: readonly DeckCard[]) => {
-      const saveEffect = saveDeckToLocalStorage(cards);
-      const r = Effect.runSync(Effect.either(saveEffect));
+      const r = runEitherSync(saveDeckToLocalStorage(cards));
       if (r._tag === "Left") {
         errorHandler.handleRuntimeError("デッキの保存に失敗しました", r.left);
       }
@@ -298,8 +300,7 @@ export const useDeckStore = defineStore("deck", () => {
 
   const debouncedSaveName = useDebounceFn(
     (name: string) => {
-      const saveEffect = saveDeckName(name);
-      const r = Effect.runSync(Effect.either(saveEffect));
+      const r = runEitherSync(saveDeckName(name));
       if (r._tag === "Left") {
         errorHandler.handleRuntimeError("デッキ名の保存に失敗しました", r.left);
       }
@@ -346,7 +347,7 @@ export const useDeckStore = defineStore("deck", () => {
         "デッキの即時保存に失敗しました",
         r1.left,
       );
-    const r2 = Effect.runSync(Effect.either(saveDeckName(deckName.value)));
+    const r2 = runEitherSync(saveDeckName(deckName.value));
     if (r2._tag === "Left")
       errorHandler.handleRuntimeError(
         "デッキ名の即時保存に失敗しました",

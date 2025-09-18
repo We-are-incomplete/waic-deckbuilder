@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import type { DeckCard } from "../../types";
 import { handleImageError, getCardImageUrlSafe } from "../../utils";
+import { Effect } from "effect";
 
 interface Props {
   deckName: string;
@@ -103,7 +104,7 @@ defineExpose({ exportContainer });
           :alt="item.card.name"
           class="w-full h-full object-cover rounded-lg"
           crossorigin="anonymous"
-          @error="handleImageError"
+          @error="(e) => Effect.runSync(Effect.either(handleImageError(e)))"
         />
 
         <!-- カウントバッジ -->

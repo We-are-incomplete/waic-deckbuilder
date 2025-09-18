@@ -32,7 +32,7 @@
           :alt="imageAltText"
           crossorigin="anonymous"
           class="max-w-full max-h-full object-contain shadow-2xl"
-          @error="handleImageError"
+          @error="(e) => Effect.runSync(Effect.either(handleImageError(e)))"
           @load="isImageLoading = false"
         />
         <!-- 画面読み上げソフト用の見出し -->
@@ -47,6 +47,7 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { useSwipe } from "@vueuse/core";
 import { handleImageError } from "../../utils";
 import type { Card } from "../../types";
+import { Effect } from "effect";
 
 interface Props {
   isVisible: boolean;

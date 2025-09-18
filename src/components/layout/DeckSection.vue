@@ -7,6 +7,7 @@ import { useDeckOperations } from "../../composables/useDeckOperations";
 import { useDeckStore } from "../../stores";
 import { storeToRefs } from "pinia";
 import { useLongPressImageModal } from "../../composables/useLongPressImageModal";
+import { Effect } from "effect";
 
 // Vue 3.5の新機能: 改善されたdefineProps with better TypeScript support
 interface Props {
@@ -246,7 +247,7 @@ defineExpose({
         >
           <img
             :src="getCardImageUrlSafe(item.card.id)"
-            @error="handleImageError"
+            @error="(e) => Effect.runSync(Effect.either(handleImageError(e)))"
             :alt="item.card.name"
             loading="lazy"
             crossorigin="anonymous"

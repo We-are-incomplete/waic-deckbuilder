@@ -56,7 +56,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
           logger.error(errorMessage + ":", kcgEncodeResult.left);
           error.value = new DeckCodeError({
             type: "generation",
-            message: errorMessage,
+            message: `${errorMessage}${kcgEncodeResult.left?.message ? `: ${kcgEncodeResult.left.message}` : ""}`,
           });
           isGeneratingCode.value = false;
           return;
@@ -297,10 +297,14 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
           let errorMessage: string;
           switch (kcgDecodeResult.left.type) {
             case "validation":
-              errorMessage = kcgDecodeResult.left.message;
+              errorMessage =
+                kcgDecodeResult.left.message ??
+                "KCG形式のデッキコードが不正です";
               break;
             case "decode":
-              errorMessage = kcgDecodeResult.left.message;
+              errorMessage =
+                kcgDecodeResult.left.message ??
+                "KCG形式のデッキコードのデコードに失敗しました";
               break;
             default:
               errorMessage = "KCG形式のデッキコードのデコードに失敗しました";
@@ -374,7 +378,8 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
           let errorMessage: string;
           switch (decodeResult.left.type) {
             case "validation":
-              errorMessage = decodeResult.left.message;
+              errorMessage =
+                decodeResult.left.message ?? "デッキコードが不正です";
               break;
             default:
               errorMessage = "デッキコードのデコードに失敗しました";

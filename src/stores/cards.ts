@@ -1,7 +1,7 @@
 /**
  * @file カードストア
  * - 取得/検証/キャッシュ/プリロードのオーケストレーション
- * - Effect の Effect で例外を外部に漏らさない
+ * - Effectで例外を外部に漏らさない
  */
 import { defineStore } from "pinia";
 import { ref, shallowRef, readonly, computed, markRaw, triggerRef } from "vue";
@@ -77,6 +77,16 @@ export const useCardsStore = defineStore("cards", () => {
             return {
               type: "parse",
               message: tagged.message ?? "カードデータの解析に失敗しました",
+            };
+          case "ParseError":
+            return {
+              type: "parse",
+              message: tagged.message ?? "カードデータの解析に失敗しました",
+            };
+          case "ValidationError":
+            return {
+              type: "validation",
+              message: tagged.message ?? "カードデータが不正です",
             };
           // 将来の型追加にも安全にデフォルトで対応
           default:
@@ -329,7 +339,11 @@ export const useCardsStore = defineStore("cards", () => {
       availableCards.value = readonly(checkedCards);
       updateCaches(checkedCards);
 
-      Effect.runSync(preloadImages(checkedCards)); // 失敗は内部で警告済み
+      Effect.runSync(
+        Effect.catchAll(preloadImages(checkedCards), (err) =>
+          Effect.sync(() => logger.warn("画像プリロード失敗:", err)),
+        ),
+      );
       logger.info(`${checkedCards.length}枚のカードを読み込みました`);
     } catch (e) {
       const mapped = mapErrorToCardStoreError(e);

@@ -170,7 +170,7 @@ export const useDeckOperations = () => {
     }
 
     errorHandler.handleValidationError(
-      `${errorMessage}: ${result.left._tag}`,
+      `${errorMessage}: ${deckOperationErrorToString(result.left)}`,
       result.left,
     );
     return false;

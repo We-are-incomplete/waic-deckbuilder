@@ -2,7 +2,7 @@
  * @file cardDataConverter.ts
  * @brief CSV形式のカードデータを読み込み、パースしてCardオブジェクトの配列に変換するユーティリティ。
  *        外部のCSVファイルからカードデータを取得し、アプリケーションで利用可能な形式に整形する機能を提供します。
- *        EffectのEffect型を使用して、成功または失敗の結果を明示的に扱います。
+ *        Effect型で成功/失敗を明示的に扱います。
  */
 
 import type { Card, CardKind, CardType } from "../types";

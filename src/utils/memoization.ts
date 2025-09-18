@@ -8,21 +8,32 @@ import { useMemoize } from "@vueuse/core";
 import { Effect } from "effect";
 
 let unserializableCounter = 0;
+const unserializableKeyMap = new WeakMap<object, string>();
 
 /**
  * 安全に基準値をシリアライズし、失敗時はフォールバックキーを返す
  */
 function safeCriteriaSerialize<C>(criteria: C): string {
-  const result = Effect.runSync(
-    Effect.either(
-      Effect.try({ try: () => JSON.stringify(criteria), catch: (e) => e }),
-    ),
+  const serialized = Effect.runSync(
+    Effect.try({
+      try: () => JSON.stringify(criteria),
+      catch: () => null,
+    }),
   );
-  if (result._tag === "Right" && typeof result.right === "string") {
-    return result.right;
+  if (typeof serialized === "string") return serialized;
+  // オブジェクト/関数は恒等で安定化
+  if (
+    criteria &&
+    (typeof criteria === "object" || typeof criteria === "function")
+  ) {
+    let key = unserializableKeyMap.get(criteria as object);
+    if (!key) {
+      key = `<UNSERIALIZABLE_CRITERIA_${++unserializableCounter}>`;
+      unserializableKeyMap.set(criteria as object, key);
+    }
+    return key;
   }
-
-  // シリアライゼーション失敗時のフォールバック
+  // プリミティブ等は汎用フォールバック
   return `<UNSERIALIZABLE_CRITERIA_${++unserializableCounter}>`;
 }
 
@@ -116,6 +127,12 @@ export function createIndexCacheManager<K, V>() {
 
     getFromIndex(key: K): Set<V> | undefined {
       return cache.get(key);
+    },
+
+    // 内部状態を守りたい場合のスナップショット取得用
+    getFromIndexSnapshot(key: K): ReadonlySet<V> | undefined {
+      const set = cache.get(key);
+      return set ? new Set(set) : undefined;
     },
 
     hasIndex(key: K): boolean {

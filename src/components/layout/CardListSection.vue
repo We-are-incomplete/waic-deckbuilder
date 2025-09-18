@@ -299,7 +299,7 @@ const { setCardRef } = useLongPressImageModal(openImageModal, displayedCards);
         >
           <img
             :src="getCardImageUrlSafe(card.id)"
-            @error="handleImageError"
+            @error="(e) => Effect.runSync(Effect.either(handleImageError(e)))"
             :alt="card.name"
             loading="lazy"
             crossorigin="anonymous"

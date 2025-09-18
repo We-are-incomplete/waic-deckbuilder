@@ -40,7 +40,11 @@ const createErrorMessage = (baseMessage: string, error: unknown): string => {
   if (typeof error === "string") {
     return `${baseMessage}: ${error}`;
   }
-  return baseMessage;
+  try {
+    return `${baseMessage}: ${JSON.stringify(error)}`;
+  } catch {
+    return `${baseMessage}: ${String(error)}`;
+  }
 };
 
 // エラーハンドリング関数を関数型で実装
@@ -52,11 +56,7 @@ export const createErrorHandler = () => {
     originalError: unknown,
   ): Effect.Effect<never, AppError> => {
     const fullMessage = createErrorMessage(baseMessage, originalError);
-    const error = new AppError({
-      type: type,
-      message: fullMessage,
-      originalError,
-    });
+    const error = new AppError({ type, message: fullMessage, originalError });
     logError(fullMessage, originalError);
     return Effect.fail(error);
   };
@@ -100,11 +100,11 @@ export const deckOperationErrorToString = (
     case "CardNotFound":
       return `カードが見つかりません: ${error.cardId}`;
     case "MaxCountExceeded":
-      return `最大枚数を超過しました: ${error.cardId} (最大: ${error.maxCount})`;
+      return `最大枚数を超過しました: ${error.cardId} (最大: ${error.maxCount ?? "不明"})`;
     case "InvalidCardCount":
-      return `不正なカード枚数です: ${error.cardId} (指定: ${error.count})`;
+      return `不正なカード枚数です: ${error.cardId} (指定: ${error.count ?? "不明"})`;
     default:
-      return `不明なエラー: ${JSON.stringify(error)}`;
+      return `不明なエラー: ${"type" in (error as any) ? (error as any).type : String(error)}`;
   }
 };
 
