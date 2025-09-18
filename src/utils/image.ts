@@ -7,9 +7,33 @@
  */
 import type { Card } from "../types";
 import { logger } from "./logger";
-import { Effect } from "effect";
+import { Effect, Data } from "effect";
 
 type NetworkInformationLite = { saveData?: boolean };
+
+export namespace ImageError {
+  export class InvalidKey extends Data.TaggedError("InvalidKey")<{
+    key?: string;
+  }> {}
+  export class InvalidImage extends Data.TaggedError("InvalidImage")<{
+    reason?: string;
+  }> {}
+  export class InvalidEvent extends Data.TaggedError("InvalidEvent")<{
+    reason?: string;
+  }> {}
+  export class InvalidTarget extends Data.TaggedError("InvalidTarget")<{
+    targetTag?: string;
+  }> {}
+  export class InvalidCardId extends Data.TaggedError("InvalidCardId")<{
+    cardId?: string;
+  }> {}
+  export type Type =
+    | InvalidKey
+    | InvalidImage
+    | InvalidEvent
+    | InvalidTarget
+    | InvalidCardId;
+}
 
 // LRUキャッシュの設定
 const MAX_CACHE_SIZE = 200; // 最大キャッシュサイズ
@@ -78,13 +102,13 @@ export const startImageCacheMaintenance = (): void => {
 const setCacheEntry = (
   key: string,
   image: HTMLImageElement,
-): Effect.Effect<void, string> => {
+): Effect.Effect<void, ImageError.Type> => {
   if (!key) {
-    return Effect.fail("キーが指定されていません");
+    return Effect.fail(new ImageError.InvalidKey({ key }));
   }
 
   if (!image) {
-    return Effect.fail("画像が指定されていません");
+    return Effect.fail(new ImageError.InvalidImage({ reason: "unset" }));
   }
 
   return Effect.sync(() => {
@@ -216,9 +240,9 @@ const destroyCache = (): void => {
  */
 export const getCardImageUrl = (
   cardId: string,
-): Effect.Effect<string, string> => {
+): Effect.Effect<string, ImageError.Type> => {
   if (!cardId) {
-    return Effect.fail("カードIDが指定されていません");
+    return Effect.fail(new ImageError.InvalidCardId({ cardId }));
   }
 
   return Effect.succeed(
@@ -242,14 +266,18 @@ export const getCardImageUrlSafe = (cardId: string): string => {
 /**
  * 画像エラー時の処理
  */
-export const handleImageError = (event: Event): Effect.Effect<void, string> => {
+export const handleImageError = (
+  event: Event,
+): Effect.Effect<void, ImageError.Type> => {
   if (!event || !event.target) {
-    return Effect.fail("イベントまたはターゲットが指定されていません");
+    return Effect.fail(new ImageError.InvalidEvent({ reason: "no target" }));
   }
 
   const t = event.target;
   if (!(t instanceof HTMLImageElement)) {
-    return Effect.fail("イベントターゲットが画像要素ではありません");
+    return Effect.fail(
+      new ImageError.InvalidTarget({ targetTag: (t as any)?.tagName }),
+    );
   }
   return Effect.sync(() => {
     const img = t;
@@ -268,7 +296,7 @@ export const handleImageError = (event: Event): Effect.Effect<void, string> => {
  */
 export const preloadImages = (
   cards: readonly Card[],
-): Effect.Effect<void, string> => {
+): Effect.Effect<void, ImageError.Type> => {
   // SSR/非ブラウザ環境では何もしない
   if (import.meta.env.SSR || typeof window === "undefined") {
     return Effect.succeed(undefined);
@@ -303,9 +331,12 @@ export const preloadImages = (
         // 同時実行の上限
         if (cacheState.inflight.size >= PRELOAD_MAX_INFLIGHT) break;
         const card = cards[currentIndex];
-
+        const url = getCardImageUrlSafe(card.id);
+        if (!card.id || url.endsWith("placeholder.avif")) {
+          currentIndex++;
+          continue;
+        }
         if (!hasCacheEntry(card.id) && !cacheState.inflight.has(card.id)) {
-          const url = getCardImageUrlSafe(card.id);
           const gen = cacheState.generation;
           cacheState.inflight.add(card.id);
           const img = new Image();

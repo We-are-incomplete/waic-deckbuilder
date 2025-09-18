@@ -190,6 +190,16 @@ export const useDeckStore = defineStore("deck", () => {
             "保存されたデッキが不正です",
             s.errors,
           );
+          // 永続化された不正データをクリアして再発を防止
+          {
+            const rr = runEitherSync(resetDeckCardsInLocalStorage());
+            if (rr._tag === "Left") {
+              errorHandler.handleRuntimeError(
+                "不正デッキのクリアに失敗しました",
+                rr.left,
+              );
+            }
+          }
           break;
         case "empty":
           updateDeckCardsWithVersion([]);
@@ -206,6 +216,13 @@ export const useDeckStore = defineStore("deck", () => {
           "デッキ名の読み込みに失敗しました",
           loadNameResult.left,
         );
+        const rn = runEitherSync(resetDeckNameInLocalStorage());
+        if (rn._tag === "Left") {
+          errorHandler.handleRuntimeError(
+            "デッキ名のクリアに失敗しました",
+            rn.left,
+          );
+        }
       } else {
         const n = loadNameResult.right.trim();
         deckName.value = n || DEFAULT_DECK_NAME;
@@ -285,6 +302,12 @@ export const useDeckStore = defineStore("deck", () => {
     deckName.value = n;
   };
 
+  const runAndReport = <A, E>(eff: Effect.Effect<A, E>, msg: string) => {
+    const r = runEitherSync(eff);
+    if (r._tag === "Left") errorHandler.handleRuntimeError(msg, r.left);
+    return r;
+  };
+
   // Vue 3.5の新機能: より効率的なデバウンス処理
   // maxWaitオプションで最大待機時間を制限し、ページアンロード時の保存漏れを防ぐ
   type FlushableFn<T extends unknown[]> = ((...args: T) => void) & {
@@ -293,10 +316,7 @@ export const useDeckStore = defineStore("deck", () => {
   };
   const debouncedSave = useDebounceFn(
     (cards: readonly DeckCard[]) => {
-      const r = runEitherSync(saveDeckToLocalStorage(cards));
-      if (r._tag === "Left") {
-        errorHandler.handleRuntimeError("デッキの保存に失敗しました", r.left);
-      }
+      runAndReport(saveDeckToLocalStorage(cards), "デッキの保存に失敗しました");
     },
     500,
     { maxWait: 2000 },
@@ -304,10 +324,7 @@ export const useDeckStore = defineStore("deck", () => {
 
   const debouncedSaveName = useDebounceFn(
     (name: string) => {
-      const r = runEitherSync(saveDeckName(name));
-      if (r._tag === "Left") {
-        errorHandler.handleRuntimeError("デッキ名の保存に失敗しました", r.left);
-      }
+      runAndReport(saveDeckName(name), "デッキ名の保存に失敗しました");
     },
     500,
     { maxWait: 2000 },
