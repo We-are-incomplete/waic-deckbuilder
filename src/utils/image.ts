@@ -107,10 +107,6 @@ const setCacheEntry = (
     return Effect.fail(new ImageError.InvalidKey({ key }));
   }
 
-  if (!image) {
-    return Effect.fail(new ImageError.InvalidImage({ reason: "unset" }));
-  }
-
   return Effect.sync(() => {
     // 既存のエントリーがあれば削除
     if (cacheState.cache.has(key)) {
@@ -322,17 +318,25 @@ export const preloadImages = (
   return Effect.sync(() => {
     let currentIndex = 0;
     const startGen = cacheState.generation;
+    // 事前に重複 ID を除去
+    const uniqueCards = Array.from(
+      new Map(cards.map((c) => [c.id, c])).values(),
+    );
     const processBatch = (deadline?: { timeRemaining: () => number }): void => {
       if (cacheState.generation !== startGen) return;
       while (
-        currentIndex < cards.length &&
+        currentIndex < uniqueCards.length &&
         (!deadline || deadline.timeRemaining() > 0)
       ) {
         // 同時実行の上限
         if (cacheState.inflight.size >= PRELOAD_MAX_INFLIGHT) break;
-        const card = cards[currentIndex];
+        const card = uniqueCards[currentIndex];
+        if (!card.id) {
+          currentIndex++;
+          continue;
+        }
         const url = getCardImageUrlSafe(card.id);
-        if (!card.id || url.endsWith("placeholder.avif")) {
+        if (url.endsWith("placeholder.avif")) {
           currentIndex++;
           continue;
         }
@@ -373,7 +377,7 @@ export const preloadImages = (
         currentIndex++;
       }
 
-      if (currentIndex < cards.length) {
+      if (currentIndex < uniqueCards.length) {
         if (
           typeof window !== "undefined" &&
           typeof (window as any).requestIdleCallback === "function"

@@ -29,7 +29,7 @@ import {
 import { useDebounceFn, useEventListener } from "@vueuse/core";
 import { Effect } from "effect";
 
-const runEitherSync = <A, E>(eff: Effect.Effect<A, E>) =>
+const effectToEither = <A, E>(eff: Effect.Effect<A, E>) =>
   Effect.runSync(Effect.either(eff));
 
 /**
@@ -117,7 +117,7 @@ export const useDeckStore = defineStore("deck", () => {
     operation: Parameters<typeof executeDeckOperation>[1],
     onErrMsg: string,
   ): boolean => {
-    const result = runEitherSync(
+    const result = effectToEither(
       executeDeckOperation(deckCards.value, operation),
     );
     if (result._tag === "Left") {
@@ -169,7 +169,7 @@ export const useDeckStore = defineStore("deck", () => {
     const prev = suppressSave;
     suppressSave = true;
     try {
-      const loadDeckResult = runEitherSync(
+      const loadDeckResult = effectToEither(
         loadDeckFromLocalStorage(availableCards),
       );
 
@@ -192,7 +192,7 @@ export const useDeckStore = defineStore("deck", () => {
           );
           // 永続化された不正データをクリアして再発を防止
           {
-            const rr = runEitherSync(resetDeckCardsInLocalStorage());
+            const rr = effectToEither(resetDeckCardsInLocalStorage());
             if (rr._tag === "Left") {
               errorHandler.handleRuntimeError(
                 "不正デッキのクリアに失敗しました",
@@ -208,7 +208,7 @@ export const useDeckStore = defineStore("deck", () => {
           updateDeckCardsWithVersion(s.cards);
       }
 
-      const loadNameResult = runEitherSync(loadDeckName());
+      const loadNameResult = effectToEither(loadDeckName());
 
       if (loadNameResult._tag === "Left") {
         deckName.value = DEFAULT_DECK_NAME;
@@ -216,7 +216,7 @@ export const useDeckStore = defineStore("deck", () => {
           "デッキ名の読み込みに失敗しました",
           loadNameResult.left,
         );
-        const rn = runEitherSync(resetDeckNameInLocalStorage());
+        const rn = effectToEither(resetDeckNameInLocalStorage());
         if (rn._tag === "Left") {
           errorHandler.handleRuntimeError(
             "デッキ名のクリアに失敗しました",
@@ -249,7 +249,7 @@ export const useDeckStore = defineStore("deck", () => {
    * Vue 3.5最適化: デッキカードをリセット
    */
   const resetDeckCards = () => {
-    const r = runEitherSync(resetDeckCardsInLocalStorage());
+    const r = effectToEither(resetDeckCardsInLocalStorage());
     if (r._tag === "Left") {
       errorHandler.handleRuntimeError(
         "デッキカードのリセットに失敗しました",
@@ -270,7 +270,7 @@ export const useDeckStore = defineStore("deck", () => {
    * デッキ名をリセット
    */
   const resetDeckName = () => {
-    const r = runEitherSync(resetDeckNameInLocalStorage());
+    const r = effectToEither(resetDeckNameInLocalStorage());
     if (r._tag === "Left") {
       errorHandler.handleRuntimeError(
         "デッキ名のリセットに失敗しました",
@@ -303,7 +303,7 @@ export const useDeckStore = defineStore("deck", () => {
   };
 
   const runAndReport = <A, E>(eff: Effect.Effect<A, E>, msg: string) => {
-    const r = runEitherSync(eff);
+    const r = effectToEither(eff);
     if (r._tag === "Left") errorHandler.handleRuntimeError(msg, r.left);
     return r;
   };
@@ -360,13 +360,13 @@ export const useDeckStore = defineStore("deck", () => {
     // 念のため後続の遅延保存を打ち切る
     debouncedSave.cancel?.();
     debouncedSaveName.cancel?.();
-    const r1 = runEitherSync(saveDeckToLocalStorage(deckCards.value));
+    const r1 = effectToEither(saveDeckToLocalStorage(deckCards.value));
     if (r1._tag === "Left")
       errorHandler.handleRuntimeError(
         "デッキの即時保存に失敗しました",
         r1.left,
       );
-    const r2 = runEitherSync(saveDeckName(deckName.value));
+    const r2 = effectToEither(saveDeckName(deckName.value));
     if (r2._tag === "Left")
       errorHandler.handleRuntimeError(
         "デッキ名の即時保存に失敗しました",
