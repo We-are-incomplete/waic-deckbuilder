@@ -45,8 +45,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
 
         slashDeckCode.value = encodeDeckCode(sortedDeck);
         try {
-          const kcgEncodeResult = encodeKcgDeckCode(cardIds);
-          kcgDeckCode.value = kcgEncodeResult;
+          kcgDeckCode.value = encodeKcgDeckCode(cardIds);
         } catch (e) {
           const errorMessage = "KCG形式デッキコードの生成に失敗しました";
           console.error(errorMessage + ":", e);
@@ -119,7 +118,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
 
     try {
       await copyToClipboard(codeToCopy);
-      console.info(
+      console.debug(
         `${codeType === "slash" ? "スラッシュ区切り" : "KCG形式"}デッキコードをコピーしました`,
       );
     } catch (e) {
@@ -253,7 +252,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
           error.value = new DeckCodeError({
             type: "decode",
             message: errorMessage,
-            originalError: e instanceof DeckCodeError ? undefined : e,
+            originalError: e,
           });
           return;
         }
@@ -277,7 +276,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
                 message: `KCG形式のデッキをインポートしました（${result.deckCards.length}種類のカード）。\n${missingCardsMessage}`,
               });
             } else {
-              console.info(
+              console.debug(
                 `KCG形式のデッキをインポートしました（${result.deckCards.length}種類のカード）`,
               );
             }
@@ -324,9 +323,12 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
           return;
         }
 
-        let decodeResult: { deckCards: DeckCard[]; missingCardIds: string[] };
+        let importedCards: DeckCard[];
+        let missingCardIds: string[];
         try {
-          decodeResult = decodeDeckCode(trimmedCode, availableCards);
+          const result = decodeDeckCode(trimmedCode, availableCards);
+          importedCards = result.deckCards;
+          missingCardIds = result.missingCardIds;
         } catch (e) {
           // スラッシュ区切りデコードエラーの処理
           const errorMessage =
@@ -337,12 +339,11 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
           error.value = new DeckCodeError({
             type: "decode",
             message: errorMessage,
-            originalError: e instanceof DeckCodeError ? undefined : e,
+            originalError: e,
           });
           return;
         }
 
-        const { deckCards: importedCards, missingCardIds } = decodeResult;
         if (importedCards.length > 0) {
           deckStore.setDeckCards(importedCards);
           importDeckCode.value = "";
@@ -357,7 +358,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
               message: `スラッシュ区切り形式のデッキをインポートしました（${importedCards.length}種類のカード）。\n${missingCardsMessage}`,
             });
           } else {
-            console.info(
+            console.debug(
               `スラッシュ区切り形式のデッキをインポートしました（${importedCards.length}種類のカード）`,
             );
           }

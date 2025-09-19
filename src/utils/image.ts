@@ -290,9 +290,9 @@ const getPlaceholderSrc = (): string =>
 export const getCardImageUrlSafe = (cardId: string): string => {
   try {
     return getCardImageUrl(cardId);
-  } catch (result) {
+  } catch (error) {
     // エラーをログに記録
-    console.warn(`Failed to get image URL for card: ${cardId}`, result);
+    console.warn(`Failed to get image URL for card: ${cardId}`, error);
     return getPlaceholderSrc();
   }
 };

@@ -134,15 +134,20 @@ export async function loadCardsFromCsv(csvPath: string): Promise<Card[]> {
     });
 
     if (!response.ok) {
-      throw new Error(
-        `HTTP error! status: ${response.status} ${response.statusText}`,
-      );
+      throw new CardDataConverterError({
+        type: "FetchError",
+        message: `HTTP ${response.status} ${response.statusText}`,
+        originalError: new Error("bad status"),
+      });
     }
 
     const csvText = await response.text();
 
     if (!csvText || csvText.trim().length === 0) {
-      throw new Error("CSVデータが空です。");
+      throw new CardDataConverterError({
+        type: "EmptyCsvError",
+        message: "CSVデータが空です。",
+      });
     }
 
     if (import.meta.env?.DEV)
@@ -150,25 +155,8 @@ export async function loadCardsFromCsv(csvPath: string): Promise<Card[]> {
 
     return parseCsv(csvText);
   } catch (error) {
-    // parseCsv 由来のドメインエラーはラップせず伝播
-    if (error instanceof CardDataConverterError) {
-      throw error;
-    }
+    if (error instanceof CardDataConverterError) throw error;
     console.error("loadCardsFromCsv error:", error);
-    if (error instanceof Error && error.message.startsWith("HTTP error!")) {
-      throw new CardDataConverterError({
-        type: "FetchError",
-        message: "カードデータの取得に失敗しました",
-        originalError: error,
-      });
-    }
-    if (error instanceof Error && error.message === "CSVデータが空です。") {
-      throw new CardDataConverterError({
-        type: "EmptyCsvError",
-        message: "CSVデータが空です。",
-        originalError: error,
-      });
-    }
     throw new CardDataConverterError({
       type: "FetchError",
       message: `ネットワークエラー: ${error instanceof Error ? error.message : String(error)}`,
