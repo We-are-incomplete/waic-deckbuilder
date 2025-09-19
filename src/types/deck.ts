@@ -1,10 +1,8 @@
 /**
  * spec: デッキ機能のドメイン型(ADT)と不変条件を定義するモジュール。
- * - 例外は投げず、EffectとエラーADTを使用する。
  * - UI文言は保持せず、構造化エラーで表現する。
  */
 import type { Card } from "./card";
-import { Data } from "effect";
 
 /**
  * デッキ内のカードとその枚数を表すインターフェース。
@@ -44,12 +42,27 @@ export type DeckState =
  * - `MaxCountExceeded`: カードの最大枚数制限を超過した。
  * - `InvalidCardCount`: 不正なカード枚数が指定された。
  */
-export class DeckOperationError extends Data.TaggedError("DeckOperationError")<{
+export class DeckOperationError extends Error {
   readonly type: "CardNotFound" | "MaxCountExceeded" | "InvalidCardCount";
   readonly cardId: string;
   readonly maxCount?: number;
   readonly count?: number;
-}> {}
+
+  constructor(params: {
+    type: "CardNotFound" | "MaxCountExceeded" | "InvalidCardCount";
+    cardId: string;
+    maxCount?: number;
+    count?: number;
+  }) {
+    super(`DeckOperationError: ${params.type} for card ${params.cardId}`);
+    this.name = "DeckOperationError";
+    this.type = params.type;
+    this.cardId = params.cardId;
+    this.maxCount = params.maxCount;
+    this.count = params.count;
+    Object.setPrototypeOf(this, DeckOperationError.prototype);
+  }
+}
 
 /**
  * デッキコードの生成、コピー、検証、デコード中に発生しうるエラーを表す代数的データ型。
@@ -58,13 +71,28 @@ export class DeckOperationError extends Data.TaggedError("DeckOperationError")<{
  * - `validation`: デッキコード検証時のエラー。
  * - `decode`: デッキコードデコード時のエラー。
  */
-export class DeckCodeError extends Data.TaggedError("DeckCodeError")<{
+export class DeckCodeError extends Error {
   readonly type: "generation" | "copy" | "validation" | "decode";
-  readonly message?: string;
   readonly invalidId?: string;
   readonly notFoundIds?: readonly string[];
   readonly originalError?: unknown;
-}> {}
+
+  constructor(params: {
+    type: "generation" | "copy" | "validation" | "decode";
+    message?: string;
+    invalidId?: string;
+    notFoundIds?: readonly string[];
+    originalError?: unknown;
+  }) {
+    super(params.message);
+    this.name = "DeckCodeError";
+    this.type = params.type;
+    this.invalidId = params.invalidId;
+    this.notFoundIds = params.notFoundIds;
+    this.originalError = params.originalError;
+    Object.setPrototypeOf(this, DeckCodeError.prototype);
+  }
+}
 
 /**
  * デッキに対する変更操作を表す代数的データ型。

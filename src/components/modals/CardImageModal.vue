@@ -47,7 +47,6 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { useSwipe } from "@vueuse/core";
 import { handleImageError } from "../../utils";
 import type { Card } from "../../types";
-import { Effect } from "effect";
 
 interface Props {
   isVisible: boolean;
@@ -211,7 +210,11 @@ onUnmounted(() => {
 });
 
 const onModalImageError = (e: Event) => {
-  Effect.runSync(Effect.either(handleImageError(e)));
+  try {
+    handleImageError(e);
+  } catch (error) {
+    console.error("Error handling image error:", error);
+  }
 };
 </script>
 
