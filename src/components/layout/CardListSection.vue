@@ -11,7 +11,6 @@ import { GAME_CONSTANTS } from "../../constants";
 import type { Card, DeckCard } from "../../types";
 import { handleImageError, getCardImageUrlSafe } from "../../utils";
 import { useLongPressImageModal } from "../../composables/useLongPressImageModal";
-import { Effect } from "effect";
 
 interface Props {
   availableCards: readonly Card[];
@@ -38,27 +37,13 @@ const FAVORITE_CARDS_STORAGE_KEY = "waic-deckbuilder-favorite-cards";
 const loadFavoriteIds = (): string[] => {
   if (typeof window === "undefined") return [];
   const raw = window.localStorage.getItem(FAVORITE_CARDS_STORAGE_KEY) ?? "[]";
-  const parseEffect = Effect.try({
-    try: () => JSON.parse(raw) as unknown,
-    catch: (e) => {
-      if (import.meta.env.DEV)
-        console.warn("JSON parse error for favorites", e);
-      return new Error("Failed to parse favorite cards from storage", {
-        cause: e,
-      });
-    },
-  });
-
-  const result = Effect.runSync(
-    Effect.either(parseEffect), // Effect.either で成功/失敗をEither型で取得
-  );
-
-  if (result._tag === "Right") {
-    const data = result.right;
+  try {
+    const data = JSON.parse(raw) as unknown;
     return Array.isArray(data)
       ? data.filter((x): x is string => typeof x === "string")
       : [];
-  } else {
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn("JSON parse error for favorites", e);
     return [];
   }
 };
@@ -69,26 +54,21 @@ const favoriteCardIds = shallowRef<ReadonlySet<string>>(
 
 const persistFavorites = () => {
   if (typeof window === "undefined") return;
-  Effect.runSync(
-    Effect.either(
-      Effect.try({
-        try: () => {
-          window.localStorage.setItem(
-            FAVORITE_CARDS_STORAGE_KEY,
-            JSON.stringify([...favoriteCardIds.value].sort()),
-          );
-        },
-        catch: (e) => {
-          if (import.meta.env.DEV) console.warn("persistFavorites failed", e);
-          return new Error("Failed to persist favorites", { cause: e });
-        },
-      }),
-    ),
-  );
+  try {
+    window.localStorage.setItem(
+      FAVORITE_CARDS_STORAGE_KEY,
+      JSON.stringify([...favoriteCardIds.value].sort()),
+    );
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn("persistFavorites failed", e);
+  }
 };
 
 // 参照の再代入でのみ発火（深い監視は不要）
-watch(favoriteCardIds, persistFavorites);
+watch(favoriteCardIds, () => {
+  clearTimeout((persistFavorites as any)._t);
+  (persistFavorites as any)._t = setTimeout(persistFavorites, 100);
+});
 
 // 他タブの変更と同期（インスタンスローカルに登録/解除）
 onMounted(() => {
@@ -164,7 +144,11 @@ const handleCardClick = (card: Card) => {
 const { setCardRef } = useLongPressImageModal(openImageModal, displayedCards);
 
 const onListImageError = (e: Event) => {
-  Effect.runSync(Effect.either(handleImageError(e)));
+  try {
+    handleImageError(e);
+  } catch (error) {
+    console.error("Error handling image error:", error);
+  }
 };
 </script>
 

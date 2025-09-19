@@ -12,7 +12,6 @@ import { GAME_CONSTANTS } from "../constants";
 import { useDeckStore } from "./deck";
 import { sortDeckCards } from "../domain";
 import { useClipboard } from "@vueuse/core";
-import { Effect } from "effect";
 
 export const useDeckCodeStore = defineStore("deckCode", () => {
   const slashDeckCode = ref<string>(""); // スラッシュ区切りコード
@@ -45,19 +44,19 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
         );
 
         slashDeckCode.value = encodeDeckCode(sortedDeck);
-        const kcgEncodeEffect = encodeKcgDeckCode(cardIds);
-        const kcgEncodeResult = Effect.runSync(Effect.either(kcgEncodeEffect));
-
-        if (kcgEncodeResult._tag === "Right") {
-          kcgDeckCode.value = kcgEncodeResult.right;
-        } else {
+        try {
+          kcgDeckCode.value = encodeKcgDeckCode(cardIds);
+        } catch (e) {
           const errorMessage = "KCG形式デッキコードの生成に失敗しました";
-          console.error(errorMessage + ":", kcgEncodeResult.left);
+          console.error(errorMessage + ":", e);
           error.value = new DeckCodeError({
             type: "generation",
-            message: `${errorMessage}${kcgEncodeResult.left?.message ? `: ${kcgEncodeResult.left.message}` : ""}`,
+            message:
+              e instanceof Error
+                ? `${errorMessage}: ${e.message}`
+                : errorMessage,
+            originalError: e,
           });
-          isGeneratingCode.value = false;
           return;
         }
 
@@ -118,7 +117,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
 
     try {
       await copyToClipboard(codeToCopy);
-      console.info(
+      console.debug(
         `${codeType === "slash" ? "スラッシュ区切り" : "KCG形式"}デッキコードをコピーしました`,
       );
     } catch (e) {
@@ -239,52 +238,53 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
         // KCG形式の処理
         console.debug("KCG形式のデッキコードをデコード中:", trimmedCode);
 
-        const kcgDecodeEffect = decodeKcgDeckCode(trimmedCode);
-        const kcgDecodeResult = Effect.runSync(Effect.either(kcgDecodeEffect));
+        let cardIds: string[];
+        try {
+          cardIds = decodeKcgDeckCode(trimmedCode);
+        } catch (e) {
+          // KCGデコードエラーの処理
+          const errorMessage =
+            e instanceof DeckCodeError && e.message
+              ? e.message
+              : "KCG形式のデッキコードのデコードに失敗しました";
+          console.warn(errorMessage);
+          error.value = new DeckCodeError({
+            type: "decode",
+            message: errorMessage,
+            originalError: e,
+          });
+          return;
+        }
 
-        if (kcgDecodeResult._tag === "Right") {
-          const cardIds = kcgDecodeResult.right;
-          console.debug("KCGデコードで取得されたカードID:", cardIds);
+        console.debug("KCGデコードで取得されたカードID:", cardIds);
 
-          if (cardIds.length > 0) {
-            const result = convertKcgCardIdsToDeckCards(
-              cardIds,
-              availableCards,
-            );
+        if (cardIds.length > 0) {
+          const result = convertKcgCardIdsToDeckCards(cardIds, availableCards);
 
-            if (result.deckCards.length > 0) {
-              deckStore.setDeckCards(result.deckCards);
-              importDeckCode.value = "";
-              showDeckCodeModal.value = false;
+          if (result.deckCards.length > 0) {
+            deckStore.setDeckCards(result.deckCards);
+            importDeckCode.value = "";
+            showDeckCodeModal.value = false;
 
-              // 見つからないカードIDがある場合は警告メッセージも表示
-              if (result.missingCardIds.length > 0) {
-                const missingCardsMessage = `見つからないカードID: ${result.missingCardIds.join(", ")}`;
-                console.warn(missingCardsMessage);
-                error.value = new DeckCodeError({
-                  type: "decode",
-                  message: `KCG形式のデッキをインポートしました（${result.deckCards.length}種類のカード）。\n${missingCardsMessage}`,
-                });
-              } else {
-                console.info(
-                  `KCG形式のデッキをインポートしました（${result.deckCards.length}種類のカード）`,
-                );
-              }
-            } else {
-              let warningMessage =
-                "有効なカードが見つかりませんでした。カードIDが正しいか確認してください。";
-              if (result.missingCardIds.length > 0) {
-                warningMessage += `\n見つからないカードID: ${result.missingCardIds.join(", ")}`;
-              }
-              console.warn(warningMessage);
+            // 見つからないカードIDがある場合は警告メッセージも表示
+            if (result.missingCardIds.length > 0) {
+              const missingCardsMessage = `見つからないカードID: ${result.missingCardIds.join(", ")}`;
+              console.warn(missingCardsMessage);
               error.value = new DeckCodeError({
                 type: "decode",
-                message: warningMessage,
+                message: `KCG形式のデッキをインポートしました（${result.deckCards.length}種類のカード）。\n${missingCardsMessage}`,
               });
+            } else {
+              console.debug(
+                `KCG形式のデッキをインポートしました（${result.deckCards.length}種類のカード）`,
+              );
             }
           } else {
-            const warningMessage =
-              "デッキコードからカード情報を取得できませんでした。";
+            let warningMessage =
+              "有効なカードが見つかりませんでした。カードIDが正しいか確認してください。";
+            if (result.missingCardIds.length > 0) {
+              warningMessage += `\n見つからないカードID: ${result.missingCardIds.join(", ")}`;
+            }
             console.warn(warningMessage);
             error.value = new DeckCodeError({
               type: "decode",
@@ -292,26 +292,12 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
             });
           }
         } else {
-          // KCGデコードエラーの処理
-          let errorMessage: string;
-          switch (kcgDecodeResult.left.type) {
-            case "validation":
-              errorMessage =
-                kcgDecodeResult.left.message ??
-                "KCG形式のデッキコードが不正です";
-              break;
-            case "decode":
-              errorMessage =
-                kcgDecodeResult.left.message ??
-                "KCG形式のデッキコードのデコードに失敗しました";
-              break;
-            default:
-              errorMessage = "KCG形式のデッキコードのデコードに失敗しました";
-          }
-          console.warn(errorMessage);
+          const warningMessage =
+            "デッキコードからカード情報を取得できませんでした。";
+          console.warn(warningMessage);
           error.value = new DeckCodeError({
             type: "decode",
-            message: errorMessage,
+            message: warningMessage,
           });
         }
       } else if (format === "slash") {
@@ -336,57 +322,55 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
           return;
         }
 
-        const decodeEffect = decodeDeckCode(trimmedCode, availableCards);
-        const decodeResult = Effect.runSync(Effect.either(decodeEffect));
-
-        if (decodeResult._tag === "Right") {
-          const { deckCards: importedCards, missingCardIds } =
-            decodeResult.right;
-          if (importedCards.length > 0) {
-            deckStore.setDeckCards(importedCards);
-            importDeckCode.value = "";
-            showDeckCodeModal.value = false;
-
-            // 見つからないカードIDがある場合は警告メッセージも表示
-            if (missingCardIds.length > 0) {
-              const missingCardsMessage = `見つからないカードID: ${missingCardIds.join(", ")}`;
-              console.warn(missingCardsMessage);
-              error.value = new DeckCodeError({
-                type: "decode",
-                message: `スラッシュ区切り形式のデッキをインポートしました（${importedCards.length}種類のカード）。\n${missingCardsMessage}`,
-              });
-            } else {
-              console.info(
-                `スラッシュ区切り形式のデッキをインポートしました（${importedCards.length}種類のカード）`,
-              );
-            }
-          } else {
-            let warningMessage =
-              "有効なカードが見つかりませんでした。カードIDが正しいか確認してください。";
-            if (missingCardIds.length > 0) {
-              warningMessage += `\n見つからないカードID: ${missingCardIds.join(", ")}`;
-            }
-            console.warn(warningMessage);
-            error.value = new DeckCodeError({
-              type: "decode",
-              message: warningMessage,
-            });
-          }
-        } else {
+        let importedCards: DeckCard[];
+        let missingCardIds: string[];
+        try {
+          const result = decodeDeckCode(trimmedCode, availableCards);
+          importedCards = result.deckCards;
+          missingCardIds = result.missingCardIds;
+        } catch (e) {
           // スラッシュ区切りデコードエラーの処理
-          let errorMessage: string;
-          switch (decodeResult.left.type) {
-            case "validation":
-              errorMessage =
-                decodeResult.left.message ?? "デッキコードが不正です";
-              break;
-            default:
-              errorMessage = "デッキコードのデコードに失敗しました";
-          }
+          const errorMessage =
+            e instanceof DeckCodeError && e.message
+              ? e.message
+              : "デッキコードのデコードに失敗しました";
           console.warn(errorMessage);
           error.value = new DeckCodeError({
             type: "decode",
             message: errorMessage,
+            originalError: e,
+          });
+          return;
+        }
+
+        if (importedCards.length > 0) {
+          deckStore.setDeckCards(importedCards);
+          importDeckCode.value = "";
+          showDeckCodeModal.value = false;
+
+          // 見つからないカードIDがある場合は警告メッセージも表示
+          if (missingCardIds.length > 0) {
+            const missingCardsMessage = `見つからないカードID: ${missingCardIds.join(", ")}`;
+            console.warn(missingCardsMessage);
+            error.value = new DeckCodeError({
+              type: "decode",
+              message: `スラッシュ区切り形式のデッキをインポートしました（${importedCards.length}種類のカード）。\n${missingCardsMessage}`,
+            });
+          } else {
+            console.debug(
+              `スラッシュ区切り形式のデッキをインポートしました（${importedCards.length}種類のカード）`,
+            );
+          }
+        } else {
+          let warningMessage =
+            "有効なカードが見つかりませんでした。カードIDが正しいか確認してください。";
+          if (missingCardIds.length > 0) {
+            warningMessage += `\n見つからないカードID: ${missingCardIds.join(", ")}`;
+          }
+          console.warn(warningMessage);
+          error.value = new DeckCodeError({
+            type: "decode",
+            message: warningMessage,
           });
         }
       } else {

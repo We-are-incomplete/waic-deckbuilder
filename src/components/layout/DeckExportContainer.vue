@@ -2,7 +2,6 @@
 import { ref } from "vue";
 import type { DeckCard } from "../../types";
 import { handleImageError, getCardImageUrlSafe } from "../../utils";
-import { Effect } from "effect";
 
 interface Props {
   deckName: string;
@@ -65,7 +64,11 @@ const getBackgroundImageUrl = (cardCount: number): string => {
 defineExpose({ exportContainer });
 
 const onImageError = (e: Event) => {
-  Effect.runSync(Effect.either(handleImageError(e)));
+  try {
+    handleImageError(e);
+  } catch (error) {
+    console.error("Error handling image error:", error);
+  }
 };
 </script>
 

@@ -9,7 +9,6 @@ import * as DeckDomain from "../domain";
 import { useCardsStore, useDeckStore } from "../stores";
 import { useMemoize } from "@vueuse/core";
 import { createErrorHandler, deckOperationErrorToString } from "../utils";
-import { Effect } from "effect";
 
 /**
  * 安全なハッシュ関数（64bitバージョン）
@@ -33,6 +32,15 @@ const createSafeHash = (input: string): string => {
   const hashBStr = (hashB >>> 0).toString(16).padStart(8, "0");
   return hashAStr + hashBStr;
 };
+
+type DeckOperationErrorLike = {
+  type?: string;
+  cardId?: string;
+  maxCount?: number;
+  count?: number;
+};
+const isDeckOperationError = (e: unknown): e is DeckOperationErrorLike =>
+  !!e && typeof e === "object" && "type" in (e as any);
 
 export const useDeckOperations = () => {
   const deckStore = useDeckStore();
@@ -157,23 +165,20 @@ export const useDeckOperations = () => {
     operation: T,
     errorMessage: string,
   ): boolean => {
-    const resultEffect = DeckDomain.executeDeckOperation(
-      deckStore.deckCards,
-      operation,
-    );
-
-    const result = Effect.runSync(Effect.either(resultEffect));
-
-    if (result._tag === "Right") {
-      deckStore.setDeckCards([...result.right]);
+    try {
+      const result = DeckDomain.executeDeckOperation(
+        deckStore.deckCards,
+        operation,
+      );
+      deckStore.setDeckCards([...result]);
       return true;
+    } catch (error) {
+      const msg = deckOperationErrorToString(
+        isDeckOperationError(error) ? error : ({} as any),
+      );
+      errorHandler.handleValidationError(`${errorMessage}: ${msg}`, error);
+      return false;
     }
-
-    errorHandler.handleValidationError(
-      `${errorMessage}: ${deckOperationErrorToString(result.left)}`,
-      result.left,
-    );
-    return false;
   };
 
   /**

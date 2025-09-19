@@ -4,13 +4,9 @@
  * 対応形式:
  * - スラッシュ区切り形式: カードIDを"/"で連結した形式
  * - KCG形式: "KCG-"で始まる圧縮形式のデッキコード
- *
- * エラーハンドリング:
- * - Effectの型を使用してエラーを表現
- * - 例外をスローせず、エラーの詳細を型安全に返却
  */
 import type { Card, DeckCard } from "../types";
-import { Effect } from "effect";
+
 import { DeckCodeError } from "../types";
 
 // --- KCGデッキコード用定数 ---
@@ -35,19 +31,14 @@ export const encodeDeckCode = (deck: readonly DeckCard[]): string => {
 export const decodeDeckCode = (
   code: string,
   availableCards: readonly Card[],
-): Effect.Effect<
-  { deckCards: DeckCard[]; missingCardIds: string[] },
-  DeckCodeError
-> => {
-  // 空文字列の場合は早期リターン
+): { deckCards: DeckCard[]; missingCardIds: string[] } => {
+  // 空文字列の場合はエラーをスロー
   if (!code || code.trim() === "") {
     console.debug("デッキコードが空です");
-    return Effect.fail(
-      new DeckCodeError({
-        type: "validation",
-        message: "デッキコードが空です",
-      }),
-    );
+    throw new DeckCodeError({
+      type: "validation",
+      message: "デッキコードが空です",
+    });
   }
 
   const cardIds = code.split("/").filter((id) => id.trim() !== ""); // 空文字列を除外
@@ -90,7 +81,7 @@ export const decodeDeckCode = (
     console.warn("見つからなかったカードID:", missingCardIds);
   }
 
-  return Effect.succeed({ deckCards, missingCardIds });
+  return { deckCards, missingCardIds };
 };
 
 /**
@@ -99,41 +90,33 @@ export const decodeDeckCode = (
  * @returns デコードされたカードIDの配列
  * @note 無効なカードデータ（範囲外のインデックスや値）は警告なくスキップされます
  */
-export const decodeKcgDeckCode = (
-  deckCode: string,
-): Effect.Effect<string[], DeckCodeError> => {
+export const decodeKcgDeckCode = (deckCode: string): string[] => {
   try {
     // --- 1. 入力チェックと初期処理 ---
     if (!deckCode || !deckCode.startsWith("KCG-")) {
       console.error("Invalid deck code format: Must start with 'KCG-'.");
-      return Effect.fail(
-        new DeckCodeError({
-          type: "validation",
-          message: "デッキコードは'KCG-'で始まる必要があります",
-        }),
-      );
+      throw new DeckCodeError({
+        type: "validation",
+        message: "デッキコードは'KCG-'で始まる必要があります",
+      });
     }
 
     const rawPayloadWithVersion = deckCode.substring(4);
     if (rawPayloadWithVersion.length === 0) {
       console.error("Invalid deck code: Payload is empty.");
-      return Effect.fail(
-        new DeckCodeError({
-          type: "validation",
-          message: "デッキコードのペイロードが空です",
-        }),
-      );
+      throw new DeckCodeError({
+        type: "validation",
+        message: "デッキコードのペイロードが空です",
+      });
     }
 
     for (const char of rawPayloadWithVersion) {
       if (CHAR_MAP.indexOf(char) === -1) {
         console.error(`Invalid character in deck code: ${char}`);
-        return Effect.fail(
-          new DeckCodeError({
-            type: "validation",
-            message: `デッキコードに無効な文字が含まれています: ${char}`,
-          }),
-        );
+        throw new DeckCodeError({
+          type: "validation",
+          message: `デッキコードに無効な文字が含まれています: ${char}`,
+        });
       }
     }
 
@@ -251,12 +234,10 @@ export const decodeKcgDeckCode = (
       [];
     if (finalNumericString.length % 5 !== 0) {
       console.error("Final numeric string length is not a multiple of 5.");
-      return Effect.fail(
-        new DeckCodeError({
-          type: "validation",
-          message: "最終的な数値文字列の長さが5の倍数ではありません",
-        }),
-      );
+      throw new DeckCodeError({
+        type: "validation",
+        message: "最終的な数値文字列の長さが5の倍数ではありません",
+      });
     }
 
     for (let i = 0; i < finalNumericString.length; i += 5) {
@@ -332,16 +313,14 @@ export const decodeKcgDeckCode = (
     }
 
     console.debug("KCGデッキコードのデコード完了:", deckListOutput);
-    return Effect.succeed(deckListOutput);
+    return deckListOutput;
   } catch (error) {
     console.error("KCGデッキコードのデコード中にエラーが発生:", error);
-    return Effect.fail(
-      new DeckCodeError({
-        type: "decode",
-        message: "デッキコードのデコード中に予期しないエラーが発生しました",
-        originalError: error,
-      }),
-    );
+    throw new DeckCodeError({
+      type: "decode",
+      message: "デッキコードのデコード中に予期しないエラーが発生しました",
+      originalError: error,
+    });
   }
 };
 
@@ -350,9 +329,7 @@ export const decodeKcgDeckCode = (
  * @param cardIds カードIDの配列
  * @returns エンコードされたKCGデッキコード文字列
  */
-export const encodeKcgDeckCode = (
-  cardIds: string[],
-): Effect.Effect<string, DeckCodeError> => {
+export const encodeKcgDeckCode = (cardIds: string[]): string => {
   try {
     const cardCounts: { [key: string]: number } = {};
     cardIds.forEach((id) => {
@@ -427,12 +404,10 @@ export const encodeKcgDeckCode = (
 
     const o = binaryString.match(/.{1,3}/g);
     if (!o) {
-      return Effect.fail(
-        new DeckCodeError({
-          type: "generation",
-          message: "バイナリ文字列の分割に失敗しました",
-        }),
-      );
+      throw new DeckCodeError({
+        type: "generation",
+        message: "バイナリ文字列の分割に失敗しました",
+      });
     }
     const i = o.map((e) => parseInt(e, 2));
 
@@ -455,15 +430,13 @@ export const encodeKcgDeckCode = (
     const s = 7 - paddingZeros;
     const c = 7 - (o.filter((e) => e === "000").length % 8);
 
-    return Effect.succeed(`KCG-${U[s][c]}${u}`);
+    return `KCG-${U[s][c]}${u}`;
   } catch (error) {
     console.error("KCGデッキコードのエンコード中にエラーが発生:", error);
-    return Effect.fail(
-      new DeckCodeError({
-        type: "generation",
-        message: "デッキコードのエンコード中に予期しないエラーが発生しました",
-        originalError: error,
-      }),
-    );
+    throw new DeckCodeError({
+      type: "generation",
+      message: "デッキコードのエンコード中に予期しないエラーが発生しました",
+      originalError: error,
+    });
   }
 };

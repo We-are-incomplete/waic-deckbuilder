@@ -2,7 +2,6 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 import { useCookies } from "@vueuse/integrations/useCookies";
 import { useDeckCodeStore } from "./deckCode";
-import { Effect, Either } from "effect";
 
 interface SavedDeck {
   name: string;
@@ -22,31 +21,24 @@ export const useDeckManagementStore = defineStore("deckManagement", () => {
 
   // 初期化時にCookieからデッキを読み込む
   const loadDecksFromCookie = () => {
-    const storedDecksEffect = Effect.try({
-      try: () => {
-        const stored = cookies.get("savedDecks");
-        if (stored === undefined || stored === null) {
-          return [];
-        }
-        if (!Array.isArray(stored)) {
-          throw new Error("Stored decks is not an array.");
-        }
-        if (!stored.every(isSavedDeck)) {
-          throw new Error("Invalid savedDecks element shape.");
-        }
-        return stored as SavedDeck[];
-      },
-      catch: (e) => e as Error,
-    });
-
-    const storedDecksResult = Effect.runSync(Effect.either(storedDecksEffect));
-    if (Either.isRight(storedDecksResult)) {
-      savedDecks.value = storedDecksResult.right;
-    } else {
-      console.error(
-        "Failed to load decks from cookie:",
-        storedDecksResult.left,
-      );
+    try {
+      const stored = cookies.get("savedDecks");
+      if (stored === undefined || stored === null) {
+        savedDecks.value = [];
+        return;
+      }
+      if (!Array.isArray(stored)) {
+        throw new Error("Stored decks is not an array.");
+      }
+      const invalidIndex = stored.findIndex((item) => !isSavedDeck(item));
+      if (invalidIndex !== -1) {
+        throw new Error(
+          `Invalid savedDecks element at index ${invalidIndex}: ${JSON.stringify(stored[invalidIndex])}`,
+        );
+      }
+      savedDecks.value = stored as SavedDeck[];
+    } catch (e) {
+      console.error("Failed to load decks from cookie:", e);
       savedDecks.value = [];
     }
   };
