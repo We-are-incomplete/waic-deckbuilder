@@ -340,7 +340,7 @@ const shouldSkipPreload = (): boolean => {
   const conn = (navigator as unknown as { connection?: NetworkInformationLite })
     .connection;
   if (conn?.saveData) {
-    console.info("Preload skipped due to saveData mode");
+    console.debug("Preload skipped due to saveData mode");
     return true;
   }
   return false;
@@ -369,10 +369,6 @@ const preloadSingleCardImage = (cardId: string, startGen: number): void => {
     url = getCardImageUrl(cardId);
   } catch (e) {
     console.warn(`Failed to get image URL for card: ${cardId}`, e);
-    return;
-  }
-
-  if (url.endsWith("placeholder.avif")) {
     return;
   }
 

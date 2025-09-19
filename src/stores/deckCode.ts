@@ -57,7 +57,6 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
                 : errorMessage,
             originalError: e,
           });
-          isGeneratingCode.value = false;
           return;
         }
 

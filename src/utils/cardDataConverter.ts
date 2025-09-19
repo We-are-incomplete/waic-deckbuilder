@@ -31,11 +31,10 @@ export class CardDataConverterError extends Error {
     message: string;
     originalError?: unknown;
   }) {
-    super(params.message);
+    super(params.message, { cause: params.originalError });
     this.name = "CardDataConverterError";
     this.type = params.type;
     this.originalError = params.originalError;
-    this.cause = params.originalError;
     Object.setPrototypeOf(this, CardDataConverterError.prototype);
   }
 }

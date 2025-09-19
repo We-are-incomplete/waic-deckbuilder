@@ -209,7 +209,7 @@ export const useExportStore = defineStore("export", () => {
       const filename = generateFileName(deckName);
       downloadCanvas(canvas, filename);
 
-      console.info(`デッキ画像を保存しました: ${filename}`);
+      console.debug(`デッキ画像を保存しました: ${filename}`);
     } catch (e) {
       const errorMessage = "デッキ画像の保存に失敗しました";
       console.error(errorMessage + ":", e);
