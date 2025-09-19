@@ -3,10 +3,15 @@
  * - 目的: デッキ名/デッキカードの保存・読込・リセット
  */
 import type { Card, DeckCard } from "../types";
-import { GAME_CONSTANTS, STORAGE_KEYS } from "../constants";
+import { GAME_CONSTANTS } from "../constants";
 import { useLocalStorage } from "@vueuse/core";
 
 export const DEFAULT_DECK_NAME = "新しいデッキ" as const;
+
+const STORAGE_KEYS = {
+  DECK_CARDS: "deckCards_k",
+  DECK_NAME: "deckName_k",
+};
 
 // ストレージ操作エラー型
 export class StorageError extends Error {
