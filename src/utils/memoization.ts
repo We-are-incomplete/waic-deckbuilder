@@ -17,9 +17,13 @@ const symbolKeyMap = new Map<symbol, string>();
  */
 function safeCriteriaSerialize<C>(criteria: C): string {
   const serialized = Effect.runSync(
-    Effect.tryPromise({
-      try: () => Promise.resolve(JSON.stringify(criteria)),
-      catch: () => null,
+    Effect.try({
+      try: () => JSON.stringify(criteria),
+      catch: (e) => {
+        // JSON.stringifyが失敗した場合の処理
+        console.error("Failed to serialize criteria:", e);
+        return null;
+      },
     }).pipe(Effect.orElseSucceed(() => null)),
   );
   if (typeof serialized === "string") return serialized;
