@@ -213,6 +213,9 @@ export const useExportStore = defineStore("export", () => {
     } catch (e) {
       const errorMessage = "デッキ画像の保存に失敗しました";
       console.error(errorMessage + ":", e);
+      if (e instanceof ExportError) {
+        throw e;
+      }
       throw new ExportError({
         type: "unknown",
         message: errorMessage,
