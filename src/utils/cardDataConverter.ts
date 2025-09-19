@@ -35,7 +35,7 @@ export class CardDataConverterError extends Error {
     this.name = "CardDataConverterError";
     this.type = params.type;
     this.originalError = params.originalError;
-    (this as any).cause = params.originalError;
+    this.cause = params.originalError;
     Object.setPrototypeOf(this, CardDataConverterError.prototype);
   }
 }

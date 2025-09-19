@@ -37,7 +37,7 @@ export class StorageError extends Error {
     this.data = params.data;
     this.reason = params.reason;
     this.originalError = params.originalError;
-    (this as any).cause = params.originalError;
+    this.cause = params.originalError;
     Object.setPrototypeOf(this, StorageError.prototype);
   }
 }
@@ -184,7 +184,11 @@ export const loadDeckFromLocalStorage = (
       }
     })();
     console.error("保存されたデッキの読み込みに失敗しました", e, snapshot);
-    resetDeckCardsInLocalStorage(); // エラー発生時にリセット
+    try {
+      resetDeckCardsInLocalStorage(); // エラー発生時にリセット
+    } catch (resetError) {
+      console.error("デッキカードのリセットも失敗しました", resetError);
+    }
     throw new StorageError({
       type: "readError",
       key: STORAGE_KEYS.DECK_CARDS,

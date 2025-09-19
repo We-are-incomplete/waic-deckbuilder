@@ -9,30 +9,6 @@
 import type { Card, CardKind, CardType } from "../types";
 import { CARD_KINDS, CARD_TYPES } from "../constants";
 
-const getCardValidationErrorMessage = (
-  type: CardValidationError["type"],
-  value?: string | readonly string[],
-): string => {
-  switch (type) {
-    case "InvalidId":
-      return `無効なカードID: ${value || "空"}`;
-    case "InvalidName":
-      return `無効なカード名: ${value || "空"}`;
-    case "InvalidKind":
-      return `無効なカード種別: ${value}`;
-    case "InvalidType":
-      return `無効なカードタイプ: ${value}`;
-    case "EmptyTypeList":
-      return "カードタイプリストが空です";
-    case "DuplicateTypes":
-      return `重複するカードタイプ: ${Array.isArray(value) ? value.join(", ") : value}`;
-    case "DuplicateTags":
-      return `重複するタグ: ${Array.isArray(value) ? value.join(", ") : value}`;
-    default:
-      return `CardValidationError: ${type}`;
-  }
-};
-
 /**
  * カードの検証中に発生しうるエラーを表す代数的データ型。
  * - `InvalidId`: カードIDが無効。
@@ -54,6 +30,30 @@ export class CardValidationError extends Error {
     | "DuplicateTags";
   readonly value?: string | readonly string[];
 
+  private static getErrorMessage = (
+    type: CardValidationError["type"],
+    value?: string | readonly string[],
+  ): string => {
+    switch (type) {
+      case "InvalidId":
+        return `無効なカードID: ${value || "空"}`;
+      case "InvalidName":
+        return `無効なカード名: ${value || "空"}`;
+      case "InvalidKind":
+        return `無効なカード種別: ${value}`;
+      case "InvalidType":
+        return `無効なカードタイプ: ${value}`;
+      case "EmptyTypeList":
+        return "カードタイプリストが空です";
+      case "DuplicateTypes":
+        return `重複するカードタイプ: ${Array.isArray(value) ? value.join(", ") : value}`;
+      case "DuplicateTags":
+        return `重複するタグ: ${Array.isArray(value) ? value.join(", ") : value}`;
+      default:
+        return `CardValidationError: ${type}`;
+    }
+  };
+
   constructor(params: {
     type:
       | "InvalidId"
@@ -65,7 +65,7 @@ export class CardValidationError extends Error {
       | "DuplicateTags";
     value?: string | readonly string[];
   }) {
-    super(getCardValidationErrorMessage(params.type, params.value));
+    super(CardValidationError.getErrorMessage(params.type, params.value));
     this.name = "CardValidationError";
     this.type = params.type;
     this.value = params.value;
