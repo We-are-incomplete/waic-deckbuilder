@@ -55,6 +55,7 @@ export const createDeckCard = (card: Card, count: number): DeckCard => {
       type: "MaxCountExceeded",
       cardId: card.id,
       maxCount: GAME_CONSTANTS.MAX_CARD_COPIES,
+      count,
     });
   }
 
@@ -117,6 +118,7 @@ export const addCardToDeck = (
         type: "MaxCountExceeded",
         cardId: cardToAdd.id,
         maxCount: GAME_CONSTANTS.MAX_CARD_COPIES,
+        count: existingCard.count + 1,
       });
     }
 
@@ -172,6 +174,7 @@ export const setCardCount = (
       type: "MaxCountExceeded",
       cardId,
       maxCount: GAME_CONSTANTS.MAX_CARD_COPIES,
+      count,
     });
   }
 

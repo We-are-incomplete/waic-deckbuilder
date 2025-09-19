@@ -62,12 +62,23 @@ export const useCardsStore = defineStore("cards", () => {
     // CardDataConverterError 由来
     if (e instanceof CardDataConverterError) {
       switch (e.type) {
-        case "FetchError":
+        case "FetchError": {
+          const httpHint =
+            typeof e.originalError === "object" &&
+            e.originalError &&
+            "message" in e.originalError &&
+            typeof (e.originalError as any).message === "string" &&
+            (e.originalError as any).message.startsWith("HTTP error!");
           return {
             type: "fetch",
-            status: 0,
-            message: e.message ?? "カードデータの取得に失敗しました",
+            status: httpHint ? 500 : 0,
+            message:
+              e.message ??
+              (httpHint
+                ? "サーバーエラーが発生しました"
+                : "ネットワークエラーが発生しました"),
           };
+        }
         case "EmptyCsvError":
           return {
             type: "parse",
@@ -137,7 +148,10 @@ export const useCardsStore = defineStore("cards", () => {
    */
   const ensureValidCards = (cards: Card[]): Card[] => {
     if (cards.length === 0) {
-      throw new Error("有効なカードデータが見つかりませんでした");
+      throw new CardDataConverterError({
+        type: "ValidationError",
+        message: "有効なカードデータが見つかりませんでした",
+      });
     }
     return cards;
   };
@@ -295,11 +309,11 @@ export const useCardsStore = defineStore("cards", () => {
     error.value = null;
 
     try {
-      const csvText = await loadCardsFromCsv(
+      const cards = await loadCardsFromCsv(
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBSkAVMH16J4iOgia3JKSwgpNG9gIWGu5a7OzdnuPmM2lvYW0MjchCBvy1i4ZS8aXJEPooubEivEfc/pub?gid=1598481515&single=true&output=csv",
       );
 
-      const validCards = validateCards(csvText);
+      const validCards = validateCards(cards);
       const ensuredCards = ensureValidCards(validCards);
 
       // 成功パス
@@ -312,7 +326,7 @@ export const useCardsStore = defineStore("cards", () => {
       } catch (err) {
         console.warn("画像プリロード失敗:", err);
       }
-      console.info(`${ensuredCards.length}枚のカードを読み込みました`);
+      console.debug(`${ensuredCards.length}枚のカードを読み込みました`);
     } catch (e) {
       const mapped = mapErrorToCardStoreError(e);
       error.value = mapped;

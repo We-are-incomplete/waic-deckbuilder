@@ -65,7 +65,10 @@ const persistFavorites = () => {
 };
 
 // 参照の再代入でのみ発火（深い監視は不要）
-watch(favoriteCardIds, persistFavorites);
+watch(favoriteCardIds, () => {
+  clearTimeout((persistFavorites as any)._t);
+  (persistFavorites as any)._t = setTimeout(persistFavorites, 100);
+});
 
 // 他タブの変更と同期（インスタンスローカルに登録/解除）
 onMounted(() => {

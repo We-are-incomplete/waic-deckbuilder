@@ -30,8 +30,11 @@ export const useDeckManagementStore = defineStore("deckManagement", () => {
       if (!Array.isArray(stored)) {
         throw new Error("Stored decks is not an array.");
       }
-      if (!stored.every(isSavedDeck)) {
-        throw new Error("Invalid savedDecks element shape.");
+      const invalidIndex = stored.findIndex((item) => !isSavedDeck(item));
+      if (invalidIndex !== -1) {
+        throw new Error(
+          `Invalid savedDecks element at index ${invalidIndex}: ${JSON.stringify(stored[invalidIndex])}`,
+        );
       }
       savedDecks.value = stored as SavedDeck[];
     } catch (e) {

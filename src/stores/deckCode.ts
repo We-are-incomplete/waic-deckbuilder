@@ -52,7 +52,11 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
           console.error(errorMessage + ":", e);
           error.value = new DeckCodeError({
             type: "generation",
-            message: `${errorMessage}${e instanceof Error ? `: ${e.message}` : ""}`,
+            message:
+              e instanceof Error
+                ? `${errorMessage}: ${e.message}`
+                : errorMessage,
+            originalError: e,
           });
           isGeneratingCode.value = false;
           return;
@@ -241,26 +245,16 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
           cardIds = decodeKcgDeckCode(trimmedCode);
         } catch (e) {
           // KCGデコードエラーの処理
-          let errorMessage: string;
-          if (e instanceof DeckCodeError) {
-            switch (e.type) {
-              case "validation":
-                errorMessage = e.message ?? "KCG形式のデッキコードが不正です";
-                break;
-              case "decode":
-                errorMessage =
-                  e.message ?? "KCG形式のデッキコードのデコードに失敗しました";
-                break;
-              default:
-                errorMessage = "KCG形式のデッキコードのデコードに失敗しました";
-            }
-          } else {
-            errorMessage = "KCG形式のデッキコードのデコードに失敗しました";
-          }
+          const errorMessage =
+            e instanceof DeckCodeError && e.message
+              ? e.message
+              : "KCG形式のデッキコードのデコードに失敗しました";
+          console.warn(errorMessage);
           console.warn(errorMessage);
           error.value = new DeckCodeError({
             type: "decode",
             message: errorMessage,
+            originalError: e instanceof DeckCodeError ? undefined : e,
           });
           return;
         }
@@ -336,22 +330,15 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
           decodeResult = decodeDeckCode(trimmedCode, availableCards);
         } catch (e) {
           // スラッシュ区切りデコードエラーの処理
-          let errorMessage: string;
-          if (e instanceof DeckCodeError) {
-            switch (e.type) {
-              case "validation":
-                errorMessage = e.message ?? "デッキコードが不正です";
-                break;
-              default:
-                errorMessage = "デッキコードのデコードに失敗しました";
-            }
-          } else {
-            errorMessage = "デッキコードのデコードに失敗しました";
-          }
+          const errorMessage =
+            e instanceof DeckCodeError && e.message
+              ? e.message
+              : "デッキコードのデコードに失敗しました";
           console.warn(errorMessage);
           error.value = new DeckCodeError({
             type: "decode",
             message: errorMessage,
+            originalError: e instanceof DeckCodeError ? undefined : e,
           });
           return;
         }

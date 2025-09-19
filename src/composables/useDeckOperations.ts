@@ -33,6 +33,15 @@ const createSafeHash = (input: string): string => {
   return hashAStr + hashBStr;
 };
 
+type DeckOperationErrorLike = {
+  type?: string;
+  cardId?: string;
+  maxCount?: number;
+  count?: number;
+};
+const isDeckOperationError = (e: unknown): e is DeckOperationErrorLike =>
+  !!e && typeof e === "object" && "type" in (e as any);
+
 export const useDeckOperations = () => {
   const deckStore = useDeckStore();
   const cardsStore = useCardsStore();
@@ -164,10 +173,10 @@ export const useDeckOperations = () => {
       deckStore.setDeckCards([...result]);
       return true;
     } catch (error) {
-      errorHandler.handleValidationError(
-        `${errorMessage}: ${deckOperationErrorToString(error as any)}`,
-        error,
+      const msg = deckOperationErrorToString(
+        isDeckOperationError(error) ? error : ({} as any),
       );
+      errorHandler.handleValidationError(`${errorMessage}: ${msg}`, error);
       return false;
     }
   };

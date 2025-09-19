@@ -37,6 +37,7 @@ export class StorageError extends Error {
     this.data = params.data;
     this.reason = params.reason;
     this.originalError = params.originalError;
+    (this as any).cause = params.originalError;
     Object.setPrototypeOf(this, StorageError.prototype);
   }
 }
@@ -112,22 +113,11 @@ const deckCardsStorage = useLocalStorage<
           "ローカルストレージのデッキカードが想定スキーマではありません。初期化します。",
           data,
         );
-      } catch (parsedResult) {
+      } catch (err) {
         console.error(
           "ローカルストレージのデッキカードの JSON 解析に失敗しました",
-          parsedResult,
+          err,
         );
-      }
-      // 解析/検証失敗時は破損データが残らないよう既定値で上書きする
-      try {
-        if (typeof window !== "undefined" && window.localStorage) {
-          window.localStorage.setItem(
-            STORAGE_KEYS.DECK_CARDS,
-            JSON.stringify([]),
-          );
-        }
-      } catch {
-        // noop: リセットに失敗しても空配列で返す
       }
       return [] as readonly { id: string; count: number }[];
     },

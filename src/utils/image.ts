@@ -225,9 +225,11 @@ export const cleanupStaleEntries = (): void => {
     }
   }
 
-  console.debug(
-    `Image cache cleanup: removed ${keysToDelete.length} stale entries (size=${cacheState.cache.size}/${MAX_CACHE_SIZE}, ttl=${STALE_ENTRY_TTL_MS}ms)`,
-  );
+  if (import.meta.env?.DEV) {
+    console.debug(
+      `Image cache cleanup: removed ${keysToDelete.length} stale entries (size=${cacheState.cache.size}/${MAX_CACHE_SIZE}, ttl=${STALE_ENTRY_TTL_MS}ms)`,
+    );
+  }
 };
 
 /**
@@ -299,15 +301,15 @@ export const getCardImageUrlSafe = (cardId: string): string => {
  * 画像エラー時の処理
  */
 export const handleImageError = (event: Event): void => {
-  if (!event || !event.target) {
-    throw new ImageError.InvalidEvent({ reason: "no target" });
+  const t = (event && (event as any).target) as EventTarget | null;
+  if (!t || !(t instanceof HTMLImageElement)) {
+    console.warn("handleImageError: invalid event/target", {
+      event,
+      target: (t as any)?.tagName,
+    });
+    return;
   }
-
-  const t = event.target;
-  if (!(t instanceof HTMLImageElement)) {
-    throw new ImageError.InvalidTarget({ targetTag: (t as any)?.tagName });
-  }
-  const img = t;
+  const img = t as HTMLImageElement;
   img.onerror = null;
   try {
     img.fetchPriority = "low";
@@ -437,8 +439,13 @@ export const clearImageCache = (): void => {
   clearCache();
 };
 
-export const getImageCacheStats = (): { size: number; maxSize: number } => {
-  return getCacheStats();
+export const getImageCacheStats = (): {
+  size: number;
+  maxSize: number;
+  inflight: number;
+} => {
+  const { size, maxSize, inflight } = getCacheStats();
+  return { size, maxSize, inflight };
 };
 
 // アプリケーション終了時のクリーンアップ（必要に応じて呼び出し）

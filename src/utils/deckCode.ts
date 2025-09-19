@@ -32,7 +32,7 @@ export const decodeDeckCode = (
   code: string,
   availableCards: readonly Card[],
 ): { deckCards: DeckCard[]; missingCardIds: string[] } => {
-  // 空文字列の場合は早期リターン
+  // 空文字列の場合はエラーをスロー
   if (!code || code.trim() === "") {
     console.debug("デッキコードが空です");
     throw new DeckCodeError({

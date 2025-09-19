@@ -36,6 +36,24 @@ export type DeckState =
       readonly errors: readonly DeckOperationError[];
     };
 
+const getDeckOperationErrorMessage = (params: {
+  type: "CardNotFound" | "MaxCountExceeded" | "InvalidCardCount";
+  cardId: string;
+  maxCount?: number;
+  count?: number;
+}): string => {
+  switch (params.type) {
+    case "CardNotFound":
+      return `カードが見つかりません: ${params.cardId}`;
+    case "MaxCountExceeded":
+      return `最大枚数を超過しました: ${params.cardId} (最大: ${params.maxCount ?? "不明"})`;
+    case "InvalidCardCount":
+      return `不正なカード枚数です: ${params.cardId} (指定: ${params.count ?? "不明"})`;
+    default:
+      return `DeckOperationError: ${params.type} for card ${params.cardId}`;
+  }
+};
+
 /**
  * デッキ操作中に発生しうるエラーを表す代数的データ型。
  * - `CardNotFound`: 指定されたカードが見つからない。
@@ -54,7 +72,7 @@ export class DeckOperationError extends Error {
     maxCount?: number;
     count?: number;
   }) {
-    super(`DeckOperationError: ${params.type} for card ${params.cardId}`);
+    super(getDeckOperationErrorMessage(params));
     this.name = "DeckOperationError";
     this.type = params.type;
     this.cardId = params.cardId;

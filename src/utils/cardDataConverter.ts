@@ -35,6 +35,7 @@ export class CardDataConverterError extends Error {
     this.name = "CardDataConverterError";
     this.type = params.type;
     this.originalError = params.originalError;
+    (this as any).cause = params.originalError;
     Object.setPrototypeOf(this, CardDataConverterError.prototype);
   }
 }
@@ -128,10 +129,8 @@ export async function loadCardsFromCsv(csvPath: string): Promise<Card[]> {
   try {
     const response = await fetch(csvPath, {
       method: "GET",
-      headers: {
-        Accept: "text/csv,text/plain,*/*",
-        "Cache-Control": "no-cache",
-      },
+      headers: { Accept: "text/csv,text/plain,*/*" },
+      cache: "no-store",
     });
 
     if (!response.ok) {
@@ -151,7 +150,11 @@ export async function loadCardsFromCsv(csvPath: string): Promise<Card[]> {
 
     return parseCsv(csvText);
   } catch (error) {
-    console.error("Fetch error:", error);
+    // parseCsv 由来のドメインエラーはラップせず伝播
+    if (error instanceof CardDataConverterError) {
+      throw error;
+    }
+    console.error("loadCardsFromCsv error:", error);
     if (error instanceof Error && error.message.startsWith("HTTP error!")) {
       throw new CardDataConverterError({
         type: "FetchError",
