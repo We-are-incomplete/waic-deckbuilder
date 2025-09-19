@@ -166,5 +166,5 @@ export const filterCardsByTags = (
     return cards;
   }
 
-  return cards.filter((card) => tags.some((tag) => hasTag(card, tag)));
+  return cards.filter((card) => tags.every((tag) => hasTag(card, tag)));
 };
