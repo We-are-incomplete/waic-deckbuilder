@@ -9,7 +9,6 @@ import * as DeckDomain from "../domain";
 import { useCardsStore, useDeckStore } from "../stores";
 import { useMemoize } from "@vueuse/core";
 import { createErrorHandler, deckOperationErrorToString } from "../utils";
-import { Effect } from "effect";
 
 /**
  * 安全なハッシュ関数（64bitバージョン）
@@ -157,23 +156,20 @@ export const useDeckOperations = () => {
     operation: T,
     errorMessage: string,
   ): boolean => {
-    const resultEffect = DeckDomain.executeDeckOperation(
-      deckStore.deckCards,
-      operation,
-    );
-
-    const result = Effect.runSync(Effect.either(resultEffect));
-
-    if (result._tag === "Right") {
-      deckStore.setDeckCards([...result.right]);
+    try {
+      const result = DeckDomain.executeDeckOperation(
+        deckStore.deckCards,
+        operation,
+      );
+      deckStore.setDeckCards([...result]);
       return true;
+    } catch (error) {
+      errorHandler.handleValidationError(
+        `${errorMessage}: ${deckOperationErrorToString(error as any)}`,
+        error,
+      );
+      return false;
     }
-
-    errorHandler.handleValidationError(
-      `${errorMessage}: ${deckOperationErrorToString(result.left)}`,
-      result.left,
-    );
-    return false;
   };
 
   /**

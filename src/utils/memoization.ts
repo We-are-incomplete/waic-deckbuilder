@@ -6,7 +6,6 @@
 
 import { ref, type Ref } from "vue";
 import { useMemoize } from "@vueuse/core";
-import { Effect } from "effect";
 
 let unserializableCounter = 0;
 const unserializableKeyMap = new WeakMap<object, string>();
@@ -16,16 +15,15 @@ const symbolKeyMap = new Map<symbol, string>();
  * 安全に基準値をシリアライズし、失敗時はフォールバックキーを返す
  */
 function safeCriteriaSerialize<C>(criteria: C): string {
-  const serialized = Effect.runSync(
-    Effect.try({
-      try: () => JSON.stringify(criteria),
-      catch: (e) => {
-        // JSON.stringifyが失敗した場合の処理
-        console.error("Failed to serialize criteria:", e);
-        return null;
-      },
-    }).pipe(Effect.orElseSucceed(() => null)),
-  );
+  let serialized: string | null = null;
+  try {
+    serialized = JSON.stringify(criteria);
+  } catch (e) {
+    // JSON.stringifyが失敗した場合の処理
+    console.error("Failed to serialize criteria:", e);
+    serialized = null;
+  }
+
   if (typeof serialized === "string") return serialized;
   // オブジェクト/関数は恒等で安定化
   if (

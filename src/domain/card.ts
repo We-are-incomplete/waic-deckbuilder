@@ -7,7 +7,6 @@
  * - 副作用を避け、不変データ構造を優先する関数型アプローチを採用
  * - エラーハンドリングにはEffectのEffect型を使用し、例外をスローしない
  */
-import { Effect, Data } from "effect";
 import type { Card, CardKind, CardType } from "../types";
 import { CARD_KINDS, CARD_TYPES } from "../constants";
 
@@ -21,9 +20,7 @@ import { CARD_KINDS, CARD_TYPES } from "../constants";
  * - `DuplicateTypes`: 重複
  * - `DuplicateTags`: 重複するタグが存在する。
  */
-export class CardValidationError extends Data.TaggedError(
-  "CardValidationError",
-)<{
+export class CardValidationError extends Error {
   readonly type:
     | "InvalidId"
     | "InvalidName"
@@ -33,7 +30,25 @@ export class CardValidationError extends Data.TaggedError(
     | "DuplicateTypes"
     | "DuplicateTags";
   readonly value?: string | readonly string[];
-}> {}
+
+  constructor(params: {
+    type:
+      | "InvalidId"
+      | "InvalidName"
+      | "InvalidKind"
+      | "InvalidType"
+      | "EmptyTypeList"
+      | "DuplicateTypes"
+      | "DuplicateTags";
+    value?: string | readonly string[];
+  }) {
+    super(`CardValidationError: ${params.type}`);
+    this.name = "CardValidationError";
+    this.type = params.type;
+    this.value = params.value;
+    Object.setPrototypeOf(this, CardValidationError.prototype);
+  }
+}
 
 // カード作成関数
 export const createCard = (
@@ -42,42 +57,32 @@ export const createCard = (
   kind: CardKind,
   type: readonly CardType[],
   tags?: readonly string[],
-): Effect.Effect<Card, CardValidationError> => {
+): Card => {
   // ID検証
   if (!id || id.trim().length === 0) {
-    return Effect.fail(
-      new CardValidationError({ type: "InvalidId", value: id }),
-    );
+    throw new CardValidationError({ type: "InvalidId", value: id });
   }
 
   // 名前検証
   if (!name || name.trim().length === 0) {
-    return Effect.fail(
-      new CardValidationError({ type: "InvalidName", value: name }),
-    );
+    throw new CardValidationError({ type: "InvalidName", value: name });
   }
 
   // 種別検証（実行時）
   if (!CARD_KINDS.includes(kind)) {
-    return Effect.fail(
-      new CardValidationError({ type: "InvalidKind", value: kind }),
-    );
+    throw new CardValidationError({ type: "InvalidKind", value: kind });
   }
 
   // 空配列/重複チェック
   if (type.length === 0)
-    return Effect.fail(new CardValidationError({ type: "EmptyTypeList" }));
+    throw new CardValidationError({ type: "EmptyTypeList" });
   if (new Set(type).size !== type.length)
-    return Effect.fail(
-      new CardValidationError({ type: "DuplicateTypes", value: type }),
-    );
+    throw new CardValidationError({ type: "DuplicateTypes", value: type });
 
   // タイプ検証（実行時）
   for (const t of type) {
     if (!CARD_TYPES.includes(t)) {
-      return Effect.fail(
-        new CardValidationError({ type: "InvalidType", value: t }),
-      );
+      throw new CardValidationError({ type: "InvalidType", value: t });
     }
   }
 
@@ -90,23 +95,21 @@ export const createCard = (
   if (processedTags && processedTags.length > 0) {
     const uniqueTags = new Set(processedTags);
     if (uniqueTags.size !== processedTags.length) {
-      return Effect.fail(
-        new CardValidationError({
-          type: "DuplicateTags",
-          value: processedTags,
-        }),
-      );
+      throw new CardValidationError({
+        type: "DuplicateTags",
+        value: processedTags,
+      });
     }
     finalTags = [...uniqueTags];
   }
 
-  return Effect.succeed({
+  return {
     id: id.trim(),
     name: name.trim(),
     kind,
     type,
     tags: finalTags,
-  });
+  };
 };
 
 // カードが特定のタグを持つかチェック

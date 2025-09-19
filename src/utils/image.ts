@@ -6,26 +6,60 @@
  * 注意: DOM を扱う関数（プリロード/クリーンアップ）は SSR では呼び出さない
  */
 import type { Card } from "../types";
-import { Effect, Data } from "effect";
-
 type NetworkInformationLite = { saveData?: boolean };
 
 export namespace ImageError {
-  export class InvalidKey extends Data.TaggedError("InvalidKey")<{
-    key?: string;
-  }> {}
-  export class InvalidImage extends Data.TaggedError("InvalidImage")<{
-    reason?: string;
-  }> {}
-  export class InvalidEvent extends Data.TaggedError("InvalidEvent")<{
-    reason?: string;
-  }> {}
-  export class InvalidTarget extends Data.TaggedError("InvalidTarget")<{
-    targetTag?: string;
-  }> {}
-  export class InvalidCardId extends Data.TaggedError("InvalidCardId")<{
-    cardId?: string;
-  }> {}
+  export class InvalidKey extends Error {
+    readonly key?: string;
+    constructor(params?: { key?: string }) {
+      super(params?.key ? `InvalidKey: ${params.key}` : "InvalidKey");
+      this.name = "InvalidKey";
+      this.key = params?.key;
+      Object.setPrototypeOf(this, InvalidKey.prototype);
+    }
+  }
+  export class InvalidImage extends Error {
+    readonly reason?: string;
+    constructor(params?: { reason?: string }) {
+      super(params?.reason ? `InvalidImage: ${params.reason}` : "InvalidImage");
+      this.name = "InvalidImage";
+      this.reason = params?.reason;
+      Object.setPrototypeOf(this, InvalidImage.prototype);
+    }
+  }
+  export class InvalidEvent extends Error {
+    readonly reason?: string;
+    constructor(params?: { reason?: string }) {
+      super(params?.reason ? `InvalidEvent: ${params.reason}` : "InvalidEvent");
+      this.name = "InvalidEvent";
+      this.reason = params?.reason;
+      Object.setPrototypeOf(this, InvalidEvent.prototype);
+    }
+  }
+  export class InvalidTarget extends Error {
+    readonly targetTag?: string;
+    constructor(params?: { targetTag?: string }) {
+      super(
+        params?.targetTag
+          ? `InvalidTarget: ${params.targetTag}`
+          : "InvalidTarget",
+      );
+      this.name = "InvalidTarget";
+      this.targetTag = params?.targetTag;
+      Object.setPrototypeOf(this, InvalidTarget.prototype);
+    }
+  }
+  export class InvalidCardId extends Error {
+    readonly cardId?: string;
+    constructor(params?: { cardId?: string }) {
+      super(
+        params?.cardId ? `InvalidCardId: ${params.cardId}` : "InvalidCardId",
+      );
+      this.name = "InvalidCardId";
+      this.cardId = params?.cardId;
+      Object.setPrototypeOf(this, InvalidCardId.prototype);
+    }
+  }
   export type Type =
     | InvalidKey
     | InvalidImage
@@ -98,34 +132,27 @@ export const startImageCacheMaintenance = (): void => {
 /**
  * キャッシュにエントリーを設定
  */
-const setCacheEntry = (
-  key: string,
-  image: HTMLImageElement,
-): Effect.Effect<void, ImageError.Type> => {
+const setCacheEntry = (key: string, image: HTMLImageElement): void => {
   if (!key) {
-    return Effect.fail(new ImageError.InvalidKey({ key }));
+    throw new ImageError.InvalidKey({ key });
   }
 
   if (!(image instanceof HTMLImageElement) || image.naturalWidth <= 0) {
-    return Effect.fail(
-      new ImageError.InvalidImage({ reason: "empty or not loaded" }),
-    );
+    throw new ImageError.InvalidImage({ reason: "empty or not loaded" });
   }
 
-  return Effect.sync(() => {
-    // 既存のエントリーがあれば削除
-    if (cacheState.cache.has(key)) {
-      const index = cacheState.accessOrder.indexOf(key);
-      if (index > -1) {
-        cacheState.accessOrder.splice(index, 1);
-      }
+  // 既存のエントリーがあれば削除
+  if (cacheState.cache.has(key)) {
+    const index = cacheState.accessOrder.indexOf(key);
+    if (index > -1) {
+      cacheState.accessOrder.splice(index, 1);
     }
-    // 新しいエントリーを追加
-    cacheState.cache.set(key, { image, lastAccessed: Date.now() });
-    cacheState.accessOrder.push(key);
-    // サイズ制限の適用
-    evictIfNecessary();
-  });
+  }
+  // 新しいエントリーを追加
+  cacheState.cache.set(key, { image, lastAccessed: Date.now() });
+  cacheState.accessOrder.push(key);
+  // サイズ制限の適用
+  evictIfNecessary();
 };
 
 /**
@@ -244,16 +271,12 @@ const destroyCache = (): void => {
 /**
  * カード画像URLを取得
  */
-export const getCardImageUrl = (
-  cardId: string,
-): Effect.Effect<string, ImageError.Type> => {
+export const getCardImageUrl = (cardId: string): string => {
   if (!cardId) {
-    return Effect.fail(new ImageError.InvalidCardId({ cardId }));
+    throw new ImageError.InvalidCardId({ cardId });
   }
 
-  return Effect.succeed(
-    `${getNormalizedBaseUrl()}cards/${encodeURIComponent(cardId)}.avif`,
-  );
+  return `${getNormalizedBaseUrl()}cards/${encodeURIComponent(cardId)}.avif`;
 };
 
 const getPlaceholderSrc = (): string =>
@@ -263,153 +286,151 @@ const getPlaceholderSrc = (): string =>
  * カード画像URLを安全に取得
  */
 export const getCardImageUrlSafe = (cardId: string): string => {
-  const result = Effect.runSync(Effect.either(getCardImageUrl(cardId)));
-  if (result._tag === "Right") {
-    return result.right;
+  try {
+    return getCardImageUrl(cardId);
+  } catch (result) {
+    // エラーをログに記録
+    console.warn(`Failed to get image URL for card: ${cardId}`, result);
+    return getPlaceholderSrc();
   }
-  // エラーをログに記録
-  console.warn(`Failed to get image URL for card: ${cardId}`, result.left);
-  return getPlaceholderSrc();
 };
 
 /**
  * 画像エラー時の処理
  */
-export const handleImageError = (
-  event: Event,
-): Effect.Effect<void, ImageError.Type> => {
+export const handleImageError = (event: Event): void => {
   if (!event || !event.target) {
-    return Effect.fail(new ImageError.InvalidEvent({ reason: "no target" }));
+    throw new ImageError.InvalidEvent({ reason: "no target" });
   }
 
   const t = event.target;
   if (!(t instanceof HTMLImageElement)) {
-    return Effect.fail(
-      new ImageError.InvalidTarget({ targetTag: (t as any)?.tagName }),
-    );
+    throw new ImageError.InvalidTarget({ targetTag: (t as any)?.tagName });
   }
-  return Effect.sync(() => {
-    const img = t;
-    img.onerror = null;
-    try {
-      img.fetchPriority = "low";
-      img.decoding = "async";
-    } catch {}
-    img.src = getPlaceholderSrc();
-  });
+  const img = t;
+  img.onerror = null;
+  try {
+    img.fetchPriority = "low";
+    img.decoding = "async";
+  } catch (e) {
+    console.warn("Failed to set image properties", e);
+  }
+  img.src = getPlaceholderSrc();
 };
 
 /**
  * 画像のプリロード処理
  */
-export const preloadImages = (
-  cards: readonly Card[],
-): Effect.Effect<void, ImageError.Type> => {
+export const preloadImages = (cards: readonly Card[]): void => {
   // SSR/非ブラウザ環境では何もしない
   if (import.meta.env.SSR || typeof window === "undefined") {
-    return Effect.succeed(undefined);
+    return;
   }
   // 省データモード/低速回線ではスキップ
   const conn = (navigator as unknown as { connection?: NetworkInformationLite })
     .connection;
   if (conn?.saveData) {
     console.info("Preload skipped due to saveData mode");
-    return Effect.succeed(undefined);
+    return;
   }
   // 有効なら低優先度で取得
   const setLowFetchPriority = (img: HTMLImageElement): void => {
     try {
       img.fetchPriority = "low";
-    } catch {}
+    } catch (e) {
+      console.warn("Failed to set fetchPriority", e);
+    }
   };
   if (!cards || cards.length === 0) {
-    return Effect.succeed(undefined); // 空配列は正常
+    return; // 空配列は正常
   }
 
-  return Effect.sync(() => {
-    let currentIndex = 0;
-    const startGen = cacheState.generation;
-    // 事前に重複 ID を除去
-    const uniqueCards = Array.from(
-      new Map(cards.map((c) => [c.id, c])).values(),
-    );
-    const processBatch = (deadline?: { timeRemaining: () => number }): void => {
-      if (cacheState.generation !== startGen) return;
-      while (
-        currentIndex < uniqueCards.length &&
-        (!deadline || deadline.timeRemaining() > 0)
-      ) {
-        // 同時実行の上限
-        if (cacheState.inflight.size >= PRELOAD_MAX_INFLIGHT) break;
-        const card = uniqueCards[currentIndex];
-        if (!card.id) {
-          currentIndex++;
-          continue;
-        }
-        const url = getCardImageUrlSafe(card.id);
-        if (url.endsWith("placeholder.avif")) {
-          currentIndex++;
-          continue;
-        }
-        if (!hasCacheEntry(card.id) && !cacheState.inflight.has(card.id)) {
-          const gen = cacheState.generation;
-          cacheState.inflight.add(card.id);
-          const img = new Image();
-          img.crossOrigin = "anonymous";
-          img.decoding = "async";
-          setLowFetchPriority(img);
-          img.onload = () => {
-            if (gen === cacheState.generation) {
-              // 失敗時はログのみ（キー/画像は静的に正当）
-              const cacheResult = Effect.runSync(
-                Effect.either(setCacheEntry(card.id, img)),
-              );
-              if (cacheResult._tag === "Left") {
-                console.warn(
-                  `Failed to cache preloaded image for card: ${card.id}`,
-                  cacheResult.left,
-                );
-              }
-            }
-            cacheState.inflight.delete(card.id);
-            img.onload = null;
-            img.onerror = null;
-          };
-          img.onerror = () => {
-            if (gen === cacheState.generation) {
-              console.warn(`Preload failed for card: ${card.id}`);
-            }
-            cacheState.inflight.delete(card.id);
-            img.onload = null;
-            img.onerror = null;
-          };
-          img.src = url;
-        }
-        currentIndex++;
-      }
-
-      if (currentIndex < uniqueCards.length) {
-        if (
-          typeof window !== "undefined" &&
-          typeof (window as any).requestIdleCallback === "function"
-        ) {
-          (window as any).requestIdleCallback(processBatch);
-        } else {
-          // requestIdleCallbackがサポートされていない場合のフォールバック
-          setTimeout(() => processBatch(), 100);
-        }
-      }
-    };
-
-    if (
-      typeof window !== "undefined" &&
-      typeof (window as any).requestIdleCallback === "function"
+  let currentIndex = 0;
+  const startGen = cacheState.generation;
+  // 事前に重複 ID を除去
+  const uniqueCards = Array.from(new Map(cards.map((c) => [c.id, c])).values());
+  const processBatch = (deadline?: { timeRemaining: () => number }): void => {
+    if (cacheState.generation !== startGen) return;
+    while (
+      currentIndex < uniqueCards.length &&
+      (!deadline || deadline.timeRemaining() > 0)
     ) {
-      (window as any).requestIdleCallback(processBatch);
-    } else {
-      setTimeout(() => processBatch(), 100);
+      // 同時実行の上限
+      if (cacheState.inflight.size >= PRELOAD_MAX_INFLIGHT) break;
+      const card = uniqueCards[currentIndex];
+      if (!card.id) {
+        currentIndex++;
+        continue;
+      }
+      let url: string;
+      try {
+        url = getCardImageUrl(card.id);
+      } catch (e) {
+        console.warn(`Failed to get image URL for card: ${card.id}`, e);
+        currentIndex++;
+        continue;
+      }
+
+      if (url.endsWith("placeholder.avif")) {
+        currentIndex++;
+        continue;
+      }
+      if (!hasCacheEntry(card.id) && !cacheState.inflight.has(card.id)) {
+        const gen = cacheState.generation;
+        cacheState.inflight.add(card.id);
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.decoding = "async";
+        setLowFetchPriority(img);
+        img.onload = () => {
+          if (gen === cacheState.generation) {
+            try {
+              setCacheEntry(card.id, img);
+            } catch (e) {
+              console.warn(
+                `Failed to cache preloaded image for card: ${card.id}`,
+                e,
+              );
+            }
+          }
+          cacheState.inflight.delete(card.id);
+          img.onload = null;
+          img.onerror = null;
+        };
+        img.onerror = () => {
+          if (gen === cacheState.generation) {
+            console.warn(`Preload failed for card: ${card.id}`);
+          }
+          cacheState.inflight.delete(card.id);
+          img.onload = null;
+          img.onerror = null;
+        };
+        img.src = url;
+      }
+      currentIndex++;
     }
-  });
+
+    if (currentIndex < uniqueCards.length) {
+      if (
+        typeof window !== "undefined" &&
+        typeof (window as any).requestIdleCallback === "function"
+      ) {
+        (window as any).requestIdleCallback(processBatch);
+      } else {
+        // requestIdleCallbackがサポートされていない場合のフォールバック
+        setTimeout(() => processBatch(), 100);
+      }
+    }
+  };
+
+  if (
+    typeof window !== "undefined" &&
+    typeof (window as any).requestIdleCallback === "function"
+  ) {
+    (window as any).requestIdleCallback(processBatch);
+  } else {
+    setTimeout(() => processBatch(), 100);
+  }
 };
 // キャッシュ管理用のユーティリティ関数をエクスポート
 export const clearImageCache = (): void => {
