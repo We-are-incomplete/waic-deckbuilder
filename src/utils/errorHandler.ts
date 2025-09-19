@@ -4,7 +4,6 @@
  * - 方針: 例外は投げず Effect とエラーADTを使用する。
  */
 import { Data, Effect } from "effect";
-import { logger } from "./logger";
 import { DeckOperationError } from "../types/deck";
 
 // エラーの種類を定義
@@ -26,9 +25,9 @@ export const ERROR_MESSAGES = {
 // ログ出力関数
 const logError = (message: string, error?: unknown): void => {
   if (error) {
-    logger.error(message, error);
+    console.error(message, error);
   } else {
-    logger.error(message);
+    console.error(message);
   }
 };
 

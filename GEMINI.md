@@ -36,24 +36,11 @@ TypeScript で関数型ドメインモデリングを行う。class を使わず
 
 # Semantic Commit Messages
 
-See how a minor change to your commit message style can make you a better programmer.
-
 Format: `<type>(<scope>): <subject>`
 
-`<scope>` is optional
+`<subject>` is written in Japanese.
 
-## Example
-
-```text
-feat: add hat wobble
-^--^  ^------------^
-|     |
-|     +-> Summary in present tense.
-|
-+-------> Type: chore, docs, feat, fix, refactor, style, or test.
-```
-
-More Examples:
+Type Examples:
 
 - `feat`: (new feature for the user, not a new feature for build script)
 - `fix`: (bug fix for the user, not a fix to a build script)

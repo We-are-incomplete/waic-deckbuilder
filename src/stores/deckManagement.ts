@@ -3,7 +3,6 @@ import { ref } from "vue";
 import { useCookies } from "@vueuse/integrations/useCookies";
 import { useDeckCodeStore } from "./deckCode";
 import { Effect, Either } from "effect";
-import { logger } from "../utils";
 
 interface SavedDeck {
   name: string;
@@ -44,7 +43,10 @@ export const useDeckManagementStore = defineStore("deckManagement", () => {
     if (Either.isRight(storedDecksResult)) {
       savedDecks.value = storedDecksResult.right;
     } else {
-      logger.error("Failed to load decks from cookie:", storedDecksResult.left);
+      console.error(
+        "Failed to load decks from cookie:",
+        storedDecksResult.left,
+      );
       savedDecks.value = [];
     }
   };

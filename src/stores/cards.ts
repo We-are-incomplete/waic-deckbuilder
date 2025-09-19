@@ -6,7 +6,7 @@
 import { defineStore } from "pinia";
 import { ref, shallowRef, readonly, computed, markRaw, triggerRef } from "vue";
 import type { Card } from "../types";
-import { preloadImages, loadCardsFromCsv, logger } from "../utils";
+import { preloadImages, loadCardsFromCsv } from "../utils";
 import * as CardDomain from "../domain";
 import { Effect } from "effect";
 import { useMemoize } from "@vueuse/core";
@@ -123,7 +123,7 @@ export const useCardsStore = defineStore("cards", () => {
     for (const card of cards) {
       // 基本的な検証
       if (!card.id || !card.name || !card.kind || !card.type) {
-        logger.warn("不正なカードデータをスキップしました:", card);
+        console.warn("不正なカードデータをスキップしました:", card);
         continue;
       }
 
@@ -314,7 +314,7 @@ export const useCardsStore = defineStore("cards", () => {
       if (csvLoadResult._tag === "Left") {
         const mapped = mapErrorToCardStoreError(csvLoadResult.left);
         error.value = mapped;
-        logger.error("カードデータの読み込みエラー:", mapped, {
+        console.error("カードデータの読み込みエラー:", mapped, {
           cause: csvLoadResult.left,
         });
         return;
@@ -327,7 +327,7 @@ export const useCardsStore = defineStore("cards", () => {
       if (ensuredResult._tag === "Left") {
         const mapped = mapErrorToCardStoreError(ensuredResult.left);
         error.value = mapped;
-        logger.error("カードデータの読み込みエラー:", mapped, {
+        console.error("カードデータの読み込みエラー:", mapped, {
           cause: ensuredResult.left,
         });
         return;
@@ -341,14 +341,14 @@ export const useCardsStore = defineStore("cards", () => {
 
       Effect.runSync(
         Effect.catchAll(preloadImages(checkedCards), (err) =>
-          Effect.sync(() => logger.warn("画像プリロード失敗:", err)),
+          Effect.sync(() => console.warn("画像プリロード失敗:", err)),
         ),
       );
-      logger.info(`${checkedCards.length}枚のカードを読み込みました`);
+      console.info(`${checkedCards.length}枚のカードを読み込みました`);
     } catch (e) {
       const mapped = mapErrorToCardStoreError(e);
       error.value = mapped;
-      logger.error(
+      console.error(
         "カードデータの読み込み中に予期せぬエラーが発生しました:",
         mapped,
         {

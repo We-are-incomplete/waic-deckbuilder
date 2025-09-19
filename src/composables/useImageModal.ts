@@ -7,7 +7,7 @@
  */
 import { shallowRef, computed, triggerRef, watch, type Ref } from "vue";
 import type { Card, DeckCard } from "../types";
-import { getCardImageUrlSafe, globalImageUrlCache, logger } from "../utils";
+import { getCardImageUrlSafe, globalImageUrlCache } from "../utils";
 import { useCardsStore } from "../stores";
 
 /**
@@ -76,7 +76,7 @@ export function useImageModal(sortedDeckCards: Ref<readonly DeckCard[]>) {
         isVisible: true,
       });
     } else {
-      logger.warn("[useImageModal] カード未検出", { cardId });
+      console.warn("[useImageModal] カード未検出", { cardId });
     }
   };
 
