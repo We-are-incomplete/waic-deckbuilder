@@ -8,7 +8,6 @@
 import type { Card, CardKind, CardType } from "../types";
 import { CARD_KINDS, CARD_TYPES } from "../constants";
 import { Effect, Data } from "effect";
-import { logger } from "./logger";
 import Papa from "papaparse";
 
 interface CsvCardRow {
@@ -119,7 +118,7 @@ export function loadCardsFromCsv(
   csvPath: string,
 ): Effect.Effect<Card[], CardDataConverterError> {
   if (import.meta.env?.DEV)
-    logger.debug("Attempting to fetch CSV from:", csvPath);
+    console.debug("Attempting to fetch CSV from:", csvPath);
 
   return Effect.tryPromise({
     try: async () => {
@@ -144,12 +143,12 @@ export function loadCardsFromCsv(
       }
 
       if (import.meta.env?.DEV)
-        logger.debug("CSV data fetched successfully, length:", csvText.length);
+        console.debug("CSV data fetched successfully, length:", csvText.length);
 
       return csvText;
     },
     catch: (error) => {
-      logger.error("Fetch error:", error);
+      console.error("Fetch error:", error);
       if (error instanceof Error && error.message.startsWith("HTTP error!")) {
         return new CardDataConverterError({
           type: "FetchError",
@@ -176,7 +175,7 @@ export function loadCardsFromCsv(
 function parseCsv(
   csvText: string,
 ): Effect.Effect<Card[], CardDataConverterError> {
-  if (import.meta.env?.DEV) logger.debug("Parsing CSV text with PapaParse...");
+  if (import.meta.env?.DEV) console.debug("Parsing CSV text with PapaParse...");
   const parseResult = Papa.parse<CsvCardRow>(csvText, {
     header: true, // ヘッダー行をオブジェクトのキーとして使用
     skipEmptyLines: true, // 空行をスキップ
@@ -196,7 +195,7 @@ function parseCsv(
   });
 
   if (parseResult.errors.length > 0) {
-    logger.error("PapaParse errors:", parseResult.errors);
+    console.error("PapaParse errors:", parseResult.errors);
     return Effect.fail(
       new CardDataConverterError({
         type: "ParseError",
@@ -279,6 +278,6 @@ function parseCsv(
   }
 
   if (import.meta.env?.DEV)
-    logger.debug("Successfully parsed cards:", cards.length);
+    console.debug("Successfully parsed cards:", cards.length);
   return Effect.succeed(cards);
 }

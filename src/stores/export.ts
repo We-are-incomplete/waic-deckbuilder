@@ -6,7 +6,7 @@
 import { defineStore } from "pinia";
 import { ref, nextTick, readonly } from "vue";
 import html2canvas from "html2canvas-pro";
-import { generateFileName, downloadCanvas, logger } from "../utils";
+import { generateFileName, downloadCanvas } from "../utils";
 
 import { useEventListener } from "@vueuse/core";
 import { Effect } from "effect";
@@ -206,7 +206,7 @@ export const useExportStore = defineStore("export", () => {
       );
 
       if (imageLoadResult._tag === "Left") {
-        logger.error("画像の読み込みに失敗しました:", imageLoadResult.left);
+        console.error("画像の読み込みに失敗しました:", imageLoadResult.left);
         return Effect.fail(imageLoadResult.left); // 画像読み込みエラーを伝播
       }
 
@@ -246,10 +246,10 @@ export const useExportStore = defineStore("export", () => {
         return Effect.fail(dl.left);
       }
 
-      logger.info(`デッキ画像を保存しました: ${filename}`);
+      console.info(`デッキ画像を保存しました: ${filename}`);
     } catch (e) {
       const errorMessage = "デッキ画像の保存に失敗しました";
-      logger.error(errorMessage + ":", e);
+      console.error(errorMessage + ":", e);
       return Effect.fail({
         type: "unknown",
         message: errorMessage,

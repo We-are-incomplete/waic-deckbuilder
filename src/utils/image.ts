@@ -6,7 +6,6 @@
  * 注意: DOM を扱う関数（プリロード/クリーンアップ）は SSR では呼び出さない
  */
 import type { Card } from "../types";
-import { logger } from "./logger";
 import { Effect, Data } from "effect";
 
 type NetworkInformationLite = { saveData?: boolean };
@@ -199,7 +198,7 @@ export const cleanupStaleEntries = (): void => {
     }
   }
 
-  logger.debug(
+  console.debug(
     `Image cache cleanup: removed ${keysToDelete.length} stale entries (size=${cacheState.cache.size}/${MAX_CACHE_SIZE}, ttl=${STALE_ENTRY_TTL_MS}ms)`,
   );
 };
@@ -269,7 +268,7 @@ export const getCardImageUrlSafe = (cardId: string): string => {
     return result.right;
   }
   // エラーをログに記録
-  logger.warn(`Failed to get image URL for card: ${cardId}`, result.left);
+  console.warn(`Failed to get image URL for card: ${cardId}`, result.left);
   return getPlaceholderSrc();
 };
 
@@ -314,7 +313,7 @@ export const preloadImages = (
   const conn = (navigator as unknown as { connection?: NetworkInformationLite })
     .connection;
   if (conn?.saveData) {
-    logger.info("Preload skipped due to saveData mode");
+    console.info("Preload skipped due to saveData mode");
     return Effect.succeed(undefined);
   }
   // 有効なら低優先度で取得
@@ -366,7 +365,7 @@ export const preloadImages = (
                 Effect.either(setCacheEntry(card.id, img)),
               );
               if (cacheResult._tag === "Left") {
-                logger.warn(
+                console.warn(
                   `Failed to cache preloaded image for card: ${card.id}`,
                   cacheResult.left,
                 );
@@ -378,7 +377,7 @@ export const preloadImages = (
           };
           img.onerror = () => {
             if (gen === cacheState.generation) {
-              logger.warn(`Preload failed for card: ${card.id}`);
+              console.warn(`Preload failed for card: ${card.id}`);
             }
             cacheState.inflight.delete(card.id);
             img.onload = null;
