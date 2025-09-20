@@ -6,6 +6,7 @@
 
 import type { Card, CardType } from "../types";
 import { CARD_KINDS, CARD_TYPES } from "../constants";
+import { CardIdSchema } from "../domain";
 import * as v from "valibot";
 import Papa from "papaparse";
 
@@ -245,6 +246,16 @@ function parseCsv(csvText: string): Card[] {
       });
     }
 
+    // 追加: CardIdSchema による ID の厳格検証
+    const idResult = v.safeParse(CardIdSchema, parsed.output.id);
+    if (!idResult.success) {
+      console.error(
+        `無効なカードIDを検出したためこの行をスキップします: id="${parsed.output.id}"`,
+        idResult.issues,
+      );
+      continue; // 無効IDの行はスキップ
+    }
+
     // kind の最終検証（ピックリスト化）
     const kindResult = v.safeParse(CsvKindSchema, parsed.output.kind);
     if (!kindResult.success) {
@@ -256,7 +267,7 @@ function parseCsv(csvText: string): Card[] {
 
     const types = toCardTypeArray(parsed.output.type);
     cards.push({
-      id: parsed.output.id,
+      id: idResult.output,
       name: parsed.output.name,
       kind: kindResult.output,
       type: types,
