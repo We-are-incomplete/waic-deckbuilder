@@ -1,9 +1,16 @@
+<!--
+ Component: DeckSection
+ Purpose : デッキの編集/表示/エクスポートUI
+ Props   : isGeneratingCode(boolean), isSaving(boolean)
+ Emits   : generateDeckCode, resetDeck, openImageModal(cardId), openDeckManagementModal
+ Store   : useDeckStore（deckName, deckCards, sortedDeckCards, totalDeckCards）
+ Constraints: MAX_DECK_SIZE, MAX_CARD_COPIES を超えない
+-->
 <script setup lang="ts">
 import { computed, useTemplateRef } from "vue";
 import { DeckExportContainer } from "../index";
 import { GAME_CONSTANTS } from "../../constants";
 import { getCardImageUrl, handleImageError } from "../../utils";
-import { useDeckOperations } from "../../composables/useDeckOperations";
 import { useDeckStore } from "../../stores";
 import { storeToRefs } from "pinia";
 import { useLongPressImageModal } from "../../composables/useLongPressImageModal";
@@ -28,11 +35,13 @@ const emit = defineEmits<Emits>();
 // ストアとコンポーザブルの初期化
 const deckStore = useDeckStore();
 
-// デッキ操作のコンポーザブル
-const {
-  incrementCardCount: handleIncrementCard,
-  decrementCardCount: handleDecrementCard,
-} = useDeckOperations();
+// デッキ操作（ストアを直接呼び出し）
+const handleIncrementCard = (cardId: string) => {
+  deckStore.incrementCardCount(cardId);
+};
+const handleDecrementCard = (cardId: string) => {
+  deckStore.decrementCardCount(cardId);
+};
 
 // 計算プロパティ（ストアから直接取得）- Vue 3.5の改善されたreactivity
 const { deckCards, deckName, sortedDeckCards, totalDeckCards } =
@@ -111,8 +120,7 @@ const onDeckImageError = (e: Event) => {
         <input
           id="deckName"
           type="text"
-          :value="deckName"
-          @input="updateDeckName(($event.target as HTMLInputElement).value)"
+          v-model="deckName"
           class="flex-grow px-1 sm:px-2 py-0.5 sm:py-1 text-xs sm:text-base rounded bg-slate-800/80 border border-slate-600/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 backdrop-blur-sm placeholder-slate-400"
           placeholder="デッキ名を入力"
         />

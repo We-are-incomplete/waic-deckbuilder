@@ -6,11 +6,12 @@
   留意: ドメイン制約(MAX_CARD_COPIES)は表示制御のみで、最終判定は親/ドメイン層に委譲
 -->
 <script setup lang="ts">
-import { computed, shallowRef, watch, onMounted, onBeforeUnmount } from "vue";
+import { computed } from "vue";
 import { GAME_CONSTANTS } from "../../constants";
 import type { Card, DeckCard } from "../../types";
 import { handleImageError, getCardImageUrl } from "../../utils";
 import { useLongPressImageModal } from "../../composables/useLongPressImageModal";
+import { useStorage } from "@vueuse/core";
 
 interface Props {
   availableCards: readonly Card[];
@@ -31,62 +32,19 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-// お気に入りカードIDの管理（安全な初期化＋不変更新）
+// お気に入りカードIDの管理（useStorage で配列を永続化）
 const FAVORITE_CARDS_STORAGE_KEY = "waic-deckbuilder-favorite-cards";
-
-const loadFavoriteIds = (): string[] => {
-  if (typeof window === "undefined") return [];
-  const raw = window.localStorage.getItem(FAVORITE_CARDS_STORAGE_KEY) ?? "[]";
-  try {
-    const data = JSON.parse(raw) as unknown;
-    return Array.isArray(data)
-      ? data.filter((x): x is string => typeof x === "string")
-      : [];
-  } catch (e) {
-    if (import.meta.env.DEV) console.warn("JSON parse error for favorites", e);
-    return [];
-  }
-};
-
-const favoriteCardIds = shallowRef<ReadonlySet<string>>(
-  new Set(loadFavoriteIds()),
+const favoriteIds = useStorage<string[]>(FAVORITE_CARDS_STORAGE_KEY, []);
+const favoriteCardIds = computed<ReadonlySet<string>>(
+  () => new Set(favoriteIds.value),
 );
-
-const persistFavorites = () => {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(
-      FAVORITE_CARDS_STORAGE_KEY,
-      JSON.stringify([...favoriteCardIds.value].sort()),
-    );
-  } catch (e) {
-    if (import.meta.env.DEV) console.warn("persistFavorites failed", e);
-  }
-};
-
-// 参照の再代入でのみ発火（深い監視は不要）
-watch(favoriteCardIds, () => {
-  clearTimeout((persistFavorites as any)._t);
-  (persistFavorites as any)._t = setTimeout(persistFavorites, 100);
-});
-
-// 他タブの変更と同期（インスタンスローカルに登録/解除）
-onMounted(() => {
-  const onStorage = (e: StorageEvent) => {
-    if (e.key === FAVORITE_CARDS_STORAGE_KEY || e.key === null) {
-      favoriteCardIds.value = new Set(loadFavoriteIds());
-    }
-  };
-  window.addEventListener("storage", onStorage);
-  onBeforeUnmount(() => window.removeEventListener("storage", onStorage));
-});
 
 const isFavorite = (cardId: string) => favoriteCardIds.value.has(cardId);
 
 const toggleFavorite = (cardId: string) => {
   const next = new Set(favoriteCardIds.value);
   next.has(cardId) ? next.delete(cardId) : next.add(cardId);
-  favoriteCardIds.value = next;
+  favoriteIds.value = [...next].sort();
 };
 
 // 純関数: お気に入り優先で並べ替え
