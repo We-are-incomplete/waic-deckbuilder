@@ -1,3 +1,11 @@
+<!--
+ Component: DeckSection
+ Purpose : デッキの編集/表示/エクスポートUI
+ Props   : isGeneratingCode(boolean), isSaving(boolean)
+ Emits   : generateDeckCode, resetDeck, openImageModal(cardId), openDeckManagementModal
+ Store   : useDeckStore（deckName, deckCards, sortedDeckCards, totalDeckCards）
+ Constraints: MAX_DECK_SIZE, MAX_CARD_COPIES を超えない
+-->
 <script setup lang="ts">
 import { computed, useTemplateRef } from "vue";
 import { DeckExportContainer } from "../index";
@@ -112,8 +120,7 @@ const onDeckImageError = (e: Event) => {
         <input
           id="deckName"
           type="text"
-          :value="deckName"
-          @input="updateDeckName(($event.target as HTMLInputElement).value)"
+          v-model="deckName"
           class="flex-grow px-1 sm:px-2 py-0.5 sm:py-1 text-xs sm:text-base rounded bg-slate-800/80 border border-slate-600/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 backdrop-blur-sm placeholder-slate-400"
           placeholder="デッキ名を入力"
         />

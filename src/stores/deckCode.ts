@@ -3,7 +3,7 @@
  * - 目的: デッキコードの生成/判定/インポート(Store)
  * - 入力: deckStore.deckCards / importDeckCode
  * - 出力: slashDeckCode, kcgDeckCode, デッキセット、副作用: クリップボード
- * - 形式: "slash"（valibot: SlashDeckCodeSchema）, "kcg"（"KCG-"接頭辞）
+ * - 形式: "slash"（decodeDeckCode 内でスキーマ/構文検証）, "kcg"（"KCG-"接頭辞）
  * - エラー方針: DeckCodeError を UI へ伝播（validation/decode/copy/generation）
  */
 import { defineStore } from "pinia";
@@ -19,6 +19,14 @@ import {
 } from "../utils";
 import { sortDeckCards } from "../domain";
 import { useDeckStore } from "./deck";
+
+function buildNoValidCardsMessage(missing: readonly string[]): string {
+  let msg =
+    "有効なカードが見つかりませんでした。カードIDが正しいか確認してください。";
+  if (missing.length > 0)
+    msg += `\n見つからないカードID: ${missing.join(", ")}`;
+  return msg;
+}
 
 export const useDeckCodeStore = defineStore("deckCode", () => {
   const slashDeckCode = ref<string>(""); // スラッシュ区切りコード
@@ -45,7 +53,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
         console.debug("デッキが空のため、空のデッキコードを生成しました。");
       } else {
         // デッキカードをソートしてからエンコード
-        const sortedDeck = sortDeckCards(deckStore.deckCards);
+        const sortedDeck = sortDeckCards([...deckStore.deckCards]);
         const cardIds = sortedDeck.flatMap((item: DeckCard) =>
           Array(item.count).fill(item.card.id),
         );
@@ -259,11 +267,9 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
               );
             }
           } else {
-            let warningMessage =
-              "有効なカードが見つかりませんでした。カードIDが正しいか確認してください。";
-            if (result.missingCardIds.length > 0) {
-              warningMessage += `\n見つからないカードID: ${result.missingCardIds.join(", ")}`;
-            }
+            const warningMessage = buildNoValidCardsMessage(
+              result.missingCardIds,
+            );
             console.warn(warningMessage);
             error.value = new DeckCodeError({
               type: "decode",
@@ -319,8 +325,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
             );
           }
         } else {
-          const warningMessage =
-            "有効なカードが見つかりませんでした。カードIDが正しいか確認してください。";
+          const warningMessage = buildNoValidCardsMessage(missingCardIds);
           console.warn(warningMessage);
           error.value = new DeckCodeError({
             type: "decode",

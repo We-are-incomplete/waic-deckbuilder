@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+/*
+ * 仕様:
+ * - 目的: 検索テキスト/種類/タイプ/タグ/登場条件での絞り込みを行うモーダル
+ * - 入出力: Props { isVisible }, Emits { close }
+ * - 動作: テキストは 200ms デバウンス（maxWait: 1000ms）でストアへ反映
+ *         ストア側のリセット/外部変更は UI へ同期
+ * - 依存: Pinia filterStore / useFilterHelpers / @vueuse/core watchDebounced
+ */
+import { computed, ref, watch } from "vue";
 import { watchDebounced } from "@vueuse/core";
 import { useFilterStore } from "../../stores";
 import { useFilterHelpers } from "../../composables/useFilterHelpers";
@@ -37,9 +45,20 @@ const inputText = ref(filterStore.filterCriteria.text);
 watchDebounced(
   inputText,
   (text) => {
-    filterStore.setTextFilter(text);
+    // 無駄なディスパッチ防止
+    if (text !== filterStore.filterCriteria.text) {
+      filterStore.setTextFilter(text);
+    }
   },
   { debounce: 200, maxWait: 1000 },
+);
+
+// ストア側変更（リセット等）をUIへ反映
+watch(
+  () => filterStore.filterCriteria.text,
+  (text) => {
+    if (text !== inputText.value) inputText.value = text;
+  },
 );
 
 const toggleKind = (kind: CardKind) => {
@@ -109,8 +128,7 @@ const resetFilters = () => {
             <input
               id="searchText"
               type="text"
-              :value="inputText"
-              @input="inputText = ($event.target as HTMLInputElement).value"
+              v-model="inputText"
               class="w-full px-3 py-2 pr-10 text-sm sm:text-base rounded bg-gray-700 border border-gray-600 focus:outline-none focus:ring focus:border-blue-500"
               placeholder="カード名、ID、タグを入力"
             />
