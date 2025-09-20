@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
+import { watchDebounced } from "@vueuse/core";
 import { useFilterStore } from "../../stores";
 import { useFilterHelpers } from "../../composables/useFilterHelpers";
 import type { CardKind, CardType } from "../../types";
@@ -31,10 +32,15 @@ const filterStats = computed(() => filterStore.filterStats);
 const { isKindSelected, isTypeSelected, isTagSelected } =
   useFilterHelpers(filterCriteria);
 
-// フィルター操作メソッド（ストアのメソッドを直接使用）
-const updateText = (text: string) => {
-  filterStore.setTextFilter(text);
-};
+// 入力のデバウンス制御
+const inputText = ref(filterStore.filterCriteria.text);
+watchDebounced(
+  inputText,
+  (text) => {
+    filterStore.setTextFilter(text);
+  },
+  { debounce: 200, maxWait: 1000 },
+);
 
 const toggleKind = (kind: CardKind) => {
   filterStore.toggleKindFilter(kind);
@@ -103,15 +109,15 @@ const resetFilters = () => {
             <input
               id="searchText"
               type="text"
-              :value="filterCriteria.text"
-              @input="updateText(($event.target as HTMLInputElement).value)"
+              :value="inputText"
+              @input="inputText = ($event.target as HTMLInputElement).value"
               class="w-full px-3 py-2 pr-10 text-sm sm:text-base rounded bg-gray-700 border border-gray-600 focus:outline-none focus:ring focus:border-blue-500"
               placeholder="カード名、ID、タグを入力"
             />
             <!-- 検索クリアボタン -->
             <button
-              v-if="filterCriteria.text"
-              @click="updateText('')"
+              v-if="inputText"
+              @click="inputText = ''"
               class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
             >
               <svg
