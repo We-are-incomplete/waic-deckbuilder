@@ -23,13 +23,6 @@ const getPlaceholderSrc = (): string =>
   `${getNormalizedBaseUrl()}placeholder.avif`;
 
 /**
- * カード画像URLを安全に取得
- */
-export const getCardImageUrlSafe = (cardId: string): string => {
-  return getCardImageUrl(cardId);
-};
-
-/**
  * 画像エラー時の処理
  */
 export const handleImageError = (event: Event): void => {
@@ -45,5 +38,3 @@ export const handleImageError = (event: Event): void => {
   } catch {}
   img.src = getPlaceholderSrc();
 };
-
-// 以降のプリロードやキャッシュ関連の機能は削除し、シンプルなURL取得とエラーフォールバックのみを提供

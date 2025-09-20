@@ -96,6 +96,11 @@ export const deserializeDeckCards = (
 };
 
 // useLocalStorage を使用してデッキカードを管理
+const DeckItemSchema = v.object({
+  id: CardIdSchema,
+  count: v.pipe(v.number(), v.integer(), v.minValue(0)),
+});
+const DeckArraySchema = v.array(DeckItemSchema);
 const deckCardsStorage = useLocalStorage<
   readonly { id: string; count: number }[]
 >(STORAGE_KEYS.DECK_CARDS, [] as readonly { id: string; count: number }[], {
@@ -103,11 +108,6 @@ const deckCardsStorage = useLocalStorage<
     read: (raw: string): readonly { id: string; count: number }[] => {
       try {
         const data = JSON.parse(raw) as unknown;
-        const DeckItemSchema = v.object({
-          id: CardIdSchema,
-          count: v.pipe(v.number(), v.integer(), v.minValue(0)),
-        });
-        const DeckArraySchema = v.array(DeckItemSchema);
         const result = v.safeParse(DeckArraySchema, data);
         if (result.success) return result.output;
         console.warn(

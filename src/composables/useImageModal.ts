@@ -7,7 +7,7 @@
  */
 import { shallowRef, computed, triggerRef, watch, type Ref } from "vue";
 import type { Card, DeckCard } from "../types";
-import { getCardImageUrlSafe } from "../utils";
+import { getCardImageUrl } from "../utils";
 import { useCardsStore } from "../stores";
 
 /**
@@ -36,11 +36,6 @@ export function useImageModal(sortedDeckCards: Ref<readonly DeckCard[]>) {
   const cardsStore = useCardsStore();
 
   /**
-   * 画像URLをキャッシュから高速取得
-   */
-  const getImageUrl = (cardId: string): string => getCardImageUrlSafe(cardId);
-
-  /**
    * Vue 3.5の新機能: より効率的な状態更新
    */
   const updateImageModalState = (updates: Partial<ImageModalState>) => {
@@ -62,7 +57,7 @@ export function useImageModal(sortedDeckCards: Ref<readonly DeckCard[]>) {
       updateImageModalState({
         selectedCard: card,
         selectedIndex: idxInDeck >= 0 ? idxInDeck : null,
-        selectedImage: getImageUrl(cardId),
+        selectedImage: getCardImageUrl(cardId),
         isVisible: true,
       });
     } else {
@@ -109,7 +104,7 @@ export function useImageModal(sortedDeckCards: Ref<readonly DeckCard[]>) {
     updateImageModalState({
       selectedCard: newDeckCard.card,
       selectedIndex: newIndex,
-      selectedImage: getImageUrl(newDeckCard.card.id),
+      selectedImage: getCardImageUrl(newDeckCard.card.id),
     });
   };
 

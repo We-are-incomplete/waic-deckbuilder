@@ -45,9 +45,13 @@ export const SlashDeckCodeSchema = v.pipe(
     GAME_CONSTANTS.MAX_DECK_CODE_LENGTH,
     `デッキコードが長すぎます（最大${GAME_CONSTANTS.MAX_DECK_CODE_LENGTH}文字）`,
   ),
-  v.check((s) => !s.startsWith("/") && !s.endsWith("/"), "先頭/末尾の'/'は無効です"),
+  v.check(
+    (s) => !s.startsWith("/") && !s.endsWith("/"),
+    "先頭/末尾の'/'は無効です",
+  ),
   v.check((s) => !s.includes("//"), "連続した'//'は無効です"),
-  v.check((s) => s.split("/").every((id) => CARD_ID_REGEX.test(id.trim())), "無効なカードIDが含まれます"),
+  v.check(
+    (s) => s.split("/").every((id) => CARD_ID_REGEX.test(id.trim())),
+    "無効なカードIDが含まれます",
+  ),
 );
-
-

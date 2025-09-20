@@ -48,7 +48,7 @@ export const useDeckStore = defineStore("deck", () => {
   // メモ化最適化用のバージョン管理
   // バージョン管理は簡素化
   const deckVersion = ref(0);
-  const incrementVersion = () => (deckVersion.value++);
+  const incrementVersion = () => deckVersion.value++;
 
   // 集中エラーハンドリングは削除
 
@@ -67,16 +67,10 @@ export const useDeckStore = defineStore("deck", () => {
     return generateDeckHash(deckCards.value);
   });
 
-  // メモ化されたソート処理
-  const sortDeck = (cards: readonly DeckCard[]): readonly DeckCard[] =>
-    sortDeckCards(cards);
-
   /**
    * Vue 3.5最適化: ソート済みデッキカード
    */
-  const sortedDeckCards = computed(() => {
-    return sortDeck(deckCards.value);
-  });
+  const sortedDeckCards = computed(() => sortDeckCards(deckCards.value));
 
   /**
    * Vue 3.5最適化: デッキの合計枚数

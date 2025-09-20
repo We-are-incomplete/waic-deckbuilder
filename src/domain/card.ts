@@ -88,7 +88,12 @@ const CardTypeListSchema = v.pipe(
 );
 const TagsSchema = v.optional(
   v.pipe(
-    v.array(v.pipe(v.string(), v.transform((s) => s.trim()))),
+    v.array(
+      v.pipe(
+        v.string(),
+        v.transform((s) => s.trim()),
+      ),
+    ),
     v.transform((tags: string[]) =>
       Array.from(new Set(tags.filter((t: string) => t.length > 0))),
     ),
@@ -122,10 +127,17 @@ export const createCard = (
   if (!result.success) {
     // 代表的なエラー型にマップして既存のエラー型を維持
     const issues = result.issues;
-    const byKey = (k: string) => issues.find((i) => i.path?.some((p) => p.key === k));
-    if (byKey("id")) throw new CardValidationError({ type: "InvalidId", value: id });
-    if (byKey("name")) throw new CardValidationError({ type: "InvalidName", value: name });
-    if (byKey("kind")) throw new CardValidationError({ type: "InvalidKind", value: String(kind) });
+    const byKey = (k: string) =>
+      issues.find((i) => i.path?.some((p) => p.key === k));
+    if (byKey("id"))
+      throw new CardValidationError({ type: "InvalidId", value: id });
+    if (byKey("name"))
+      throw new CardValidationError({ type: "InvalidName", value: name });
+    if (byKey("kind"))
+      throw new CardValidationError({
+        type: "InvalidKind",
+        value: String(kind),
+      });
     if (byKey("type")) {
       const tIssue = byKey("type");
       const msg = tIssue?.message ?? "type invalid";
@@ -135,9 +147,11 @@ export const createCard = (
       if (msg.includes("重複")) {
         throw new CardValidationError({ type: "DuplicateTypes", value: type });
       }
-      throw new CardValidationError({ type: "InvalidType", value: type as unknown as string });
+      throw new CardValidationError({
+        type: "InvalidType",
+        value: type.join(", "),
+      });
     }
-    if (byKey("tags")) throw new CardValidationError({ type: "DuplicateTags", value: tags });
     // フォールバック
     throw new Error("Invalid card input");
   }

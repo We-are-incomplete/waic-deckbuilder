@@ -59,18 +59,18 @@ export const useDeckOperations = () => {
         return {
           totalCount: state.totalCount,
           isValid: false,
-            validationErrors: state.errors.map((e) => {
-              switch (e.type) {
-                case "CardNotFound":
-                  return `カードが見つかりません: ${e.cardId}`;
-                case "MaxCountExceeded":
-                  return `最大枚数を超過しました: ${e.cardId} (最大: ${e.maxCount ?? "不明"})`;
-                case "InvalidCardCount":
-                  return `不正なカード枚数です: ${e.cardId} (指定: ${e.count ?? "不明"})`;
-                default:
-                  return "不明なエラー";
-              }
-            }),
+          validationErrors: state.errors.map((e) => {
+            switch (e.type) {
+              case "CardNotFound":
+                return `カードが見つかりません: ${e.cardId}`;
+              case "MaxCountExceeded":
+                return `最大枚数を超過しました: ${e.cardId} (最大: ${e.maxCount ?? "不明"})`;
+              case "InvalidCardCount":
+                return `不正なカード枚数です: ${e.cardId} (指定: ${e.count ?? "不明"})`;
+              default:
+                return "不明なエラー";
+            }
+          }),
         };
     }
   });

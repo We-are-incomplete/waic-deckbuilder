@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import type { DeckCard } from "../../types";
-import { handleImageError, getCardImageUrlSafe } from "../../utils";
+import { handleImageError, getCardImageUrl } from "../../utils";
 
 interface Props {
   deckName: string;
@@ -107,7 +107,7 @@ const onImageError = (e: Event) => {
       >
         <!-- カード画像 -->
         <img
-          :src="getCardImageUrlSafe(item.card.id)"
+          :src="getCardImageUrl(item.card.id)"
           :alt="item.card.name"
           class="w-full h-full object-cover rounded-lg"
           crossorigin="anonymous"

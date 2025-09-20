@@ -133,24 +133,9 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
    * デッキコード形式を判定
    */
   const detectDeckCodeFormat = (code: string): "kcg" | "slash" | "unknown" => {
-    const trimmedCode = code.trim();
-
-    // KCG形式の判定
-    if (trimmedCode.startsWith("KCG-")) {
-      return "kcg";
-    }
-
-    // スラッシュ区切り形式の判定
-    // カードIDパターンをチェック
-    const cardIdPattern = /^([A-Z]|ex|prm)(A|S|M|D)-\d+$/;
-    const cardIds = trimmedCode.split("/");
-    if (
-      cardIds.length > 0 &&
-      cardIds.every((id) => cardIdPattern.test(id.trim()))
-    ) {
-      return "slash";
-    }
-
+    const s = code.trim();
+    if (s.startsWith("KCG-")) return "kcg";
+    if (s.includes("/")) return "slash"; // 詳細検証は Schema 側へ委譲
     return "unknown";
   };
 
@@ -312,7 +297,8 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
         // スラッシュ区切り形式の詳細検証（valibot）
         const parsed = v.safeParse(SlashDeckCodeSchema, trimmedCode);
         if (!parsed.success) {
-          const warningMessage = parsed.issues[0]?.message || "無効なデッキコード形式です";
+          const warningMessage =
+            parsed.issues[0]?.message || "無効なデッキコード形式です";
           console.warn(warningMessage);
           error.value = new DeckCodeError({
             type: "validation",

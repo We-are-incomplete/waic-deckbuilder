@@ -19,8 +19,7 @@ type CardStoreError =
       readonly message: string;
     }
   | { readonly type: "parse"; readonly message: string }
-  | { readonly type: "validation"; readonly message: string }
-  | { readonly type: "preload"; readonly message: string };
+  | { readonly type: "validation"; readonly message: string };
 
 export const useCardsStore = defineStore("cards", () => {
   const availableCards = shallowRef<readonly Card[]>([]);
@@ -190,8 +189,7 @@ export const useCardsStore = defineStore("cards", () => {
     if (!searchText || searchText.trim().length === 0) {
       return availableCards.value;
     }
-    const normalizedSearch = searchText.trim().toLowerCase();
-    return CardDomain.searchCardsByName(availableCards.value, normalizedSearch);
+    return CardDomain.searchCardsByName(availableCards.value, searchText);
   };
 
   /**

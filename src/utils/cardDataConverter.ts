@@ -129,14 +129,27 @@ const CsvTypeArray = v.pipe(
 );
 const CsvTagsArray = v.pipe(
   v.array(v.string()),
-  v.transform((arr) => Array.from(new Set(arr.filter((x) => x && x.length > 0)))),
+  v.transform((arr) =>
+    Array.from(new Set(arr.filter((x) => x && x.length > 0))),
+  ),
 );
 const CsvRowSchema = v.object({
   id: CsvIdName,
   name: CsvIdName,
-  kind: v.pipe(v.string(), v.trim(), v.transform((s) => s as string)),
+  kind: v.pipe(
+    v.string(),
+    v.trim(),
+    v.transform((s) => s as string),
+  ),
   type: CsvTypeArray,
-  effect: v.optional(v.pipe(v.string(), v.transform((s) => s.trim()), v.nonEmpty()), undefined),
+  effect: v.optional(
+    v.pipe(
+      v.string(),
+      v.transform((s) => s.trim()),
+      v.nonEmpty(),
+    ),
+    undefined,
+  ),
   tags: CsvTagsArray,
 });
 

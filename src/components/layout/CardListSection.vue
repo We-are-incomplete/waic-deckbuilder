@@ -9,7 +9,7 @@
 import { computed, shallowRef, watch, onMounted, onBeforeUnmount } from "vue";
 import { GAME_CONSTANTS } from "../../constants";
 import type { Card, DeckCard } from "../../types";
-import { handleImageError, getCardImageUrlSafe } from "../../utils";
+import { handleImageError, getCardImageUrl } from "../../utils";
 import { useLongPressImageModal } from "../../composables/useLongPressImageModal";
 
 interface Props {
@@ -286,7 +286,7 @@ const onListImageError = (e: Event) => {
           @contextmenu.prevent
         >
           <img
-            :src="getCardImageUrlSafe(card.id)"
+            :src="getCardImageUrl(card.id)"
             @error="onListImageError"
             :alt="card.name"
             loading="lazy"
