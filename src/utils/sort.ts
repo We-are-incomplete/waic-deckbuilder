@@ -13,36 +13,11 @@ export type SortComparator<T> = (a: T, b: T) => number;
  * 自然順ソート関数を作成（純粋関数）
  */
 export const createNaturalSort = (): SortComparator<string> => {
-  return (a: string, b: string): number => {
-    const regex = /(\d+)|(\D+)/g;
-    const tokensA = a.match(regex);
-    const tokensB = b.match(regex);
-
-    if (!tokensA || !tokensB) return a.localeCompare(b);
-
-    for (let i = 0; i < Math.min(tokensA.length, tokensB.length); i++) {
-      const tokenA = tokensA[i];
-      const tokenB = tokensB[i];
-      const numA = parseInt(tokenA, 10);
-      const numB = parseInt(tokenB, 10);
-
-      if (!isNaN(numA) && !isNaN(numB)) {
-        if (numA !== numB) return numA - numB;
-      } else {
-        const charCodeA = tokenA.charCodeAt(0);
-        const charCodeB = tokenB.charCodeAt(0);
-        const isUpperA = charCodeA >= 65 && charCodeA <= 90;
-        const isUpperB = charCodeB >= 65 && charCodeB <= 90;
-
-        if (isUpperA !== isUpperB) {
-          return isUpperA ? -1 : 1;
-        }
-        if (tokenA !== tokenB) return tokenA.localeCompare(tokenB);
-      }
-    }
-
-    return tokensA.length - tokensB.length;
-  };
+  const collator = new Intl.Collator("ja", {
+    numeric: true,
+    sensitivity: "base",
+  });
+  return (a: string, b: string): number => collator.compare(a, b);
 };
 
 /**
