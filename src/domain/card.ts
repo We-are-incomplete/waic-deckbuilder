@@ -7,8 +7,8 @@
  * - 副作用を避け、不変データ構造を優先する関数型アプローチを採用
  */
 import type { Card, CardKind, CardType } from "../types";
-import { CARD_KINDS, CARD_TYPES } from "../constants";
 import * as v from "valibot";
+import { CardKindSchema, CardTypeSchema } from "./validation";
 
 /**
  * カードの検証中に発生しうるエラーを表す代数的データ型。
@@ -75,8 +75,6 @@ export class CardValidationError extends Error {
 }
 
 // Valibot スキーマ定義（実行時バリデーション + 正規化）
-const CardKindSchema = v.picklist(CARD_KINDS);
-const CardTypeSchema = v.picklist(CARD_TYPES);
 const NonEmptyTrimmedString = v.pipe(v.string(), v.trim(), v.nonEmpty());
 const CardTypeListSchema = v.pipe(
   v.array(CardTypeSchema),

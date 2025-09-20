@@ -105,20 +105,6 @@ function splitTags(value: unknown): string[] {
     .filter((s) => s !== "");
 }
 
-/**
- * 指定された値がCardKindのいずれかであるかを判定する型ガード
- * @param value 判定する値
- * @returns CardKindであればtrue、そうでなければfalse
- */
-// (valibot スキーマ化のため未使用)
-
-/**
- * 指定された値がCardTypeのいずれかであるかを判定する型ガード
- * @param value 判定する値
- * @returns CardTypeであればtrue、そうでなければfalse
- */
-// (valibot スキーマ化のため未使用)
-
 // Valibot スキーマ（CSV 行 → 正規化）
 const CsvKindSchema = v.picklist(CARD_KINDS);
 const CsvTypeTokenSchema = v.picklist(CARD_TYPES);

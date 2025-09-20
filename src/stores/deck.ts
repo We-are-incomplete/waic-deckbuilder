@@ -23,47 +23,18 @@ import {
 } from "../domain";
 import { useDebounceFn, useEventListener } from "@vueuse/core";
 
-/**
- * デッキの軽量ハッシュを生成する純粋関数
- * 巨大なオブジェクトの代わりに軽量なキーを使用してメモ化を最適化
- */
-const generateDeckHash = (deckCards: readonly DeckCard[]): string => {
-  if (deckCards.length === 0) {
-    return "empty";
-  }
-
-  // カードIDと枚数のタプル配列をソートし、JSON化して衝突を回避
-  const entries = deckCards
-    .map((dc) => [dc.card.id, dc.count] as const)
-    .sort((a, b) => a[0].localeCompare(b[0]));
-  return JSON.stringify(entries);
-};
-
 export const useDeckStore = defineStore("deck", () => {
   // Vue 3.5の新機能: shallowRef for array performance optimization
   // DeckCard配列の深い監視は不要な場合が多いためshallowRefを使用
   const deckCards = shallowRef<readonly DeckCard[]>([]);
   const deckName = ref<string>(DEFAULT_DECK_NAME);
 
-  // メモ化最適化用のバージョン管理
-  // バージョン管理は簡素化
-  const deckVersion = ref(0);
-  const incrementVersion = () => deckVersion.value++;
-
   /**
-   * 成功時の共通処理：デッキカードを更新してバージョンをインクリメント
+   * 成功時の共通処理：デッキカードを更新
    */
-  const updateDeckCardsWithVersion = (newCards: readonly DeckCard[]): void => {
+  const updateDeckCard = (newCards: readonly DeckCard[]): void => {
     deckCards.value = [...newCards];
-    incrementVersion();
   };
-
-  /**
-   * Vue 3.5最適化: デッキハッシュ（メモ化キー用）
-   */
-  const deckHash = computed(() => {
-    return generateDeckHash(deckCards.value);
-  });
 
   /**
    * Vue 3.5最適化: ソート済みデッキカード
@@ -112,7 +83,7 @@ export const useDeckStore = defineStore("deck", () => {
   ): boolean => {
     try {
       const result = executeDeckOperation(deckCards.value, operation);
-      updateDeckCardsWithVersion(result);
+      updateDeckCard(result);
       return true;
     } catch (error) {
       console.error(`${onErrMsg}:`, error);
@@ -182,19 +153,19 @@ export const useDeckStore = defineStore("deck", () => {
         const s = calculateDeckState(loadedDeck);
         switch (s.type) {
           case "invalid":
-            updateDeckCardsWithVersion([]);
+            updateDeckCard([]);
             console.error("保存されたデッキが不正です", s.errors);
             // 永続化された不正データをクリアして再発を防止
             tryResetDeckCards();
             break;
           case "empty":
-            updateDeckCardsWithVersion([]);
+            updateDeckCard([]);
             break;
           default:
-            updateDeckCardsWithVersion(s.cards);
+            updateDeckCard(s.cards);
         }
       } catch (e) {
-        updateDeckCardsWithVersion([]);
+        updateDeckCard([]);
         console.error("デッキの読み込みに失敗しました", e);
       }
 
@@ -222,8 +193,8 @@ export const useDeckStore = defineStore("deck", () => {
       console.error("無効なデッキです", state.errors);
       return;
     }
-    if (state.type === "empty") updateDeckCardsWithVersion([]);
-    else updateDeckCardsWithVersion(state.cards);
+    if (state.type === "empty") updateDeckCard([]);
+    else updateDeckCard(state.cards);
   };
 
   /**
@@ -239,7 +210,7 @@ export const useDeckStore = defineStore("deck", () => {
     const prev = suppressSave;
     suppressSave = true;
     try {
-      updateDeckCardsWithVersion([]);
+      updateDeckCard([]);
     } finally {
       suppressSave = prev;
     }
@@ -374,8 +345,6 @@ export const useDeckStore = defineStore("deck", () => {
     totalDeckCards,
     deckState,
     deckErrors,
-    deckHash, // メモ化最適化用の軽量ハッシュ
-    deckVersion, // メモ化最適化用のバージョン
 
     // Actions
     addCardToDeck,

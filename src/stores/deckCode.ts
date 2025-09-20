@@ -16,6 +16,7 @@ import {
   decodeDeckCode,
   decodeKcgDeckCode,
   encodeKcgDeckCode,
+  toDeckCardsFromCardIds,
 } from "../utils";
 import { sortDeckCards } from "../domain";
 import { useDeckStore } from "./deck";
@@ -153,51 +154,6 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
   };
 
   /**
-   * KCG形式のデッキコードをDeckCard配列に変換
-   */
-  const convertKcgCardIdsToDeckCards = (
-    cardIds: readonly string[],
-    availableCards: readonly Card[],
-  ): { deckCards: DeckCard[]; missingCardIds: string[] } => {
-    // availableCardsをMapに変換して高速ルックアップを可能にする
-    const availableCardsMap = new Map<string, Card>();
-    for (const card of availableCards) {
-      availableCardsMap.set(card.id, card);
-    }
-
-    const cardCounts = new Map<string, number>();
-
-    // カードIDの枚数をカウント
-    for (const id of cardIds) {
-      const trimmedId = id.trim();
-      if (trimmedId) {
-        cardCounts.set(trimmedId, (cardCounts.get(trimmedId) || 0) + 1);
-      }
-    }
-
-    const deckCards: DeckCard[] = [];
-    const missingCardIds: string[] = [];
-
-    for (const [id, count] of cardCounts) {
-      const card = availableCardsMap.get(id);
-      if (card) {
-        deckCards.push({ card, count });
-      } else {
-        missingCardIds.push(id);
-      }
-    }
-
-    // 見つからないカードIDがある場合はまとめてログに記録
-    if (missingCardIds.length > 0) {
-      console.warn(
-        `利用可能なカードリストに存在しないカードID: ${missingCardIds.join(", ")}`,
-      );
-    }
-
-    return { deckCards, missingCardIds };
-  };
-
-  /**
    * デッキコードからインポート（統合版）
    */
   const importDeckFromCode = (availableCards: readonly Card[]): void => {
@@ -246,7 +202,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
         console.debug("KCGデコードで取得されたカードID:", cardIds);
 
         if (cardIds.length > 0) {
-          const result = convertKcgCardIdsToDeckCards(cardIds, availableCards);
+          const result = toDeckCardsFromCardIds(cardIds, availableCards);
 
           if (result.deckCards.length > 0) {
             deckStore.setDeckCards(result.deckCards);

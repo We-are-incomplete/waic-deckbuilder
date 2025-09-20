@@ -3,19 +3,18 @@
  * 範囲: 画像読み込み待ち・タイムアウト・イベントクリーンアップの整合性保証。
  */
 import { defineStore } from "pinia";
-import { ref, nextTick, readonly } from "vue";
-import html2canvas from "html2canvas-pro";
+import { ref, readonly } from "vue";
 import { generateFileName, downloadCanvas } from "../utils";
-
-import { useEventListener } from "@vueuse/core";
+import { getCardImageUrl } from "../utils";
+import { useDeckStore } from "./deck";
 
 // エクスポートストア専用のエラー型
 class ExportError extends Error {
-  readonly type: "html2canvas" | "imageLoad" | "concurrency" | "unknown";
+  readonly type: "canvas" | "imageLoad" | "concurrency" | "unknown";
   readonly originalError: unknown;
 
   constructor(params: {
-    type: "html2canvas" | "imageLoad" | "concurrency" | "unknown";
+    type: "canvas" | "imageLoad" | "concurrency" | "unknown";
     message: string;
     originalError: unknown;
   }) {
@@ -27,152 +26,97 @@ class ExportError extends Error {
   }
 }
 
-// URLをユーザー表示/ログ向けに簡易マスク
-const redactUrl = (src?: string): string => {
-  if (!src) return "不明な画像";
-  try {
-    const base =
-      typeof window !== "undefined"
-        ? window.location.origin
-        : "http://localhost";
-    const u = new URL(src, base);
-    if (u.protocol === "blob:") return "(blob)";
-    if (u.protocol === "data:") return "(data-uri)";
-    if (u.protocol !== "http:" && u.protocol !== "https:") {
-      return `(${u.protocol.replace(":", "")})`;
-    }
-    const file = u.pathname.split("/").pop();
-    return file || "(image)";
-  } catch {
-    // 解析不能なURLは生値を出さない（情報漏洩対策）
-    return "(invalid-url)";
-  }
-};
-
-const IMAGE_LOAD_TIMEOUT_MS = (() => {
-  const raw = import.meta.env.VITE_IMAGE_LOAD_TIMEOUT_MS;
-  const n = Number.parseInt(String(raw ?? ""), 10);
-  if (!Number.isFinite(n) || n <= 0) return 8000;
-  // 上限 60s
-  return Math.min(n, 60_000);
-})();
 export const useExportStore = defineStore("export", () => {
   const isSaving = ref<boolean>(false);
 
-  /**
-   * すべての画像の読み込み完了を待つ
-   */
-  const waitForImagesLoaded = (container: HTMLElement): Promise<void> => {
+  // --- レイアウト用定数 ---
+  const CANVAS_WIDTH = 3840 as const;
+  const CANVAS_PADDING_X = 241 as const;
+  const CANVAS_PADDING_Y = 298 as const;
+  const GRID_GAP_X = 13 as const;
+  const GRID_GAP_Y = 72 as const;
+  const TWO_ROWS_THRESHOLD = 20 as const; // sheet2を使う上限
+  const THREE_ROWS_THRESHOLD = 30 as const; // sheetを使う上限
+  const CANVAS_HEIGHT_TWO_ROWS = 1636 as const;
+  const CANVAS_HEIGHT_THREE_ROWS = 2160 as const;
+  const CARD_WIDTH_SMALL = 212 as const; // 30種を超える場合
+  const CARD_WIDTH_LARGE = 324 as const; // 30種以下
+  const CARD_HEIGHT_SMALL = 296 as const; // 30種を超える場合
+  const CARD_HEIGHT_LARGE = 452 as const; // 30種以下
+  const CARDS_PER_ROW_SMALL = 15 as const; // 30種を超える場合
+  const CARDS_PER_ROW_LARGE = 10 as const; // 30種以下
+
+  const calculateCanvasHeight = (cardCount: number): number => {
+    if (cardCount <= TWO_ROWS_THRESHOLD) return CANVAS_HEIGHT_TWO_ROWS;
+    return CANVAS_HEIGHT_THREE_ROWS;
+  };
+
+  const calculateCardWidth = (cardCount: number): number => {
+    if (cardCount <= THREE_ROWS_THRESHOLD) return CARD_WIDTH_LARGE;
+    return CARD_WIDTH_SMALL;
+  };
+
+  const calculateCardHeight = (cardCount: number): number => {
+    if (cardCount <= THREE_ROWS_THRESHOLD) return CARD_HEIGHT_LARGE;
+    return CARD_HEIGHT_SMALL;
+  };
+
+  const cardsPerRow = (cardCount: number): number => {
+    if (cardCount <= THREE_ROWS_THRESHOLD) return CARDS_PER_ROW_LARGE;
+    return CARDS_PER_ROW_SMALL;
+  };
+
+  const getBackgroundImageUrl = (cardCount: number): string => {
+    const base = import.meta.env.BASE_URL || "/";
+    const normalized = base.endsWith("/") ? base : `${base}/`;
+    if (cardCount <= TWO_ROWS_THRESHOLD) return `${normalized}sheet2.avif`;
+    if (cardCount <= THREE_ROWS_THRESHOLD) return `${normalized}sheet.avif`;
+    return `${normalized}sheet_nogrid.avif`;
+  };
+
+  const getPlaceholderImageUrl = (): string => {
+    const base = import.meta.env.BASE_URL || "/";
+    const normalized = base.endsWith("/") ? base : `${base}/`;
+    return `${normalized}placeholder.avif`;
+  };
+
+  const loadImageElement = (src: string): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
-      const images = container.querySelectorAll<HTMLImageElement>("img");
-
-      if (images.length === 0) {
-        resolve();
-        return;
-      }
-
-      let loadedCount = 0;
-      let hasErrorOccurred = false;
-      const stops: Array<() => void> = [];
-
-      let timeoutId: ReturnType<typeof setTimeout> | undefined;
-
-      const cleanupListeners = () => {
-        for (const stop of stops) stop();
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-          timeoutId = undefined;
-        }
-        stops.length = 0;
-      };
-
-      timeoutId = setTimeout(() => {
-        if (hasErrorOccurred) return;
-        hasErrorOccurred = true;
-        cleanupListeners();
-        reject(
-          new ExportError({
-            type: "imageLoad",
-            message: `画像の読み込みがタイムアウトしました (${loadedCount}/${images.length}枚読み込み済み)`,
-            originalError: new Error("timeout"),
-          }),
-        );
-        return;
-      }, IMAGE_LOAD_TIMEOUT_MS);
-
-      const checkComplete = () => {
-        if (hasErrorOccurred) return;
-
-        loadedCount++;
-        if (loadedCount === images.length) {
-          cleanupListeners();
-          resolve();
-        }
-      };
-
-      const handleImageError = (error: Event) => {
-        if (hasErrorOccurred) return;
-        hasErrorOccurred = true;
-        cleanupListeners();
-        reject(
-          new ExportError({
-            type: "imageLoad",
-            message: `画像の読み込みに失敗しました: ${redactUrl(
-              (error.target as HTMLImageElement)?.src,
-            )}`,
-            originalError: error,
-          }),
-        );
-        return;
-      };
-
-      const handleAlreadyBroken = (img: HTMLImageElement) => {
-        if (hasErrorOccurred) return;
-        hasErrorOccurred = true;
-        cleanupListeners();
-        reject(
-          new ExportError({
-            type: "imageLoad",
-            message: `画像の読み込みに失敗しました: ${redactUrl(img.src)}`,
-            originalError: new Error("already-complete-broken"),
-          }),
-        );
-        return;
-      };
-
-      for (const img of images) {
-        if (hasErrorOccurred) break;
-        if (img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
-          // 既に読み込み済みの画像
-          checkComplete();
-        } else if (img.complete) {
-          // 完了しているが壊れている画像
-          handleAlreadyBroken(img);
-        } else {
-          // まだ読み込み中の画像
-          // lazy だとロードが進みづらいので即時ロードを促進
-          if ("loading" in img && img.loading === "lazy") {
-            img.loading = "eager";
-          }
-          const offLoad = useEventListener(img, "load", checkComplete, {
-            once: true,
-          });
-          const offError = useEventListener(img, "error", handleImageError, {
-            once: true,
-          });
-          stops.push(offLoad, offError);
-        }
-      }
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.decoding = "async";
+      img.onload = () => resolve(img);
+      img.onerror = (e) => reject(e);
+      img.src = src;
     });
+  };
+
+  const ensureShipporiMinchoLoaded = async (): Promise<void> => {
+    try {
+      const base = import.meta.env.BASE_URL || "/";
+      const normalized = base.endsWith("/") ? base : `${base}/`;
+      const url = `${normalized}ShipporiMincho-Bold.ttf`;
+      const font = new FontFace("Shippori Mincho", `url(${url})`, {
+        style: "normal",
+        weight: "700",
+        display: "swap",
+      });
+      // 既に登録済みかどうかの簡易チェック
+      // Note: 同一family/weightは重複追加されてもブラウザが内側で扱うため問題になりづらい
+      const loaded = await font.load();
+      (document as any).fonts?.add(loaded);
+      // 使用サイズのプリロード
+      await (document as any).fonts?.load('700 128px "Shippori Mincho"');
+      await (document as any).fonts?.load('700 36px "Shippori Mincho"');
+    } catch {
+      // フォントロード失敗は致命ではないため継続
+    }
   };
 
   /**
    * デッキをPNG画像として保存
    */
-  const saveDeckAsPng = async (
-    deckName: string,
-    exportContainer: HTMLElement,
-  ): Promise<void> => {
+  const saveDeckAsPng = async (deckName: string): Promise<void> => {
     if (isSaving.value) {
       throw new ExportError({
         type: "concurrency",
@@ -180,30 +124,78 @@ export const useExportStore = defineStore("export", () => {
         originalError: null,
       });
     }
-    if (!exportContainer) {
-      throw new ExportError({
-        type: "unknown",
-        message: "エクスポートコンテナが見つかりません",
-        originalError: null,
-      });
-    }
 
     isSaving.value = true;
 
     try {
-      // DOMの更新を待つ
-      await nextTick();
+      const deckStore = useDeckStore();
+      const deckCards = deckStore.sortedDeckCards;
 
-      // すべての画像の読み込み完了を待つ
-      await waitForImagesLoaded(exportContainer);
+      // --- Canvas 準備 ---
+      const distinctCount = deckCards.length;
+      const canvas = document.createElement("canvas");
+      const height = calculateCanvasHeight(distinctCount);
+      canvas.width = CANVAS_WIDTH;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new ExportError({
+          type: "canvas",
+          message: "Canvas コンテキストの取得に失敗しました",
+          originalError: null,
+        });
+      }
 
-      // Canvas生成
-      const canvas = await html2canvas(exportContainer, {
-        scale: 1,
-        useCORS: true,
-        logging: false,
-        allowTaint: false,
-      });
+      // 背景描画
+      const bg = await loadImageElement(getBackgroundImageUrl(distinctCount));
+      ctx.drawImage(bg, 0, 0, CANVAS_WIDTH, height);
+
+      // ヘッダテキスト（デッキ名 + 合計枚数）
+      await ensureShipporiMinchoLoaded();
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#353100";
+      ctx.font = '700 128px "Shippori Mincho"';
+      if (deckName) {
+        ctx.fillText(`「${deckName}」`, canvas.width / 2, 240);
+      }
+
+      // カード群描画
+      const cardW = calculateCardWidth(distinctCount);
+      const cardH = calculateCardHeight(distinctCount);
+      const perRow = cardsPerRow(distinctCount);
+      let x = CANVAS_PADDING_X;
+      let y = CANVAS_PADDING_Y;
+      let inRow = 0;
+
+      // 事前に画像を読み込み（失敗許容: allSettled + プレースホルダ代替）
+      const placeholderImg = await loadImageElement(getPlaceholderImageUrl());
+      const results = await Promise.allSettled(
+        deckCards.map((dc) => loadImageElement(getCardImageUrl(dc.card.id))),
+      );
+      const entries = results.map((res, i) => ({
+        count: deckCards[i]?.count ?? 0,
+        img:
+          res.status === "fulfilled"
+            ? res.value
+            : (placeholderImg as HTMLImageElement | null),
+      }));
+
+      ctx.font = '700 36px "Shippori Mincho"';
+      for (const { img, count } of entries) {
+        if (img) {
+          ctx.drawImage(img, x, y, cardW, cardH);
+        } else {
+          // フォールバック: 何も描かれていないフレーム相当（背景のみ）
+        }
+        ctx.fillText(`${count}`, x + cardW / 2, y + cardH + 50);
+        x += cardW + GRID_GAP_X;
+        inRow++;
+        if (inRow >= perRow) {
+          x = CANVAS_PADDING_X;
+          y += cardH + GRID_GAP_Y;
+          inRow = 0;
+        }
+      }
 
       // ダウンロード
       const filename = generateFileName(deckName);

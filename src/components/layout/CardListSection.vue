@@ -82,8 +82,6 @@ const getCardInDeck = (cardId: string) => {
   return deckCardMap.value.get(cardId) || 0;
 };
 
-// パフォーマンス向上のため、オブジェクトのコピーを避けて既存のdeckCardMapを活用
-
 // カード画像を拡大表示（親コンポーネントに委譲）
 const openImageModal = (cardId: string) => {
   emit("openImageModal", cardId);

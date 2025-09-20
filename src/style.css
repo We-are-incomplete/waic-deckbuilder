@@ -1,6 +1,1 @@
-@import url("https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@700&display=swap");
 @import "tailwindcss";
-
-@theme {
-  --font-deckimg: "Shippori Mincho", "serif", "sans-serif";
-}

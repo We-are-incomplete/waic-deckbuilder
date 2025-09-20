@@ -7,8 +7,7 @@
  Constraints: MAX_DECK_SIZE, MAX_CARD_COPIES を超えない
 -->
 <script setup lang="ts">
-import { computed, useTemplateRef } from "vue";
-import { DeckExportContainer } from "../index";
+import { computed } from "vue";
 import { GAME_CONSTANTS } from "../../constants";
 import { getCardImageUrl, handleImageError } from "../../utils";
 import { useDeckStore } from "../../stores";
@@ -52,15 +51,6 @@ const updateDeckName = (value: string) => {
   deckStore.setDeckName(value);
 };
 
-// Vue 3.5の新機能: useTemplateRef でテンプレート参照を管理
-const deckExportContainerRef = useTemplateRef<
-  InstanceType<typeof DeckExportContainer>
->("deckExportContainer");
-
-const exportContainer = computed(
-  () => deckExportContainerRef.value?.exportContainer || null,
-);
-
 // カード画像を拡大表示
 const openImageModal = (cardId: string) => {
   emit("openImageModal", cardId);
@@ -91,7 +81,6 @@ const getDeckProgressColor = (count: number) => {
 
 // エクスポート用
 defineExpose({
-  exportContainer,
   resetDeck,
   updateDeckName,
 });
@@ -120,7 +109,8 @@ const onDeckImageError = (e: Event) => {
         <input
           id="deckName"
           type="text"
-          v-model="deckName"
+          :value="deckName"
+          @input="updateDeckName(($event.target as HTMLInputElement).value)"
           class="flex-grow px-1 sm:px-2 py-0.5 sm:py-1 text-xs sm:text-base rounded bg-slate-800/80 border border-slate-600/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 backdrop-blur-sm placeholder-slate-400"
           placeholder="デッキ名を入力"
         />
@@ -352,14 +342,5 @@ const onDeckImageError = (e: Event) => {
         </div>
       </div>
     </div>
-
-    <!-- エクスポート用の非表示コンテナ -->
-    <DeckExportContainer
-      ref="deckExportContainer"
-      :deck-name="deckName"
-      :deck-cards="deckCards"
-      :sorted-deck-cards="sortedDeckCards"
-      :is-saving="props.isSaving"
-    />
   </div>
 </template>

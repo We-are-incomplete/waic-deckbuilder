@@ -15,7 +15,6 @@ import {
   CardImageModal,
   DeckManagementModal,
 } from "./components";
-// 画像キャッシュの定期掃除は削除
 
 // コンポーザブル
 import { useImageModal } from "./composables/useImageModal";

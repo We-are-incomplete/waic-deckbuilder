@@ -1,6 +1,15 @@
+/**
+ * 仕様:
+ * - 目的: デッキの永続化（保存/削除/管理モーダル制御）
+ * - 永続化: localStorage（Valibot でスキーマ検証）
+ * - 入力: deckName, deckCode
+ * - 出力: savedDecks、モーダル開閉フラグ
+ * - エラー方針: 無効データは読み込み時に破棄（必要に応じて warn ログ）
+ */
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import { useCookies } from "@vueuse/integrations/useCookies";
+import { useLocalStorage } from "@vueuse/core";
+import * as v from "valibot";
 import { useDeckCodeStore } from "./deckCode";
 
 interface SavedDeck {
@@ -8,61 +17,44 @@ interface SavedDeck {
   code: string;
 }
 
-const isSavedDeck = (u: unknown): u is SavedDeck =>
-  !!u &&
-  typeof (u as any).name === "string" &&
-  typeof (u as any).code === "string";
-
 export const useDeckManagementStore = defineStore("deckManagement", () => {
-  const cookies = useCookies(["savedDecks"]);
   const isDeckManagementModalOpen = ref(false);
-  const savedDecks = ref<SavedDeck[]>([]);
+  const SavedDeckSchema = v.array(
+    v.object({
+      name: v.pipe(v.string(), v.trim(), v.nonEmpty()),
+      code: v.pipe(v.string(), v.trim(), v.nonEmpty()),
+    }),
+  );
+  const savedDecks = useLocalStorage<SavedDeck[]>("savedDecks", [], {
+    serializer: {
+      read: (raw: string): SavedDeck[] => {
+        try {
+          const data = JSON.parse(raw) as unknown;
+          const result = v.safeParse(SavedDeckSchema, data);
+          return result.success ? (result.output as SavedDeck[]) : [];
+        } catch {
+          return [];
+        }
+      },
+      write: (value: SavedDeck[]) => JSON.stringify(value),
+    },
+    writeDefaults: true,
+  });
   const deckCodeStore = useDeckCodeStore();
 
-  // 初期化時にCookieからデッキを読み込む
-  const loadDecksFromCookie = () => {
-    try {
-      const stored = cookies.get("savedDecks");
-      if (stored === undefined || stored === null) {
-        savedDecks.value = [];
-        return;
-      }
-      if (!Array.isArray(stored)) {
-        throw new Error("Stored decks is not an array.");
-      }
-      const invalidIndex = stored.findIndex((item) => !isSavedDeck(item));
-      if (invalidIndex !== -1) {
-        throw new Error(
-          `Invalid savedDecks element at index ${invalidIndex}: ${JSON.stringify(stored[invalidIndex])}`,
-        );
-      }
-      savedDecks.value = stored as SavedDeck[];
-    } catch (e) {
-      console.error("Failed to load decks from cookie:", e);
-      savedDecks.value = [];
-    }
-  };
-
-  // デッキをCookieに保存する
-  const saveDecksToCookie = () => {
-    cookies.set("savedDecks", savedDecks.value, {
-      expires: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-    }); // 1年間有効
-  };
+  // LocalStorage使用のためロード/保存関数は不要
 
   // デッキを保存する
   const saveDeck = (deckName: string, deckCode: string) => {
-    const existingIndex = savedDecks.value.findIndex(
-      (deck) => deck.name === deckName,
-    );
-    if (existingIndex !== -1) {
-      // 既存のデッキを更新
-      savedDecks.value[existingIndex] = { name: deckName, code: deckCode };
-    } else {
-      // 新しいデッキを追加
-      savedDecks.value.push({ name: deckName, code: deckCode });
-    }
-    saveDecksToCookie();
+    const name = deckName.trim();
+    const code = deckCode.trim();
+    if (!name || !code) return; // 早期リターン
+
+    const exists = savedDecks.value.some((d) => d.name === name);
+    savedDecks.value = exists
+      ? savedDecks.value.map((d) => (d.name === name ? { name, code } : d))
+      : [...savedDecks.value, { name, code }];
+    // useLocalStorage が自動保存
   };
 
   // デッキを削除する
@@ -70,12 +62,12 @@ export const useDeckManagementStore = defineStore("deckManagement", () => {
     savedDecks.value = savedDecks.value.filter(
       (deck) => deck.name !== deckName,
     );
-    saveDecksToCookie();
+    // useLocalStorage が自動保存
   };
 
   // デッキ管理モーダルを開く
   const openDeckManagementModal = () => {
-    loadDecksFromCookie(); // モーダルを開く際に最新のデッキリストを読み込む
+    // LocalStorageはリアクティブに同期
     deckCodeStore.generateDeckCodes(); // デッキコードを更新
     isDeckManagementModalOpen.value = true;
   };
@@ -92,6 +84,5 @@ export const useDeckManagementStore = defineStore("deckManagement", () => {
     deleteDeck,
     openDeckManagementModal,
     closeDeckManagementModal,
-    loadDecksFromCookie,
   };
 });

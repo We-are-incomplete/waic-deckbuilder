@@ -1,6 +1,6 @@
 /**
  * ソートユーティリティ
- * - 自然順/種別/タイプの比較関数と合成/反転ヘルパー群
+ * - 自然順/種別/タイプの比較関数群
  * - 純粋関数のみ（副作用なし）
  */
 import type { Card, CardType } from "../types";
@@ -13,36 +13,11 @@ export type SortComparator<T> = (a: T, b: T) => number;
  * 自然順ソート関数を作成（純粋関数）
  */
 export const createNaturalSort = (): SortComparator<string> => {
-  return (a: string, b: string): number => {
-    const regex = /(\d+)|(\D+)/g;
-    const tokensA = a.match(regex);
-    const tokensB = b.match(regex);
-
-    if (!tokensA || !tokensB) return a.localeCompare(b);
-
-    for (let i = 0; i < Math.min(tokensA.length, tokensB.length); i++) {
-      const tokenA = tokensA[i];
-      const tokenB = tokensB[i];
-      const numA = parseInt(tokenA, 10);
-      const numB = parseInt(tokenB, 10);
-
-      if (!isNaN(numA) && !isNaN(numB)) {
-        if (numA !== numB) return numA - numB;
-      } else {
-        const charCodeA = tokenA.charCodeAt(0);
-        const charCodeB = tokenB.charCodeAt(0);
-        const isUpperA = charCodeA >= 65 && charCodeA <= 90;
-        const isUpperB = charCodeB >= 65 && charCodeB <= 90;
-
-        if (isUpperA !== isUpperB) {
-          return isUpperA ? -1 : 1;
-        }
-        if (tokenA !== tokenB) return tokenA.localeCompare(tokenB);
-      }
-    }
-
-    return tokensA.length - tokensB.length;
-  };
+  const collator = new Intl.Collator("ja", {
+    numeric: true,
+    sensitivity: "base",
+  });
+  return (a: string, b: string): number => collator.compare(a, b);
 };
 
 /**
@@ -98,28 +73,4 @@ export const createTypeSort = (): SortComparator<Pick<Card, "type">> => {
     const indexB = getEarliestTypeIndex(b.type);
     return indexA - indexB;
   };
-};
-
-/**
- * 複数のソート条件を組み合わせる高階関数
- */
-export const createCombinedSort = <T>(
-  ...comparators: readonly SortComparator<T>[]
-): SortComparator<T> => {
-  return (a: T, b: T): number => {
-    for (const comparator of comparators) {
-      const result = comparator(a, b);
-      if (result !== 0) return result;
-    }
-    return 0;
-  };
-};
-
-/**
- * ソート順を逆にする高階関数
- */
-export const reverseSort = <T>(
-  comparator: SortComparator<T>,
-): SortComparator<T> => {
-  return (a: T, b: T): number => -comparator(a, b);
 };
