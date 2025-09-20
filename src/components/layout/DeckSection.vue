@@ -109,7 +109,8 @@ const onDeckImageError = (e: Event) => {
         <input
           id="deckName"
           type="text"
-          v-model="deckName"
+          :value="deckName"
+          @input="updateDeckName(($event.target as HTMLInputElement).value)"
           class="flex-grow px-1 sm:px-2 py-0.5 sm:py-1 text-xs sm:text-base rounded bg-slate-800/80 border border-slate-600/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 backdrop-blur-sm placeholder-slate-400"
           placeholder="デッキ名を入力"
         />

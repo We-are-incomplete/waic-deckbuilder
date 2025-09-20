@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import {
   useAppStore,
   useDeckCodeStore,
@@ -12,11 +12,19 @@ const deckStore = useDeckStore();
 const deckCodeStore = useDeckCodeStore();
 const appStore = useAppStore();
 
-const newDeckName = ref(deckStore.deckName);
+const newDeckName = ref<string>(deckStore.deckName);
+
+// deck 名が外部で変更されたときにもプレースホルダと初期値を直感的に同期
+watch(
+  () => deckStore.deckName,
+  (n) => {
+    if (!newDeckName.value) newDeckName.value = n;
+  },
+);
 
 const isSaveMode = ref(true); // true: 保存モード, false: 読み込みモード
 
-const currentDeckName = computed(() => deckStore.deckName);
+const currentDeckName = computed<string>(() => deckStore.deckName);
 const currentDeckCode = computed(() => deckCodeStore.kcgDeckCode);
 
 const saveDeck = () => {
