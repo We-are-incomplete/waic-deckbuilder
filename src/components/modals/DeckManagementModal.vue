@@ -40,13 +40,8 @@ const deleteDeck = (deckName: string) => {
 };
 
 const saveDeckAsPng = async () => {
-  if (appStore.deckSectionRef?.exportContainer) {
-    appStore.exportStore.saveDeckAsPng(
-      deckStore.deckName,
-      appStore.deckSectionRef.exportContainer,
-    );
-    deckManagementStore.closeDeckManagementModal();
-  }
+  appStore.exportStore.saveDeckAsPng(deckStore.deckName);
+  deckManagementStore.closeDeckManagementModal();
 };
 
 const closeModal = () => {
