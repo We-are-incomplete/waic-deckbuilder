@@ -237,17 +237,11 @@ export const useDeckStore = defineStore("deck", () => {
 
   /**
    * デッキ名を設定
+   * - ユーザー入力の一時的な空文字や前後空白は許容する（保存時に正規化）
    */
   const setDeckName = (name: string): void => {
-    const n = name.trim();
-    if (!n) {
-      resetDeckName();
-      return;
-    }
-    if (deckName.value === n) {
-      return;
-    }
-    deckName.value = n;
+    if (deckName.value === name) return;
+    deckName.value = name;
   };
 
   // Vue 3.5の新機能: より効率的なデバウンス処理
@@ -270,8 +264,10 @@ export const useDeckStore = defineStore("deck", () => {
 
   const debouncedSaveName = useDebounceFn(
     (name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) return; // 空は保存しない（次の有効入力まで待つ）
       try {
-        saveDeckName(name);
+        saveDeckName(trimmed);
       } catch (e) {
         console.error("デッキ名の保存に失敗しました", e);
       }
@@ -316,7 +312,8 @@ export const useDeckStore = defineStore("deck", () => {
       console.error("デッキの即時保存に失敗しました", r1);
     }
     try {
-      saveDeckName(deckName.value);
+      const trimmed = deckName.value.trim();
+      if (trimmed) saveDeckName(trimmed);
     } catch (r2) {
       console.error("デッキ名の即時保存に失敗しました", r2);
     }
