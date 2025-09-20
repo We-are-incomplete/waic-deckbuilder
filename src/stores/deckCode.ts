@@ -156,11 +156,11 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
 
     // デッキコード形式を判定
     const format = detectDeckCodeFormat(trimmedCode);
-    
+
     try {
       if (format === "kcg") {
         // KCG形式の処理
-        
+
         let cardIds: string[];
         try {
           cardIds = decodeKcgDeckCode(trimmedCode);
@@ -178,7 +178,6 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
           return;
         }
 
-        
         if (cardIds.length > 0) {
           const result = toDeckCardsFromCardIds(cardIds, availableCards);
 
@@ -195,7 +194,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
                 message: `KCG形式のデッキをインポートしました（${result.deckCards.length}種類のカード）。\n${missingCardsMessage}`,
               });
             } else {
-                          }
+            }
           } else {
             const warningMessage = buildNoValidCardsMessage(
               result.missingCardIds,
@@ -208,7 +207,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
         } else {
           const warningMessage =
             "デッキコードからカード情報を取得できませんでした。";
-                    error.value = new DeckCodeError({
+          error.value = new DeckCodeError({
             type: "decode",
             message: warningMessage,
           });
@@ -246,7 +245,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
               message: `スラッシュ区切り形式のデッキをインポートしました（${importedCards.length}種類のカード）。\n${missingCardsMessage}`,
             });
           } else {
-                      }
+          }
         } else {
           const warningMessage = buildNoValidCardsMessage(missingCardIds);
           error.value = new DeckCodeError({
@@ -258,7 +257,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
         // 未知の形式
         const warningMessage =
           "サポートされていないデッキコード形式です。スラッシュ区切り形式またはKCG形式（KCG-で始まる）を使用してください。";
-                error.value = new DeckCodeError({
+        error.value = new DeckCodeError({
           type: "validation",
           message: warningMessage,
         });

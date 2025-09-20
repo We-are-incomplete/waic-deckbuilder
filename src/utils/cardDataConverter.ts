@@ -162,7 +162,6 @@ const toCardTypeArray = (tokens: string[]): CardType[] => {
 };
 
 export async function loadCardsFromCsv(csvPath: string): Promise<Card[]> {
-
   try {
     const response = await fetch(csvPath, {
       method: "GET",
@@ -186,7 +185,6 @@ export async function loadCardsFromCsv(csvPath: string): Promise<Card[]> {
         message: "CSVデータが空です。",
       });
     }
-
 
     return parseCsv(csvText);
   } catch (error) {

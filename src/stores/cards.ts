@@ -160,7 +160,6 @@ export const useCardsStore = defineStore("cards", () => {
     return cardByIdCache.get(cardId);
   };
 
-
   /**
    * カードデータを読み込む
    */
@@ -203,7 +202,6 @@ export const useCardsStore = defineStore("cards", () => {
   const clearError = (): void => {
     error.value = null;
   };
-
 
   // 計算プロパティ
   const cardCount = computed(() => availableCards.value.length);

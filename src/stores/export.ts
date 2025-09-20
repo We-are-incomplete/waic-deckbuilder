@@ -4,7 +4,6 @@
  */
 import { defineStore } from "pinia";
 import { ref, readonly } from "vue";
-import { generateFileName, downloadCanvas } from "../utils";
 import { getCardImageUrl } from "../utils";
 import { useDeckStore } from "./deck";
 
@@ -197,9 +196,16 @@ export const useExportStore = defineStore("export", () => {
         }
       }
 
-      // ダウンロード
-      const filename = generateFileName(deckName);
-      downloadCanvas(canvas, filename);
+      // ファイル名を生成
+      const timestamp = new Date()
+        .toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" })
+        .replace(/\//g, "-");
+      const filename = `${deckName || "デッキ"}_${timestamp}.png`;
+      // キャンバスをダウンロード
+      const link = document.createElement("a");
+      link.download = filename;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
 
       // 完了
     } catch (e) {
