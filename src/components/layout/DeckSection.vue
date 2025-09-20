@@ -342,14 +342,5 @@ const onDeckImageError = (e: Event) => {
         </div>
       </div>
     </div>
-
-    <!-- エクスポート用の非表示コンテナ -->
-    <DeckExportContainer
-      ref="deckExportContainer"
-      :deck-name="deckName"
-      :deck-cards="deckCards"
-      :sorted-deck-cards="sortedDeckCards"
-      :is-saving="props.isSaving"
-    />
   </div>
 </template>

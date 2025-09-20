@@ -1,3 +1,11 @@
+/**
+ * 仕様:
+ * - 目的: デッキの永続化（保存/削除/管理モーダル制御）
+ * - 永続化: localStorage（Valibot でスキーマ検証）
+ * - 入力: deckName, deckCode
+ * - 出力: savedDecks、モーダル開閉フラグ
+ * - エラー方針: 無効データは読み込み時に破棄（必要に応じて warn ログ）
+ */
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { useLocalStorage } from "@vueuse/core";
@@ -38,16 +46,14 @@ export const useDeckManagementStore = defineStore("deckManagement", () => {
 
   // デッキを保存する
   const saveDeck = (deckName: string, deckCode: string) => {
-    const existingIndex = savedDecks.value.findIndex(
-      (deck) => deck.name === deckName,
-    );
-    if (existingIndex !== -1) {
-      // 既存のデッキを更新
-      savedDecks.value[existingIndex] = { name: deckName, code: deckCode };
-    } else {
-      // 新しいデッキを追加
-      savedDecks.value.push({ name: deckName, code: deckCode });
-    }
+    const name = deckName.trim();
+    const code = deckCode.trim();
+    if (!name || !code) return; // 早期リターン
+
+    const exists = savedDecks.value.some((d) => d.name === name);
+    savedDecks.value = exists
+      ? savedDecks.value.map((d) => (d.name === name ? { name, code } : d))
+      : [...savedDecks.value, { name, code }];
     // useLocalStorage が自動保存
   };
 

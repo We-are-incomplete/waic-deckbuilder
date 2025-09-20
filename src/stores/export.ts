@@ -74,6 +74,12 @@ export const useExportStore = defineStore("export", () => {
     return `${normalized}sheet_nogrid.avif`;
   };
 
+  const getPlaceholderImageUrl = (): string => {
+    const base = import.meta.env.BASE_URL || "/";
+    const normalized = base.endsWith("/") ? base : `${base}/`;
+    return `${normalized}placeholder.avif`;
+  };
+
   const loadImageElement = (src: string): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -161,17 +167,26 @@ export const useExportStore = defineStore("export", () => {
       let y = CANVAS_PADDING_Y;
       let inRow = 0;
 
-      // 事前に画像を読み込み
-      const entries = await Promise.all(
-        deckCards.map(async (dc) => ({
-          count: dc.count,
-          img: await loadImageElement(getCardImageUrl(dc.card.id)),
-        })),
+      // 事前に画像を読み込み（失敗許容: allSettled + プレースホルダ代替）
+      const placeholderImg = await loadImageElement(getPlaceholderImageUrl());
+      const results = await Promise.allSettled(
+        deckCards.map((dc) => loadImageElement(getCardImageUrl(dc.card.id))),
       );
+      const entries = results.map((res, i) => ({
+        count: deckCards[i]?.count ?? 0,
+        img:
+          res.status === "fulfilled"
+            ? res.value
+            : (placeholderImg as HTMLImageElement | null),
+      }));
 
       ctx.font = '700 36px "Shippori Mincho"';
       for (const { img, count } of entries) {
-        ctx.drawImage(img, x, y, cardW, cardH);
+        if (img) {
+          ctx.drawImage(img, x, y, cardW, cardH);
+        } else {
+          // フォールバック: 何も描かれていないフレーム相当（背景のみ）
+        }
         ctx.fillText(`${count}`, x + cardW / 2, y + cardH + 50);
         x += cardW + GRID_GAP_X;
         inRow++;

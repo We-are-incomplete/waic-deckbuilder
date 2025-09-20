@@ -48,8 +48,13 @@ const deleteDeck = (deckName: string) => {
 };
 
 const saveDeckAsPng = async () => {
-  appStore.exportStore.saveDeckAsPng(deckStore.deckName);
-  deckManagementStore.closeDeckManagementModal();
+  try {
+    await appStore.exportStore.saveDeckAsPng(deckStore.deckName);
+    deckManagementStore.closeDeckManagementModal();
+  } catch (e) {
+    alert("デッキ画像の保存に失敗しました。時間をおいて再度お試しください。");
+    console.error(e);
+  }
 };
 
 const closeModal = () => {

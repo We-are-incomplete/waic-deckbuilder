@@ -154,23 +154,6 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
   };
 
   /**
-   * KCG形式のデッキコードをDeckCard配列に変換
-   */
-  // KCGカードIDをデッキカードへ変換（共通ユーティリティに委譲）
-  const convertKcgCardIdsToDeckCards = (
-    cardIds: readonly string[],
-    availableCards: readonly Card[],
-  ): { deckCards: DeckCard[]; missingCardIds: string[] } => {
-    const result = toDeckCardsFromCardIds(cardIds, availableCards);
-    if (result.missingCardIds.length > 0) {
-      console.warn(
-        `利用可能なカードリストに存在しないカードID: ${result.missingCardIds.join(", ")}`,
-      );
-    }
-    return result;
-  };
-
-  /**
    * デッキコードからインポート（統合版）
    */
   const importDeckFromCode = (availableCards: readonly Card[]): void => {
@@ -219,7 +202,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
         console.debug("KCGデコードで取得されたカードID:", cardIds);
 
         if (cardIds.length > 0) {
-          const result = convertKcgCardIdsToDeckCards(cardIds, availableCards);
+          const result = toDeckCardsFromCardIds(cardIds, availableCards);
 
           if (result.deckCards.length > 0) {
             deckStore.setDeckCards(result.deckCards);
