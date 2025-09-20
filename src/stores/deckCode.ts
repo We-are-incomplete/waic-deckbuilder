@@ -9,6 +9,8 @@ import {
   encodeKcgDeckCode,
 } from "../utils";
 import { GAME_CONSTANTS } from "../constants";
+import { SlashDeckCodeSchema } from "../domain";
+import * as v from "valibot";
 import { useDeckStore } from "./deck";
 import { sortDeckCards } from "../domain";
 import { useClipboard } from "@vueuse/core";
@@ -307,13 +309,10 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
           trimmedCode,
         );
 
-        // スラッシュ区切り形式の基本的な形式チェック
-        if (
-          trimmedCode.includes("//") ||
-          trimmedCode.startsWith("/") ||
-          trimmedCode.endsWith("/")
-        ) {
-          const warningMessage = "無効なデッキコード形式です";
+        // スラッシュ区切り形式の詳細検証（valibot）
+        const parsed = v.safeParse(SlashDeckCodeSchema, trimmedCode);
+        if (!parsed.success) {
+          const warningMessage = parsed.issues[0]?.message || "無効なデッキコード形式です";
           console.warn(warningMessage);
           error.value = new DeckCodeError({
             type: "validation",
