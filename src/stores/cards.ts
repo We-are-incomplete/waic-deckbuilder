@@ -6,10 +6,10 @@ import { CardDataConverterError } from "../utils/cardDataConverter";
 import { defineStore } from "pinia";
 import { ref, shallowRef, readonly, computed, markRaw, triggerRef } from "vue";
 import type { Card } from "../types";
-import { preloadImages, loadCardsFromCsv } from "../utils";
+import { loadCardsFromCsv } from "../utils";
 import * as CardDomain from "../domain";
 
-import { useMemoize } from "@vueuse/core";
+// メモ化は削除し、シンプルな検索に戻す
 
 // カードストア専用のエラー型
 type CardStoreError =
@@ -36,26 +36,7 @@ export const useCardsStore = defineStore("cards", () => {
   const availableKindsCache = shallowRef<readonly string[] | null>(null);
   const availableTypesCache = shallowRef<readonly string[] | null>(null);
 
-  // メモ化された検索処理
-  const memoizedSearch = useMemoize(
-    (params: {
-      cards: readonly Card[];
-      searchText: string;
-      version: number;
-    }) => {
-      return CardDomain.searchCardsByName(params.cards, params.searchText);
-    },
-    {
-      getKey: (params: {
-        cards: readonly Card[];
-        searchText: string;
-        version: number;
-      }) => {
-        // cardsVersionだけでキャッシュの無効化を確実に行う
-        return `${params.searchText}_v${params.version}`;
-      },
-    },
-  );
+  // シンプルな検索処理
 
   // CardStoreErrorに変換するヘルパー関数
   const mapErrorToCardStoreError = (e: unknown): CardStoreError => {
@@ -209,13 +190,8 @@ export const useCardsStore = defineStore("cards", () => {
     if (!searchText || searchText.trim().length === 0) {
       return availableCards.value;
     }
-
     const normalizedSearch = searchText.trim().toLowerCase();
-    return memoizedSearch({
-      cards: availableCards.value,
-      searchText: normalizedSearch,
-      version: cardsVersion.value,
-    });
+    return CardDomain.searchCardsByName(availableCards.value, normalizedSearch);
   };
 
   /**
@@ -254,10 +230,6 @@ export const useCardsStore = defineStore("cards", () => {
     cardsByKindCache.clear();
     availableKindsCache.value = null;
     availableTypesCache.value = null;
-    // memoizedSearchのキャッシュもクリア（防御的チェック）
-    if (typeof memoizedSearch.clear === "function") {
-      memoizedSearch.clear();
-    }
     triggerRef(availableKindsCache);
     triggerRef(availableTypesCache);
   };
@@ -321,11 +293,7 @@ export const useCardsStore = defineStore("cards", () => {
       availableCards.value = readonly(ensuredCards);
       updateCaches(ensuredCards);
 
-      try {
-        preloadImages(ensuredCards);
-      } catch (err) {
-        console.warn("画像プリロード失敗:", err);
-      }
+      // 事前プリロードは簡素化のため削除
       console.debug(`${ensuredCards.length}枚のカードを読み込みました`);
     } catch (e) {
       const mapped = mapErrorToCardStoreError(e);

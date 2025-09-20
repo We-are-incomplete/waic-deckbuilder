@@ -7,8 +7,7 @@ import { computed, type ComputedRef } from "vue";
 import type { Card, DeckCard, DeckOperation } from "../types";
 import * as DeckDomain from "../domain";
 import { useCardsStore, useDeckStore } from "../stores";
-import { useMemoize } from "@vueuse/core";
-import { createErrorHandler, deckOperationErrorToString } from "../utils";
+// deckOperationErrorToString は削除したため、ここではローカルで対処
 
 /**
  * 安全なハッシュ関数（64bitバージョン）
@@ -16,22 +15,7 @@ import { createErrorHandler, deckOperationErrorToString } from "../utils";
  * 2つの異なる32bitハッシュを組み合わせて64bitハッシュを生成
  * 約1.8 × 10^19通り（2^64）のパターンで衝突リスクを大幅に軽減
  */
-const createSafeHash = (input: string): string => {
-  let hashA = 5381;
-  let hashB = 52711;
-
-  for (let i = 0; i < input.length; i++) {
-    const char = input.charCodeAt(i);
-    hashA = (hashA * 33) ^ char;
-    hashB = (hashB * 37) ^ char;
-  }
-
-  // 64bitハッシュとして結合（32bit × 2）
-  // 16文字の16進文字列 = 約1.8 × 10^19通り
-  const hashAStr = (hashA >>> 0).toString(16).padStart(8, "0");
-  const hashBStr = (hashB >>> 0).toString(16).padStart(8, "0");
-  return hashAStr + hashBStr;
-};
+// 以前はメモ化キー生成に使用していたが、メモ化を削除したため不要
 
 type DeckOperationErrorLike = {
   type?: string;
@@ -46,75 +30,7 @@ export const useDeckOperations = () => {
   const deckStore = useDeckStore();
   const cardsStore = useCardsStore();
 
-  // エラーハンドリング設定
-  const errorHandler = createErrorHandler();
-
-  // メモ化された統計計算（安全なキー版）
-  const baseMemoizedStatsCalculation = useMemoize(
-    (_deckHash: string, deckCards: readonly DeckCard[]) => {
-      const kindStats = new Map<string, number>();
-      const typeStats = new Map<string, number>();
-      let totalCards = 0;
-
-      for (const deckCard of deckCards) {
-        const { card, count } = deckCard;
-        totalCards += count;
-        kindStats.set(card.kind, (kindStats.get(card.kind) || 0) + count);
-        const typeString = card.type.join(",");
-        typeStats.set(typeString, (typeStats.get(typeString) || 0) + count);
-      }
-
-      return {
-        totalCards,
-        uniqueCards: deckCards.length,
-        kindStats: Object.fromEntries(kindStats),
-        typeStats: Object.fromEntries(typeStats),
-      };
-    },
-    {
-      // 安全なキー関数: 64bitハッシュで衝突リスクを大幅に削減
-      getKey: (deckHash: string) => createSafeHash(deckHash),
-    },
-  );
-
-  // メモ化された検索機能（安全なキー版）
-  const baseMemoizedDeckSearch = useMemoize(
-    (
-      _searchKey: string,
-      deckCards: readonly DeckCard[],
-      searchText: string,
-    ) => {
-      if (!searchText || searchText.trim().length === 0) {
-        return deckCards;
-      }
-
-      const normalizedSearchText = searchText.trim().toLowerCase();
-      const result: DeckCard[] = [];
-
-      for (const deckCard of deckCards) {
-        const cardName = deckCard.card.name.toLowerCase();
-        const cardId = deckCard.card.id.toLowerCase();
-
-        if (
-          cardName.includes(normalizedSearchText) ||
-          cardId.includes(normalizedSearchText)
-        ) {
-          result.push(deckCard);
-        }
-      }
-
-      return result;
-    },
-    {
-      // 安全なキー関数: 64bitハッシュで衝突リスクを大幅に削減
-      getKey: (searchKey: string) => createSafeHash(searchKey),
-    },
-  );
-
-  // 統一ラッパーでラップしたメモ化関数
-  const memoizedStatsCalculation = baseMemoizedStatsCalculation;
-
-  const memoizedDeckSearch = baseMemoizedDeckSearch;
+  // メモ化は削除し、シンプルな計算に戻す
 
   /**
    * デッキ状態を計算（最適化版）
@@ -143,7 +59,18 @@ export const useDeckOperations = () => {
         return {
           totalCount: state.totalCount,
           isValid: false,
-          validationErrors: state.errors.map(deckOperationErrorToString),
+            validationErrors: state.errors.map((e) => {
+              switch (e.type) {
+                case "CardNotFound":
+                  return `カードが見つかりません: ${e.cardId}`;
+                case "MaxCountExceeded":
+                  return `最大枚数を超過しました: ${e.cardId} (最大: ${e.maxCount ?? "不明"})`;
+                case "InvalidCardCount":
+                  return `不正なカード枚数です: ${e.cardId} (指定: ${e.count ?? "不明"})`;
+                default:
+                  return "不明なエラー";
+              }
+            }),
         };
     }
   });
@@ -173,10 +100,20 @@ export const useDeckOperations = () => {
       deckStore.setDeckCards([...result]);
       return true;
     } catch (error) {
-      const msg = deckOperationErrorToString(
-        isDeckOperationError(error) ? error : ({} as any),
-      );
-      errorHandler.handleValidationError(`${errorMessage}: ${msg}`, error);
+      const err = isDeckOperationError(error) ? error : ({} as any);
+      const msg = (() => {
+        switch (err.type) {
+          case "CardNotFound":
+            return `カードが見つかりません: ${err.cardId}`;
+          case "MaxCountExceeded":
+            return `最大枚数を超過しました: ${err.cardId} (最大: ${err.maxCount ?? "不明"})`;
+          case "InvalidCardCount":
+            return `不正なカード枚数です: ${err.cardId} (指定: ${err.count ?? "不明"})`;
+          default:
+            return "不明なエラー";
+        }
+      })();
+      console.error(`${errorMessage}: ${msg}`, error);
       return false;
     }
   };
@@ -228,21 +165,39 @@ export const useDeckOperations = () => {
    * デッキ内のカードを検索（最適化版）
    */
   const searchDeckCards = (searchText: string): readonly DeckCard[] => {
-    // ストアから提供される軽量ハッシュを使用
-    const deckHash = deckStore.deckHash;
-    const searchKey = `${deckHash}|${searchText.trim().toLowerCase()}`;
-
-    return memoizedDeckSearch(searchKey, deckStore.sortedDeckCards, searchText);
+    const deckCards = deckStore.sortedDeckCards;
+    if (!searchText || searchText.trim().length === 0) return deckCards;
+    const normalized = searchText.trim().toLowerCase();
+    return deckCards.filter((dc) => {
+      const name = dc.card.name.toLowerCase();
+      const id = dc.card.id.toLowerCase();
+      return name.includes(normalized) || id.includes(normalized);
+    });
   };
 
   /**
    * デッキ統計を取得（最適化版）
    */
   const getDeckStatistics = () => {
-    // ストアから提供される軽量ハッシュを使用
-    const deckHash = deckStore.deckHash;
+    const deckCards = deckStore.sortedDeckCards;
+    const kindStats = new Map<string, number>();
+    const typeStats = new Map<string, number>();
+    let totalCards = 0;
 
-    return memoizedStatsCalculation(deckHash, deckStore.sortedDeckCards);
+    for (const deckCard of deckCards) {
+      const { card, count } = deckCard;
+      totalCards += count;
+      kindStats.set(card.kind, (kindStats.get(card.kind) || 0) + count);
+      const typeString = card.type.join(",");
+      typeStats.set(typeString, (typeStats.get(typeString) || 0) + count);
+    }
+
+    return {
+      totalCards,
+      uniqueCards: deckCards.length,
+      kindStats: Object.fromEntries(kindStats),
+      typeStats: Object.fromEntries(typeStats),
+    };
   };
 
   return {

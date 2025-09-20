@@ -7,12 +7,7 @@ import type { Card, CardKind, CardType, FilterCriteria } from "../types";
 import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants";
 import { useCardsStore } from "./cards";
 import { searchCardsByName, sortCards } from "../domain";
-import {
-  createArraySortMemo,
-  createFilterMemo,
-  createArrayKeyGenerator,
-  createMemoizedFunction,
-} from "../utils";
+// メモ化ユーティリティは削除。シンプルな実装へ戻す。
 
 export const useFilterStore = defineStore("filter", () => {
   // ストアの公開APIの型定義
@@ -45,23 +40,17 @@ export const useFilterStore = defineStore("filter", () => {
     hasEntryCondition: false, // 初期値を追加
   });
 
-  // メモ化されたソート処理
-  const memoizedCardSorting = createArraySortMemo((cards: readonly Card[]) => {
+  // シンプルなソート関数
+  const sortCardsSimple = (cards: readonly Card[]) => {
     if (cards.length === 0) return cards;
     return readonly(sortCards(cards));
-  });
+  };
 
-  // より効率的なフィルタリング実装
-  const memoizedFilterApplication = createFilterMemo(
-    (cards: readonly Card[], criteria: FilterCriteria) => {
-      // 早期リターンでパフォーマンス改善
-      if (isEmptyFilter(criteria)) {
-        return cards;
-      }
-
-      return applyAllFiltersOptimized(cards, criteria);
-    },
-  );
+  // シンプルなフィルタリング
+  const applyFilters = (cards: readonly Card[], criteria: FilterCriteria) => {
+    if (isEmptyFilter(criteria)) return cards;
+    return applyAllFiltersOptimized(cards, criteria);
+  };
 
   // タグ抽出の最適化（Set操作を効率化）
   const extractTagsFromCards = (cards: readonly Card[]): Set<string> => {
@@ -88,11 +77,7 @@ export const useFilterStore = defineStore("filter", () => {
     return tags;
   };
 
-  const arrayKeyGen = createArrayKeyGenerator();
-  const memoizedTagExtraction = createMemoizedFunction(
-    extractTagsFromCards,
-    (cards) => arrayKeyGen.generateKey(cards),
-  );
+  // タグ抽出は都度実行
 
   /**
    * 全タグリスト（優先タグを先頭に配置）- 最適化版
@@ -100,7 +85,7 @@ export const useFilterStore = defineStore("filter", () => {
   const allTags = computed(() => {
     const cardsStore = useCardsStore();
 
-    const tags = memoizedTagExtraction(cardsStore.availableCards);
+    const tags = extractTagsFromCards(cardsStore.availableCards);
 
     if (tags.size === 0) {
       return readonly([]);
@@ -312,16 +297,13 @@ export const useFilterStore = defineStore("filter", () => {
     // フィルターが空の場合はソートのみ実行
     const currentCriteria = filterCriteria.value;
     if (isEmptyFilter(currentCriteria)) {
-      return memoizedCardSorting(cards);
+      return sortCardsSimple(cards);
     }
 
     let result: readonly Card[] = cards;
 
-    // フィルタリングの適用（メモ化優先）
-    result = memoizedFilterApplication({
-      items: cards,
-      criteria: currentCriteria,
-    });
+    // フィルタリングの適用
+    result = applyFilters(cards, currentCriteria);
 
     // 結果が空の場合は早期リターン
     if (result.length === 0) {
@@ -329,7 +311,7 @@ export const useFilterStore = defineStore("filter", () => {
     }
 
     // ソートの適用
-    return memoizedCardSorting(result);
+    return sortCardsSimple(result);
   });
 
   /**

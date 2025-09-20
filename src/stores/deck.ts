@@ -7,7 +7,6 @@
 import { defineStore } from "pinia";
 import { ref, computed, watch, readonly, shallowRef } from "vue";
 import type { Card, DeckCard } from "../types";
-import { DeckOperationError } from "../types/deck";
 import {
   saveDeckToLocalStorage,
   loadDeckFromLocalStorage,
@@ -15,10 +14,6 @@ import {
   loadDeckName,
   resetDeckCardsInLocalStorage,
   resetDeckNameInLocalStorage,
-  createVersionedState,
-  createArraySortMemo,
-  createErrorHandler,
-  deckOperationErrorToString,
   DEFAULT_DECK_NAME,
 } from "../utils";
 import {
@@ -51,10 +46,11 @@ export const useDeckStore = defineStore("deck", () => {
   const deckName = ref<string>(DEFAULT_DECK_NAME);
 
   // メモ化最適化用のバージョン管理
-  const { version: deckVersion, incrementVersion } = createVersionedState();
+  // バージョン管理は簡素化
+  const deckVersion = ref(0);
+  const incrementVersion = () => (deckVersion.value++);
 
-  // エラーハンドラー
-  const errorHandler = createErrorHandler();
+  // 集中エラーハンドリングは削除
 
   /**
    * 成功時の共通処理：デッキカードを更新してバージョンをインクリメント
@@ -72,15 +68,14 @@ export const useDeckStore = defineStore("deck", () => {
   });
 
   // メモ化されたソート処理
-  const memoizedSortDeckCards = createArraySortMemo(
-    (cards: readonly DeckCard[]): readonly DeckCard[] => sortDeckCards(cards),
-  );
+  const sortDeck = (cards: readonly DeckCard[]): readonly DeckCard[] =>
+    sortDeckCards(cards);
 
   /**
    * Vue 3.5最適化: ソート済みデッキカード
    */
   const sortedDeckCards = computed(() => {
-    return memoizedSortDeckCards(deckCards.value);
+    return sortDeck(deckCards.value);
   });
 
   /**
@@ -104,9 +99,19 @@ export const useDeckStore = defineStore("deck", () => {
    * Vue 3.5最適化: デッキのエラーメッセージ
    */
   const deckErrors = computed<readonly string[]>(() => {
-    return deckState.value.type === "invalid"
-      ? deckState.value.errors.map(deckOperationErrorToString)
-      : [];
+    if (deckState.value.type !== "invalid") return [] as const;
+    return deckState.value.errors.map((e) => {
+      switch (e.type) {
+        case "CardNotFound":
+          return `カードが見つかりません: ${e.cardId}`;
+        case "MaxCountExceeded":
+          return `最大枚数を超過しました: ${e.cardId} (最大: ${e.maxCount ?? "不明"})`;
+        case "InvalidCardCount":
+          return `不正なカード枚数です: ${e.cardId} (指定: ${e.count ?? "不明"})`;
+        default:
+          return "不明なエラー";
+      }
+    });
   });
 
   const applyOperation = (
@@ -118,14 +123,7 @@ export const useDeckStore = defineStore("deck", () => {
       updateDeckCardsWithVersion(result);
       return true;
     } catch (error) {
-      if (error instanceof DeckOperationError) {
-        errorHandler.handleValidationError(
-          `${onErrMsg}: ${deckOperationErrorToString(error)}`,
-          error,
-        );
-      } else {
-        errorHandler.handleRuntimeError(onErrMsg, error);
-      }
+      console.error(`${onErrMsg}:`, error);
       return false;
     }
   };
@@ -171,7 +169,7 @@ export const useDeckStore = defineStore("deck", () => {
     try {
       resetDeckCardsInLocalStorage();
     } catch (e) {
-      errorHandler.handleRuntimeError("不正デッキのクリアに失敗しました", e);
+      console.error("不正デッキのクリアに失敗しました", e);
     }
   };
 
@@ -179,7 +177,7 @@ export const useDeckStore = defineStore("deck", () => {
     try {
       resetDeckNameInLocalStorage();
     } catch (e) {
-      errorHandler.handleRuntimeError("デッキ名のクリアに失敗しました", e);
+      console.error("デッキ名のクリアに失敗しました", e);
     }
   };
   const initializeDeck = (availableCards: readonly Card[]): void => {
@@ -193,10 +191,7 @@ export const useDeckStore = defineStore("deck", () => {
         switch (s.type) {
           case "invalid":
             updateDeckCardsWithVersion([]);
-            errorHandler.handleValidationError(
-              "保存されたデッキが不正です",
-              s.errors,
-            );
+            console.error("保存されたデッキが不正です", s.errors);
             // 永続化された不正データをクリアして再発を防止
             tryResetDeckCards();
             break;
@@ -208,7 +203,7 @@ export const useDeckStore = defineStore("deck", () => {
         }
       } catch (e) {
         updateDeckCardsWithVersion([]);
-        errorHandler.handleRuntimeError("デッキの読み込みに失敗しました", e);
+        console.error("デッキの読み込みに失敗しました", e);
       }
 
       // デッキ名の読み込み（独立して処理）
@@ -218,7 +213,7 @@ export const useDeckStore = defineStore("deck", () => {
         deckName.value = n || DEFAULT_DECK_NAME;
       } catch (e) {
         deckName.value = DEFAULT_DECK_NAME;
-        errorHandler.handleRuntimeError("デッキ名の読み込みに失敗しました", e);
+        console.error("デッキ名の読み込みに失敗しました", e);
         tryResetDeckName();
       }
     } finally {
@@ -232,7 +227,7 @@ export const useDeckStore = defineStore("deck", () => {
   const setDeckCards = (cards: readonly DeckCard[]) => {
     const state = calculateDeckState(cards);
     if (state.type === "invalid") {
-      errorHandler.handleValidationError("無効なデッキです", state.errors);
+      console.error("無効なデッキです", state.errors);
       return;
     }
     if (state.type === "empty") updateDeckCardsWithVersion([]);
@@ -246,10 +241,7 @@ export const useDeckStore = defineStore("deck", () => {
     try {
       resetDeckCardsInLocalStorage();
     } catch (r) {
-      errorHandler.handleRuntimeError(
-        "デッキカードのリセットに失敗しました",
-        r,
-      );
+      console.error("デッキカードのリセットに失敗しました", r);
       return;
     }
     const prev = suppressSave;
@@ -268,7 +260,7 @@ export const useDeckStore = defineStore("deck", () => {
     try {
       resetDeckNameInLocalStorage();
     } catch (r) {
-      errorHandler.handleRuntimeError("デッキ名のリセットに失敗しました", r);
+      console.error("デッキ名のリセットに失敗しました", r);
       return;
     }
     const prev = suppressSave;
@@ -306,7 +298,7 @@ export const useDeckStore = defineStore("deck", () => {
       try {
         saveDeckToLocalStorage(cards);
       } catch (e) {
-        errorHandler.handleRuntimeError("デッキの保存に失敗しました", e);
+        console.error("デッキの保存に失敗しました", e);
       }
     },
     500,
@@ -318,7 +310,7 @@ export const useDeckStore = defineStore("deck", () => {
       try {
         saveDeckName(name);
       } catch (e) {
-        errorHandler.handleRuntimeError("デッキ名の保存に失敗しました", e);
+        console.error("デッキ名の保存に失敗しました", e);
       }
     },
     500,
@@ -358,12 +350,12 @@ export const useDeckStore = defineStore("deck", () => {
     try {
       saveDeckToLocalStorage(deckCards.value);
     } catch (r1) {
-      errorHandler.handleRuntimeError("デッキの即時保存に失敗しました", r1);
+      console.error("デッキの即時保存に失敗しました", r1);
     }
     try {
       saveDeckName(deckName.value);
     } catch (r2) {
-      errorHandler.handleRuntimeError("デッキ名の即時保存に失敗しました", r2);
+      console.error("デッキ名の即時保存に失敗しました", r2);
     }
   };
 
