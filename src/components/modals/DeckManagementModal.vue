@@ -35,9 +35,7 @@ const saveDeck = () => {
 };
 
 const loadDeck = (deckName: string, deckCode: string) => {
-  deckStore.setDeckName(deckName);
-  deckCodeStore.setImportDeckCode(deckCode);
-  appStore.importDeckFromCode();
+  appStore.loadSavedDeck(deckName, deckCode);
   deckManagementStore.closeDeckManagementModal();
 };
 

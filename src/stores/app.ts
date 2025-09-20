@@ -66,6 +66,22 @@ export const useAppStore = defineStore("app", () => {
   };
 
   /**
+   * デッキ名の一元的な更新窓口
+   */
+  const setDeckName = (name: string): void => {
+    deckStore.setDeckName(name);
+  };
+
+  /**
+   * 保存デッキの読み込み（名前とコードを一括適用）
+   */
+  const loadSavedDeck = (name: string, code: string): void => {
+    deckStore.setDeckName(name);
+    deckCodeStore.setImportDeckCode(code);
+    importDeckFromCode();
+  };
+
+  /**
    * Vue 3.5最適化: アプリケーション初期化
    * より効率的な非同期処理パターン
    */
@@ -98,6 +114,8 @@ export const useAppStore = defineStore("app", () => {
 
     // Deck code actions
     importDeckFromCode,
+    setDeckName,
+    loadSavedDeck,
 
     // App lifecycle
     initializeApp,

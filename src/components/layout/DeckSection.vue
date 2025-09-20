@@ -10,7 +10,7 @@
 import { computed } from "vue";
 import { GAME_CONSTANTS } from "../../constants";
 import { getCardImageUrl, handleImageError } from "../../utils";
-import { useDeckStore } from "../../stores";
+import { useAppStore, useDeckStore } from "../../stores";
 import { storeToRefs } from "pinia";
 import { useLongPressImageModal } from "../../composables/useLongPressImageModal";
 
@@ -33,6 +33,7 @@ const emit = defineEmits<Emits>();
 
 // ストアとコンポーザブルの初期化
 const deckStore = useDeckStore();
+const appStore = useAppStore();
 
 // デッキ操作（ストアを直接呼び出し）
 const handleIncrementCard = (cardId: string) => {
@@ -46,9 +47,9 @@ const handleDecrementCard = (cardId: string) => {
 const { deckCards, deckName, sortedDeckCards, totalDeckCards } =
   storeToRefs(deckStore);
 
-// デッキ名の更新（ストアメソッドを直接使用）
+// デッキ名の更新（Appストア経由で一元化）
 const updateDeckName = (value: string) => {
-  deckStore.setDeckName(value);
+  appStore.setDeckName(value);
 };
 
 // カード画像を拡大表示
