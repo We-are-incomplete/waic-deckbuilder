@@ -5,6 +5,7 @@
 import type { Card, DeckCard } from "../types";
 import { GAME_CONSTANTS } from "../constants";
 import { useLocalStorage } from "@vueuse/core";
+import * as v from "valibot";
 
 export const DEFAULT_DECK_NAME = "新しいデッキ" as const;
 
@@ -101,19 +102,13 @@ const deckCardsStorage = useLocalStorage<
     read: (raw: string): readonly { id: string; count: number }[] => {
       try {
         const data = JSON.parse(raw) as unknown;
-        const isValidArray =
-          Array.isArray(data) &&
-          data.every(
-            (x) =>
-              x &&
-              typeof x === "object" &&
-              typeof (x as any).id === "string" &&
-              Number.isInteger((x as any).count) &&
-              (x as any).count >= 0,
-          );
-        if (isValidArray) {
-          return data as { id: string; count: number }[];
-        }
+        const DeckItemSchema = v.object({
+          id: v.pipe(v.string(), v.nonEmpty()),
+          count: v.pipe(v.number(), v.integer(), v.minValue(0)),
+        });
+        const DeckArraySchema = v.array(DeckItemSchema);
+        const result = v.safeParse(DeckArraySchema, data);
+        if (result.success) return result.output;
         console.warn(
           "ローカルストレージのデッキカードが想定スキーマではありません。初期化します。",
           data,
