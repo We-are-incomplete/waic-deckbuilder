@@ -441,3 +441,41 @@ export const encodeKcgDeckCode = (cardIds: string[]): string => {
     });
   }
 };
+
+/**
+ * カードID配列を DeckCard 配列へ集計して変換
+ * - 不正なIDは CardIdSchema で除外
+ * - 利用可能カードに存在しないIDは missingCardIds に集約
+ */
+export const toDeckCardsFromCardIds = (
+  cardIds: readonly string[],
+  availableCards: readonly Card[],
+): { deckCards: DeckCard[]; missingCardIds: string[] } => {
+  const availableCardsMap = new Map<string, Card>();
+  for (const card of availableCards) {
+    availableCardsMap.set(card.id, card);
+  }
+
+  const counts = new Map<string, number>();
+  for (const rawId of cardIds) {
+    const trimmed = (rawId ?? "").trim();
+    if (!trimmed) continue;
+    const parsed = v.safeParse(CardIdSchema, trimmed);
+    if (!parsed.success) continue;
+    const id = parsed.output;
+    counts.set(id, (counts.get(id) || 0) + 1);
+  }
+
+  const deckCards: DeckCard[] = [];
+  const missingCardIds: string[] = [];
+  for (const [id, count] of counts) {
+    const card = availableCardsMap.get(id);
+    if (card) {
+      deckCards.push({ card, count });
+    } else {
+      missingCardIds.push(id);
+    }
+  }
+
+  return { deckCards, missingCardIds };
+};

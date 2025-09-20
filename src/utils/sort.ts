@@ -74,27 +74,3 @@ export const createTypeSort = (): SortComparator<Pick<Card, "type">> => {
     return indexA - indexB;
   };
 };
-
-/**
- * 複数のソート条件を組み合わせる高階関数
- */
-export const createCombinedSort = <T>(
-  ...comparators: readonly SortComparator<T>[]
-): SortComparator<T> => {
-  return (a: T, b: T): number => {
-    for (const comparator of comparators) {
-      const result = comparator(a, b);
-      if (result !== 0) return result;
-    }
-    return 0;
-  };
-};
-
-/**
- * ソート順を逆にする高階関数
- */
-export const reverseSort = <T>(
-  comparator: SortComparator<T>,
-): SortComparator<T> => {
-  return (a: T, b: T): number => -comparator(a, b);
-};
