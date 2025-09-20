@@ -50,8 +50,6 @@ export const useDeckStore = defineStore("deck", () => {
   const deckVersion = ref(0);
   const incrementVersion = () => deckVersion.value++;
 
-  // 集中エラーハンドリングは削除
-
   /**
    * 成功時の共通処理：デッキカードを更新してバージョンをインクリメント
    */

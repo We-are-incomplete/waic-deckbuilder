@@ -1,3 +1,11 @@
+/**
+ * 仕様:
+ * - 目的: デッキコードの生成/判定/インポート(Store)
+ * - 入力: deckStore.deckCards / importDeckCode
+ * - 出力: slashDeckCode, kcgDeckCode, デッキセット、副作用: クリップボード
+ * - 形式: "slash"（valibot: SlashDeckCodeSchema）, "kcg"（"KCG-"接頭辞）
+ * - エラー方針: DeckCodeError を UI へ伝播（validation/decode/copy/generation）
+ */
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import type { Card, DeckCard } from "../types";

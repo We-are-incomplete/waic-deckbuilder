@@ -1,21 +1,12 @@
 /**
  * デッキ操作に関するComposable
  * デッキへのカード追加、削除、検索、統計計算などの機能を提供
- * メモ化による最適化とエラーハンドリングを含む
+ * エラーハンドリングを含む
  */
 import { computed, type ComputedRef } from "vue";
 import type { Card, DeckCard, DeckOperation } from "../types";
 import * as DeckDomain from "../domain";
 import { useCardsStore, useDeckStore } from "../stores";
-// deckOperationErrorToString は削除したため、ここではローカルで対処
-
-/**
- * 安全なハッシュ関数（64bitバージョン）
- * 32bitハッシュの衝突リスクを大幅に削減
- * 2つの異なる32bitハッシュを組み合わせて64bitハッシュを生成
- * 約1.8 × 10^19通り（2^64）のパターンで衝突リスクを大幅に軽減
- */
-// 以前はメモ化キー生成に使用していたが、メモ化を削除したため不要
 
 type DeckOperationErrorLike = {
   type?: string;
@@ -26,11 +17,22 @@ type DeckOperationErrorLike = {
 const isDeckOperationError = (e: unknown): e is DeckOperationErrorLike =>
   !!e && typeof e === "object" && "type" in (e as any);
 
+const formatDeckOperationError = (err: DeckOperationErrorLike): string => {
+  switch (err.type) {
+    case "CardNotFound":
+      return `カードが見つかりません: ${err.cardId}`;
+    case "MaxCountExceeded":
+      return `最大枚数を超過しました: ${err.cardId} (最大: ${err.maxCount ?? "不明"})`;
+    case "InvalidCardCount":
+      return `不正なカード枚数です: ${err.cardId} (指定: ${err.count ?? "不明"})`;
+    default:
+      return "不明なエラー";
+  }
+};
+
 export const useDeckOperations = () => {
   const deckStore = useDeckStore();
   const cardsStore = useCardsStore();
-
-  // メモ化は削除し、シンプルな計算に戻す
 
   /**
    * デッキ状態を計算（最適化版）
@@ -59,18 +61,7 @@ export const useDeckOperations = () => {
         return {
           totalCount: state.totalCount,
           isValid: false,
-          validationErrors: state.errors.map((e) => {
-            switch (e.type) {
-              case "CardNotFound":
-                return `カードが見つかりません: ${e.cardId}`;
-              case "MaxCountExceeded":
-                return `最大枚数を超過しました: ${e.cardId} (最大: ${e.maxCount ?? "不明"})`;
-              case "InvalidCardCount":
-                return `不正なカード枚数です: ${e.cardId} (指定: ${e.count ?? "不明"})`;
-              default:
-                return "不明なエラー";
-            }
-          }),
+          validationErrors: state.errors.map(formatDeckOperationError),
         };
     }
   });
@@ -101,18 +92,7 @@ export const useDeckOperations = () => {
       return true;
     } catch (error) {
       const err = isDeckOperationError(error) ? error : ({} as any);
-      const msg = (() => {
-        switch (err.type) {
-          case "CardNotFound":
-            return `カードが見つかりません: ${err.cardId}`;
-          case "MaxCountExceeded":
-            return `最大枚数を超過しました: ${err.cardId} (最大: ${err.maxCount ?? "不明"})`;
-          case "InvalidCardCount":
-            return `不正なカード枚数です: ${err.cardId} (指定: ${err.count ?? "不明"})`;
-          default:
-            return "不明なエラー";
-        }
-      })();
+      const msg = formatDeckOperationError(err);
       console.error(`${errorMessage}: ${msg}`, error);
       return false;
     }
