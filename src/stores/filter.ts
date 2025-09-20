@@ -56,20 +56,10 @@ export const useFilterStore = defineStore("filter", () => {
     if (cards.length === 0) return new Set<string>();
 
     const tags = new Set<string>();
-    const cardCount = cards.length;
-
-    // より効率的なループ処理
-    for (let i = 0; i < cardCount; i++) {
-      const card = cards[i];
-      const cardTags = card.tags;
-
-      if (!cardTags) continue;
-
-      if (Array.isArray(cardTags)) {
-        const tagCount = cardTags.length;
-        for (let j = 0; j < tagCount; j++) {
-          tags.add(cardTags[j]);
-        }
+    for (const card of cards) {
+      if (!card || !card.tags) continue;
+      for (const t of card.tags) {
+        tags.add(t);
       }
     }
 
@@ -140,14 +130,9 @@ export const useFilterStore = defineStore("filter", () => {
     // 高速なSet を使用した効率的なルックアップ
     const kindSet = new Set<CardKind>(kinds);
     const result: Card[] = [];
-    const cardCount = cards.length;
-
-    // バッチ処理で最適化
-    for (let i = 0; i < cardCount; i++) {
-      const card = cards[i];
-      const cardKind = card.kind;
-
-      if (kindSet.has(cardKind)) {
+    for (const card of cards) {
+      if (!card) continue;
+      if (kindSet.has(card.kind)) {
         result.push(card);
       }
     }
@@ -168,18 +153,15 @@ export const useFilterStore = defineStore("filter", () => {
 
     const typeSet = new Set<CardType>(types);
     const result: Card[] = [];
-    const cardCount = cards.length;
-
-    // より効率的なループ処理
-    for (let i = 0; i < cardCount; i++) {
-      const card = cards[i];
+    for (const card of cards) {
+      if (!card) continue;
       let hasMatchingType = false;
-
-      const cardTypeCount = card.type.length;
-      for (let j = 0; j < cardTypeCount && !hasMatchingType; j++) {
-        hasMatchingType = typeSet.has(card.type[j]);
+      for (const t of card.type) {
+        if (typeSet.has(t)) {
+          hasMatchingType = true;
+          break;
+        }
       }
-
       if (hasMatchingType) {
         result.push(card);
       }
@@ -201,23 +183,15 @@ export const useFilterStore = defineStore("filter", () => {
 
     const tagSet = new Set(tags);
     const result: Card[] = [];
-    const cardCount = cards.length;
-
-    for (let i = 0; i < cardCount; i++) {
-      const card = cards[i];
-      const cardTags = card.tags;
-
-      if (!cardTags) continue;
-
+    for (const card of cards) {
+      if (!card || !card.tags) continue;
       let hasMatchingTag = false;
-
-      if (Array.isArray(cardTags)) {
-        const tagCount = cardTags.length;
-        for (let j = 0; j < tagCount && !hasMatchingTag; j++) {
-          hasMatchingTag = tagSet.has(cardTags[j]);
+      for (const tag of card.tags) {
+        if (tagSet.has(tag)) {
+          hasMatchingTag = true;
+          break;
         }
       }
-
       if (hasMatchingTag) {
         result.push(card);
       }

@@ -97,6 +97,9 @@ export function useImageModal(sortedDeckCards: Ref<readonly DeckCard[]>) {
     }
 
     const newDeckCard = deckCards[newIndex];
+    if (!newDeckCard) {
+      return;
+    }
 
     // Vue 3.5の新機能を使用した状態更新
     updateImageModalState({

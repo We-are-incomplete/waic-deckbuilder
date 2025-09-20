@@ -108,7 +108,7 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
 
     // --- 2. パディングビット数の計算 ---
     // 先頭文字のインデックスから削除するビット数を決定
-    const fifthCharOriginal = rawPayloadWithVersion[0];
+    const fifthCharOriginal = rawPayloadWithVersion.charAt(0);
     const indexFifthChar = CHAR_MAP.indexOf(fifthCharOriginal) + 1;
 
     let deckCodeFifthCharQuotient = Math.floor(indexFifthChar / 8);
@@ -136,7 +136,7 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
     let initialBinaryPayload = "";
     const payload = rawPayloadWithVersion.substring(1);
     for (let i = 0; i < payload.length; i++) {
-      const char = payload[i];
+      const char = payload.charAt(i);
       const charIndex = CHAR_MAP.indexOf(char);
       initialBinaryPayload += charIndex.toString(2).padStart(6, "0");
     }
@@ -228,11 +228,11 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
     for (let i = 0; i < finalNumericString.length; i += 5) {
       const fiveDigitChunk = finalNumericString.substring(i, i + 5);
 
-      const c1 = parseInt(fiveDigitChunk[0], 10);
-      const c2 = parseInt(fiveDigitChunk[1], 10);
-      const c3 = parseInt(fiveDigitChunk[2], 10);
-      const c4 = parseInt(fiveDigitChunk[3], 10);
-      const c5 = parseInt(fiveDigitChunk[4], 10);
+      const c1 = parseInt(fiveDigitChunk.charAt(0), 10);
+      const c2 = parseInt(fiveDigitChunk.charAt(1), 10);
+      const c3 = parseInt(fiveDigitChunk.charAt(2), 10);
+      const c4 = parseInt(fiveDigitChunk.charAt(3), 10);
+      const c5 = parseInt(fiveDigitChunk.charAt(4), 10);
 
       let expansionMap: string;
       if (c5 >= 1 && c5 <= 4) {
@@ -248,7 +248,7 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
         // 無効なC1インデックスの場合はスキップ
         continue;
       }
-      const selectedCharFromMap = expansionMap[c1];
+      const selectedCharFromMap = expansionMap.charAt(c1);
 
       let expansion: string;
       if (selectedCharFromMap === "e") {
@@ -347,22 +347,29 @@ export const encodeKcgDeckCode = (cardIds: string[]): string => {
     for (let r = 1; r <= 9; r++) F[r.toString()] = "0" + r;
 
     for (const [id, count] of Object.entries(cardCounts)) {
-      const [prefix, numberPart] = id.split("-");
+      const splitIdx = id.indexOf("-");
+      if (splitIdx === -1) {
+        continue;
+      }
+      const prefix = id.substring(0, splitIdx);
+      const numberPart = id.substring(splitIdx + 1);
       const expansion = prefix.slice(0, -1);
       const type = prefix.slice(-1);
 
       let c1 = "";
       let isExpansionOver9 = false;
-      if (O[expansion]) {
-        if (parseInt(O[expansion]) >= 10) {
+      const oVal = O[expansion];
+      if (oVal !== undefined) {
+        const parsedVal = parseInt(oVal, 10);
+        if (parsedVal >= 10) {
           isExpansionOver9 = true;
-          c1 = (parseInt(O[expansion]) - 10).toString();
+          c1 = (parsedVal - 10).toString();
         } else {
-          c1 = O[expansion];
+          c1 = oVal;
         }
       }
 
-      const c2 = D[type];
+      const c2 = D[type] ?? "";
       const c3c4 = F[numberPart] || numberPart;
       const c5 = isExpansionOver9 ? count + 5 : count;
 
@@ -406,14 +413,32 @@ export const encodeKcgDeckCode = (cardIds: string[]): string => {
       ["H", "P", "X", "f", "n", "v", "4", "/"],
     ];
 
-    for (let d = 0; d < i.length; d += 2) {
-      u += U[i[d]][i[d + 1]];
+    for (let d = 0; d + 1 < i.length; d += 2) {
+      const row = i[d] ?? -1;
+      const col = i[d + 1] ?? -1;
+      if (row >= 0 && row < U.length) {
+        const rowArr = U[row];
+        if (rowArr && col >= 0 && col < rowArr.length) {
+          u += rowArr[col];
+        }
+      }
     }
 
     const s = 7 - paddingZeros;
     const c = 7 - (o.filter((e) => e === "000").length % 8);
 
-    return `KCG-${U[s][c]}${u}`;
+    if (s < 0 || s >= U.length) {
+      throw new DeckCodeError({ type: "generation", message: "不正なs値です" });
+    }
+    const rowArr = U[s];
+    if (!rowArr) {
+      throw new DeckCodeError({ type: "generation", message: "不正な行参照です" });
+    }
+    if (c < 0 || c >= rowArr.length) {
+      throw new DeckCodeError({ type: "generation", message: "不正なc値です" });
+    }
+    const head = rowArr[c]!;
+    return `KCG-${head}${u}`;
   } catch (error) {
     throw new DeckCodeError({
       type: "generation",

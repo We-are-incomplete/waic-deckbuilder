@@ -82,7 +82,7 @@ function tokenizeCardTypes(value: unknown): string[] {
     }
     if (!matched) {
       // どのトークンにも一致しない場合は、最初の1文字を消費して続行
-      const char = remaining[0];
+      const char = remaining.charAt(0);
       result.push(char);
       remaining = remaining.substring(1);
     }
@@ -221,8 +221,8 @@ function parseCsv(csvText: string): Card[] {
     console.error("PapaParse errors:", parseResult.errors);
     throw new CardDataConverterError({
       type: "ParseError",
-      message: `CSVパースエラー: ${parseResult.errors[0].message}`,
-      originalError: parseResult.errors[0],
+      message: `CSVパースエラー: ${parseResult.errors[0]?.message ?? "unknown"}`,
+      originalError: parseResult.errors[0] ?? undefined,
     });
   }
 
@@ -254,14 +254,20 @@ function parseCsv(csvText: string): Card[] {
     }
 
     const types = toCardTypeArray(parsed.output.type);
-    cards.push({
+    const base = {
       id: idResult.output,
       name: parsed.output.name,
       kind: kindResult.output,
       type: types,
-      effect: parsed.output.effect,
-      tags: parsed.output.tags,
-    });
+      tags: parsed.output.tags as readonly string[],
+    } satisfies Omit<Card, "effect">;
+
+    const card: Card =
+      parsed.output.effect !== undefined && parsed.output.effect !== ""
+        ? { ...base, effect: parsed.output.effect }
+        : base;
+
+    cards.push(card);
   }
 
   return cards;

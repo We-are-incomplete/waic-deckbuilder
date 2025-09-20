@@ -41,10 +41,17 @@ export class StorageError extends Error {
     this.name = "StorageError";
     this.type = params.type;
     this.key = params.key;
-    this.data = params.data;
-    this.reason = params.reason;
-    this.originalError = params.originalError;
-    this.cause = params.originalError;
+    if (params.data !== undefined) {
+      this.data = params.data;
+    }
+    if (params.reason !== undefined) {
+      this.reason = params.reason;
+    }
+    if (params.originalError !== undefined) {
+      this.originalError = params.originalError;
+      // Error.cause はオプショナルのため、undefined は代入しない
+      (this as any).cause = params.originalError;
+    }
     Object.setPrototypeOf(this, StorageError.prototype);
   }
 }
@@ -125,7 +132,7 @@ const deckCardsStorage = useLocalStorage<
 });
 
 // useLocalStorage を使用してデッキ名を管理
-const deckNameStorage = useLocalStorage<string>(
+const deckNameStorage = useLocalStorage<string | undefined>(
   STORAGE_KEYS.DECK_NAME,
   DEFAULT_DECK_NAME,
 );
@@ -228,7 +235,7 @@ export const saveDeckName = (name: string): void => {
  */
 export const loadDeckName = (): string => {
   try {
-    return deckNameStorage.value || DEFAULT_DECK_NAME;
+    return deckNameStorage.value ?? DEFAULT_DECK_NAME;
   } catch (e) {
     console.error("デッキ名の読み込みに失敗しました", e);
     throw new StorageError({

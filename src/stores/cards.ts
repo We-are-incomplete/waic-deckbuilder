@@ -136,9 +136,8 @@ export const useCardsStore = defineStore("cards", () => {
   const updateCaches = (cards: readonly Card[]): void => {
     // IDキャッシュの更新（バッチ処理で最適化）
     cardByIdCache.clear();
-    const cardCount = cards.length;
-    for (let i = 0; i < cardCount; i++) {
-      const card = cards[i];
+    for (const card of cards) {
+      if (!card) continue;
       cardByIdCache.set(card.id, card);
     }
   };
