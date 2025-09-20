@@ -3,7 +3,6 @@ import { computed, useTemplateRef } from "vue";
 import { DeckExportContainer } from "../index";
 import { GAME_CONSTANTS } from "../../constants";
 import { getCardImageUrl, handleImageError } from "../../utils";
-import { useDeckOperations } from "../../composables/useDeckOperations";
 import { useDeckStore } from "../../stores";
 import { storeToRefs } from "pinia";
 import { useLongPressImageModal } from "../../composables/useLongPressImageModal";
@@ -28,11 +27,13 @@ const emit = defineEmits<Emits>();
 // ストアとコンポーザブルの初期化
 const deckStore = useDeckStore();
 
-// デッキ操作のコンポーザブル
-const {
-  incrementCardCount: handleIncrementCard,
-  decrementCardCount: handleDecrementCard,
-} = useDeckOperations();
+// デッキ操作（ストアを直接呼び出し）
+const handleIncrementCard = (cardId: string) => {
+  deckStore.incrementCardCount(cardId);
+};
+const handleDecrementCard = (cardId: string) => {
+  deckStore.decrementCardCount(cardId);
+};
 
 // 計算プロパティ（ストアから直接取得）- Vue 3.5の改善されたreactivity
 const { deckCards, deckName, sortedDeckCards, totalDeckCards } =
