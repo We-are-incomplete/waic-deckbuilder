@@ -110,10 +110,6 @@ const deckCardsStorage = useLocalStorage<
         const data = JSON.parse(raw) as unknown;
         const result = v.safeParse(DeckArraySchema, data);
         if (result.success) return result.output;
-        console.warn(
-          "ローカルストレージのデッキカードが想定スキーマではありません。初期化します。",
-          data,
-        );
       } catch (err) {
         console.error(
           "ローカルストレージのデッキカードの JSON 解析に失敗しました",

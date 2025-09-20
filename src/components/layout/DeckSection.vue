@@ -7,12 +7,10 @@
  Constraints: MAX_DECK_SIZE, MAX_CARD_COPIES を超えない
 -->
 <script setup lang="ts">
-import { computed } from "vue";
 import { GAME_CONSTANTS } from "../../constants";
 import { getCardImageUrl, handleImageError } from "../../utils";
 import { useAppStore, useDeckStore } from "../../stores";
 import { storeToRefs } from "pinia";
-import { useLongPressImageModal } from "../../composables/useLongPressImageModal";
 
 // Vue 3.5の新機能: 改善されたdefineProps with better TypeScript support
 interface Props {
@@ -57,10 +55,23 @@ const openImageModal = (cardId: string) => {
   emit("openImageModal", cardId);
 };
 
-const { setCardRef: setDeckCardRef } = useLongPressImageModal(
-  openImageModal,
-  computed(() => sortedDeckCards.value.map((dc) => dc.card)),
-);
+// 長押し検知（最小実装）
+const setDeckCardRef = (el: unknown, cardId: string) => {
+  if (!(el instanceof HTMLElement)) return;
+  let timer: number | null = null;
+  const clear = () => {
+    if (timer !== null) {
+      window.clearTimeout(timer);
+      timer = null;
+    }
+  };
+  el.addEventListener("touchstart", () => {
+    timer = window.setTimeout(() => openImageModal(cardId), 500);
+  });
+  el.addEventListener("touchend", clear);
+  el.addEventListener("touchmove", clear);
+  el.addEventListener("touchcancel", clear);
+};
 
 const resetDeck = () => {
   emit("resetDeck");

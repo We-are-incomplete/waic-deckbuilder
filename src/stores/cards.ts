@@ -4,7 +4,7 @@
  */
 import { CardDataConverterError } from "../utils/cardDataConverter";
 import { defineStore } from "pinia";
-import { ref, shallowRef, readonly, computed, markRaw, triggerRef } from "vue";
+import { ref, shallowRef, readonly, computed, markRaw } from "vue";
 import type { Card } from "../types";
 import { loadCardsFromCsv } from "../utils";
 import * as CardDomain from "../domain";
@@ -26,14 +26,8 @@ export const useCardsStore = defineStore("cards", () => {
   const isLoading = ref<boolean>(false);
   const error = ref<CardStoreError | null>(null);
 
-  // カードデータのバージョン管理（キャッシュ無効化用）
-  const cardsVersion = ref<number>(0);
-
   // パフォーマンス改善のためのキャッシュ（markRawで最適化）
   const cardByIdCache = markRaw(new Map<string, Card>());
-  const cardsByKindCache = markRaw(new Map<string, readonly Card[]>());
-  const availableKindsCache = shallowRef<readonly string[] | null>(null);
-  const availableTypesCache = shallowRef<readonly string[] | null>(null);
 
   // シンプルな検索処理
 
@@ -147,39 +141,6 @@ export const useCardsStore = defineStore("cards", () => {
       const card = cards[i];
       cardByIdCache.set(card.id, card);
     }
-
-    // 種別キャッシュの更新（並列処理で最適化）
-    cardsByKindCache.clear();
-    const kindGroups = markRaw(new Map<string, Card[]>());
-    const kindSet = new Set<string>();
-    const typeSet = new Set<string>();
-
-    // 単一ループで全ての処理を実行
-    for (let i = 0; i < cardCount; i++) {
-      const card = cards[i];
-
-      // 種別処理
-      kindSet.add(card.kind);
-
-      let kindCards = kindGroups.get(card.kind);
-      if (!kindCards) {
-        kindCards = [];
-        kindGroups.set(card.kind, kindCards);
-      }
-      kindCards.push(card);
-
-      // タイプ処理（最適化）
-      card.type.forEach((type) => typeSet.add(type));
-    }
-
-    // 種別キャッシュに保存（メモリ効率的に）
-    for (const [kind, kindCards] of kindGroups) {
-      cardsByKindCache.set(kind, readonly(kindCards));
-    }
-
-    // 利用可能な種別・タイプのキャッシュ更新
-    availableKindsCache.value = readonly(Array.from(kindSet).sort());
-    availableTypesCache.value = readonly(Array.from(typeSet).sort());
   };
 
   /**
@@ -199,76 +160,6 @@ export const useCardsStore = defineStore("cards", () => {
     return cardByIdCache.get(cardId);
   };
 
-  /**
-   * カードを種別でフィルタリング（最適化版）
-   */
-  const getCardsByKind = (kind: string): readonly Card[] => {
-    const cached = cardsByKindCache.get(kind);
-    if (cached) {
-      return cached;
-    }
-
-    // キャッシュにない場合はフィルタリングして追加
-    const result = availableCards.value.filter((card) => {
-      return card.kind === kind;
-    });
-
-    const readonlyResult = readonly(result);
-    cardsByKindCache.set(kind, readonlyResult);
-    return readonlyResult;
-  };
-
-  /**
-   * 全キャッシュクリア（最適化版）
-   */
-  const clearAllCaches = (): void => {
-    // cardsVersionを単調増加させることで古いキャッシュヒットを防ぐ
-    cardsVersion.value++;
-    cardByIdCache.clear();
-    cardsByKindCache.clear();
-    availableKindsCache.value = null;
-    availableTypesCache.value = null;
-    triggerRef(availableKindsCache);
-    triggerRef(availableTypesCache);
-  };
-
-  /**
-   * 利用可能なカード種別を取得（最適化版）
-   */
-  const getAvailableKinds = (): readonly string[] => {
-    if (availableKindsCache.value) {
-      return availableKindsCache.value;
-    }
-
-    // キャッシュがない場合は再計算
-    const kinds = new Set<string>();
-    for (const card of availableCards.value) {
-      kinds.add(card.kind);
-    }
-
-    const result = readonly([...kinds].sort());
-    availableKindsCache.value = result;
-    return result;
-  };
-
-  /**
-   * 利用可能なカードタイプを取得（最適化版）
-   */
-  const getAvailableTypes = (): readonly string[] => {
-    if (availableTypesCache.value) {
-      return availableTypesCache.value;
-    }
-
-    // キャッシュがない場合は再計算
-    const types = new Set<string>();
-    for (const card of availableCards.value) {
-      card.type.forEach((type) => types.add(type));
-    }
-
-    const result = readonly([...types].sort());
-    availableTypesCache.value = result;
-    return result;
-  };
 
   /**
    * カードデータを読み込む
@@ -287,12 +178,10 @@ export const useCardsStore = defineStore("cards", () => {
       const ensuredCards = ensureValidCards(validCards);
 
       // 成功パス
-      cardsVersion.value++;
       availableCards.value = readonly(ensuredCards);
       updateCaches(ensuredCards);
 
       // 事前プリロードは簡素化のため削除
-      console.debug(`${ensuredCards.length}枚のカードを読み込みました`);
     } catch (e) {
       const mapped = mapErrorToCardStoreError(e);
       error.value = mapped;
@@ -315,12 +204,6 @@ export const useCardsStore = defineStore("cards", () => {
     error.value = null;
   };
 
-  /**
-   * キャッシュをクリア（デバッグ用）
-   */
-  const clearCaches = (): void => {
-    clearAllCaches();
-  };
 
   // 計算プロパティ
   const cardCount = computed(() => availableCards.value.length);
@@ -341,13 +224,9 @@ export const useCardsStore = defineStore("cards", () => {
     // アクション
     loadCards,
     clearError,
-    clearCaches,
 
     // ユーティリティ関数
     searchCardsByName,
     getCardById,
-    getCardsByKind,
-    getAvailableKinds,
-    getAvailableTypes,
   };
 });

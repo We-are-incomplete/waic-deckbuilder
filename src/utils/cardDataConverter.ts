@@ -162,8 +162,6 @@ const toCardTypeArray = (tokens: string[]): CardType[] => {
 };
 
 export async function loadCardsFromCsv(csvPath: string): Promise<Card[]> {
-  if (import.meta.env?.DEV)
-    console.debug("Attempting to fetch CSV from:", csvPath);
 
   try {
     const response = await fetch(csvPath, {
@@ -189,8 +187,6 @@ export async function loadCardsFromCsv(csvPath: string): Promise<Card[]> {
       });
     }
 
-    if (import.meta.env?.DEV)
-      console.debug("CSV data fetched successfully, length:", csvText.length);
 
     return parseCsv(csvText);
   } catch (error) {
@@ -205,7 +201,6 @@ export async function loadCardsFromCsv(csvPath: string): Promise<Card[]> {
 }
 
 function parseCsv(csvText: string): Card[] {
-  if (import.meta.env?.DEV) console.debug("Parsing CSV text with PapaParse...");
   const parseResult = Papa.parse<CsvCardRow>(csvText, {
     header: true, // ヘッダー行をオブジェクトのキーとして使用
     skipEmptyLines: true, // 空行をスキップ
@@ -248,10 +243,6 @@ function parseCsv(csvText: string): Card[] {
     // 追加: CardIdSchema による ID の厳格検証
     const idResult = v.safeParse(CardIdSchema, parsed.output.id);
     if (!idResult.success) {
-      console.error(
-        `無効なカードIDを検出したためこの行をスキップします: id="${parsed.output.id}"`,
-        idResult.issues,
-      );
       continue; // 無効IDの行はスキップ
     }
 
@@ -275,7 +266,5 @@ function parseCsv(csvText: string): Card[] {
     });
   }
 
-  if (import.meta.env?.DEV)
-    console.debug("Successfully parsed cards:", cards.length);
   return cards;
 }

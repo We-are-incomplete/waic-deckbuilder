@@ -10,7 +10,6 @@ import { computed } from "vue";
 import { GAME_CONSTANTS } from "../../constants";
 import type { Card, DeckCard } from "../../types";
 import { handleImageError, getCardImageUrl } from "../../utils";
-import { useLongPressImageModal } from "../../composables/useLongPressImageModal";
 import { useStorage } from "@vueuse/core";
 
 interface Props {
@@ -97,7 +96,23 @@ const handleCardClick = (card: Card) => {
   }
 };
 
-const { setCardRef } = useLongPressImageModal(openImageModal, displayedCards);
+// 長押し検知（最小実装）
+const setCardRef = (el: unknown, cardId: string) => {
+  if (!(el instanceof HTMLElement)) return;
+  let timer: number | null = null;
+  const clear = () => {
+    if (timer !== null) {
+      window.clearTimeout(timer);
+      timer = null;
+    }
+  };
+  el.addEventListener("touchstart", () => {
+    timer = window.setTimeout(() => openImageModal(cardId), 500);
+  });
+  el.addEventListener("touchend", clear);
+  el.addEventListener("touchmove", clear);
+  el.addEventListener("touchcancel", clear);
+};
 
 const onListImageError = (e: Event) => {
   try {
