@@ -7,7 +7,6 @@ import type { Card, CardKind, CardType, FilterCriteria } from "../types";
 import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants";
 import { useCardsStore } from "./cards";
 import { searchCardsByName, sortCards } from "../domain";
-// メモ化ユーティリティは削除。シンプルな実装へ戻す。
 
 export const useFilterStore = defineStore("filter", () => {
   // ストアの公開APIの型定義
