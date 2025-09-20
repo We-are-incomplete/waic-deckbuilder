@@ -5,6 +5,8 @@
 import type { Card, DeckCard } from "../types";
 import { GAME_CONSTANTS } from "../constants";
 import { useLocalStorage } from "@vueuse/core";
+import * as v from "valibot";
+import { CardIdSchema } from "../domain";
 
 export const DEFAULT_DECK_NAME = "新しいデッキ" as const;
 
@@ -94,6 +96,11 @@ export const deserializeDeckCards = (
 };
 
 // useLocalStorage を使用してデッキカードを管理
+const DeckItemSchema = v.object({
+  id: CardIdSchema,
+  count: v.pipe(v.number(), v.integer(), v.minValue(0)),
+});
+const DeckArraySchema = v.array(DeckItemSchema);
 const deckCardsStorage = useLocalStorage<
   readonly { id: string; count: number }[]
 >(STORAGE_KEYS.DECK_CARDS, [] as readonly { id: string; count: number }[], {
@@ -101,19 +108,8 @@ const deckCardsStorage = useLocalStorage<
     read: (raw: string): readonly { id: string; count: number }[] => {
       try {
         const data = JSON.parse(raw) as unknown;
-        const isValidArray =
-          Array.isArray(data) &&
-          data.every(
-            (x) =>
-              x &&
-              typeof x === "object" &&
-              typeof (x as any).id === "string" &&
-              Number.isInteger((x as any).count) &&
-              (x as any).count >= 0,
-          );
-        if (isValidArray) {
-          return data as { id: string; count: number }[];
-        }
+        const result = v.safeParse(DeckArraySchema, data);
+        if (result.success) return result.output;
         console.warn(
           "ローカルストレージのデッキカードが想定スキーマではありません。初期化します。",
           data,
@@ -207,17 +203,19 @@ export const loadDeckFromLocalStorage = (
  * デッキ名をローカルストレージに保存
  */
 export const saveDeckName = (name: string): void => {
-  const n = name?.trim();
-  if (!n) {
+  const NameSchema = v.pipe(v.string(), v.trim(), v.nonEmpty());
+  const parsed = v.safeParse(NameSchema, name);
+  if (!parsed.success) {
     throw new StorageError({
       type: "invalidData",
       key: STORAGE_KEYS.DECK_NAME,
-      reason: "デッキ名が指定されていません",
+      reason: parsed.issues[0]?.message ?? "デッキ名が不正です",
+      originalError: parsed.issues,
     });
   }
 
   try {
-    deckNameStorage.value = n;
+    deckNameStorage.value = parsed.output;
   } catch (e) {
     console.error("デッキ名の保存に失敗しました", e);
     throw new StorageError({

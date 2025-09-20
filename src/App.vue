@@ -4,7 +4,6 @@
 // 初期化（カード読込・デッキ生成）とキャッシュ掃除などの副作用を集約し、
 // 画像モーダルには deckCards を外部参照として渡してスワイプナビゲーションの基準を統一する。
 import { onMounted, computed, useTemplateRef, watch } from "vue";
-import { useIntervalFn } from "@vueuse/core";
 
 import { useAppStore } from "./stores";
 import {
@@ -16,7 +15,7 @@ import {
   CardImageModal,
   DeckManagementModal,
 } from "./components";
-import { cleanupStaleEntries, CACHE_CLEANUP_INTERVAL } from "./utils";
+// 画像キャッシュの定期掃除は削除
 
 // コンポーザブル
 import { useImageModal } from "./composables/useImageModal";
@@ -50,8 +49,7 @@ const {
 // アプリケーションの初期化
 onMounted(appStore.initializeApp);
 
-// 画像キャッシュの定期的なクリーンアップ
-useIntervalFn(cleanupStaleEntries, CACHE_CLEANUP_INTERVAL, { immediate: true });
+// 簡素化により、定期クリーンアップは不要
 
 watch(
   deckSectionRef,

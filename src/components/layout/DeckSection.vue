@@ -2,7 +2,7 @@
 import { computed, useTemplateRef } from "vue";
 import { DeckExportContainer } from "../index";
 import { GAME_CONSTANTS } from "../../constants";
-import { getCardImageUrlSafe, handleImageError } from "../../utils";
+import { getCardImageUrl, handleImageError } from "../../utils";
 import { useDeckOperations } from "../../composables/useDeckOperations";
 import { useDeckStore } from "../../stores";
 import { storeToRefs } from "pinia";
@@ -253,7 +253,7 @@ const onDeckImageError = (e: Event) => {
           title="長押し: 拡大表示"
         >
           <img
-            :src="getCardImageUrlSafe(item.card.id)"
+            :src="getCardImageUrl(item.card.id)"
             @error="onDeckImageError"
             :alt="item.card.name"
             loading="lazy"

@@ -6,8 +6,9 @@
  * - KCG形式: "KCG-"で始まる圧縮形式のデッキコード
  */
 import type { Card, DeckCard } from "../types";
-
 import { DeckCodeError } from "../types";
+import * as v from "valibot";
+import { SlashDeckCodeSchema, CardIdSchema } from "../domain";
 
 // --- KCGデッキコード用定数 ---
 const CHAR_MAP =
@@ -32,16 +33,16 @@ export const decodeDeckCode = (
   code: string,
   availableCards: readonly Card[],
 ): { deckCards: DeckCard[]; missingCardIds: string[] } => {
-  // 空文字列の場合はエラーをスロー
-  if (!code || code.trim() === "") {
-    console.debug("デッキコードが空です");
+  const parsed = v.safeParse(SlashDeckCodeSchema, code);
+  if (!parsed.success) {
     throw new DeckCodeError({
       type: "validation",
-      message: "デッキコードが空です",
+      message: parsed.issues[0]?.message ?? "無効なデッキコードです",
+      originalError: parsed.issues,
     });
   }
 
-  const cardIds = code.split("/").filter((id) => id.trim() !== ""); // 空文字列を除外
+  const cardIds = parsed.output.split("/").filter((id) => id.trim() !== "");
   console.debug("分割されたカードID:", cardIds);
 
   // availableCardsをMapに変換して高速ルックアップを可能にする
@@ -54,10 +55,10 @@ export const decodeDeckCode = (
   const cardCounts = new Map<string, number>();
 
   for (const id of cardIds) {
-    const trimmedId = id.trim();
-    if (trimmedId) {
-      cardCounts.set(trimmedId, (cardCounts.get(trimmedId) || 0) + 1);
-    }
+    const vId = v.safeParse(CardIdSchema, id);
+    if (!vId.success) continue;
+    const normalized = vId.output;
+    cardCounts.set(normalized, (cardCounts.get(normalized) || 0) + 1);
   }
 
   console.debug("カードID別枚数:", Object.fromEntries(cardCounts));

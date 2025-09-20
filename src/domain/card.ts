@@ -8,6 +8,7 @@
  */
 import type { Card, CardKind, CardType } from "../types";
 import { CARD_KINDS, CARD_TYPES } from "../constants";
+import * as v from "valibot";
 
 /**
  * カードの検証中に発生しうるエラーを表す代数的データ型。
@@ -73,7 +74,41 @@ export class CardValidationError extends Error {
   }
 }
 
-// カード作成関数
+// Valibot スキーマ定義（実行時バリデーション + 正規化）
+const CardKindSchema = v.picklist(CARD_KINDS);
+const CardTypeSchema = v.picklist(CARD_TYPES);
+const NonEmptyTrimmedString = v.pipe(v.string(), v.trim(), v.nonEmpty());
+const CardTypeListSchema = v.pipe(
+  v.array(CardTypeSchema),
+  v.minLength(1, "CardType は1つ以上必要です"),
+  v.checkItems(
+    (item, index, array) => array.indexOf(item) === index,
+    "CardType に重複があります",
+  ),
+);
+const TagsSchema = v.optional(
+  v.pipe(
+    v.array(
+      v.pipe(
+        v.string(),
+        v.transform((s) => s.trim()),
+      ),
+    ),
+    v.transform((tags: string[]) =>
+      Array.from(new Set(tags.filter((t: string) => t.length > 0))),
+    ),
+  ),
+);
+
+const CreateCardInputSchema = v.object({
+  id: NonEmptyTrimmedString,
+  name: NonEmptyTrimmedString,
+  kind: CardKindSchema,
+  type: CardTypeListSchema,
+  tags: TagsSchema,
+});
+
+// カード作成関数（valibot による検証）
 export const createCard = (
   id: string,
   name: string,
@@ -81,57 +116,53 @@ export const createCard = (
   type: readonly CardType[],
   tags?: readonly string[],
 ): Card => {
-  // ID検証
-  if (!id || id.trim().length === 0) {
-    throw new CardValidationError({ type: "InvalidId", value: id });
-  }
+  const result = v.safeParse(CreateCardInputSchema, {
+    id,
+    name,
+    kind,
+    type: [...type],
+    tags: tags ? [...tags] : undefined,
+  });
 
-  // 名前検証
-  if (!name || name.trim().length === 0) {
-    throw new CardValidationError({ type: "InvalidName", value: name });
-  }
-
-  // 種別検証（実行時）
-  if (!CARD_KINDS.includes(kind)) {
-    throw new CardValidationError({ type: "InvalidKind", value: kind });
-  }
-
-  // 空配列/重複チェック
-  if (type.length === 0)
-    throw new CardValidationError({ type: "EmptyTypeList" });
-  if (new Set(type).size !== type.length)
-    throw new CardValidationError({ type: "DuplicateTypes", value: type });
-
-  // タイプ検証（実行時）
-  for (const t of type) {
-    if (!CARD_TYPES.includes(t)) {
-      throw new CardValidationError({ type: "InvalidType", value: t });
-    }
-  }
-
-  // タグ検証
-  let finalTags: readonly string[] | undefined = undefined;
-  const processedTags = tags
-    ?.map((tag) => tag.trim())
-    .filter((tag) => tag.length > 0);
-
-  if (processedTags && processedTags.length > 0) {
-    const uniqueTags = new Set(processedTags);
-    if (uniqueTags.size !== processedTags.length) {
+  if (!result.success) {
+    // 代表的なエラー型にマップして既存のエラー型を維持
+    const issues = result.issues;
+    const byKey = (k: string) =>
+      issues.find((i) => i.path?.some((p) => p.key === k));
+    if (byKey("id"))
+      throw new CardValidationError({ type: "InvalidId", value: id });
+    if (byKey("name"))
+      throw new CardValidationError({ type: "InvalidName", value: name });
+    if (byKey("kind"))
       throw new CardValidationError({
-        type: "DuplicateTags",
-        value: processedTags,
+        type: "InvalidKind",
+        value: String(kind),
+      });
+    if (byKey("type")) {
+      const tIssue = byKey("type");
+      const msg = tIssue?.message ?? "type invalid";
+      if (msg.includes("1つ以上") || msg.toLowerCase().includes("min")) {
+        throw new CardValidationError({ type: "EmptyTypeList" });
+      }
+      if (msg.includes("重複")) {
+        throw new CardValidationError({ type: "DuplicateTypes", value: type });
+      }
+      throw new CardValidationError({
+        type: "InvalidType",
+        value: type.join(", "),
       });
     }
-    finalTags = [...uniqueTags];
+    // フォールバック
+    throw new Error("Invalid card input");
   }
 
+  const normalized = result.output;
   return {
-    id: id.trim(),
-    name: name.trim(),
-    kind,
-    type,
-    tags: finalTags,
+    id: normalized.id,
+    name: normalized.name,
+    kind: normalized.kind,
+    type: normalized.type as readonly CardType[],
+    tags: normalized.tags as readonly string[] | undefined,
   };
 };
 

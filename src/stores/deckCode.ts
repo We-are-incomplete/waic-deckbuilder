@@ -1,5 +1,15 @@
+/**
+ * 仕様:
+ * - 目的: デッキコードの生成/判定/インポート(Store)
+ * - 入力: deckStore.deckCards / importDeckCode
+ * - 出力: slashDeckCode, kcgDeckCode, デッキセット、副作用: クリップボード
+ * - 形式: "slash"（valibot: SlashDeckCodeSchema）, "kcg"（"KCG-"接頭辞）
+ * - エラー方針: DeckCodeError を UI へ伝播（validation/decode/copy/generation）
+ */
 import { defineStore } from "pinia";
 import { ref } from "vue";
+import { useClipboard } from "@vueuse/core";
+import { safeParse } from "valibot";
 import type { Card, DeckCard } from "../types";
 import { DeckCodeError } from "../types";
 import {
@@ -8,10 +18,8 @@ import {
   decodeKcgDeckCode,
   encodeKcgDeckCode,
 } from "../utils";
-import { GAME_CONSTANTS } from "../constants";
+import { SlashDeckCodeSchema, sortDeckCards } from "../domain";
 import { useDeckStore } from "./deck";
-import { sortDeckCards } from "../domain";
-import { useClipboard } from "@vueuse/core";
 
 export const useDeckCodeStore = defineStore("deckCode", () => {
   const slashDeckCode = ref<string>(""); // スラッシュ区切りコード
@@ -131,24 +139,9 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
    * デッキコード形式を判定
    */
   const detectDeckCodeFormat = (code: string): "kcg" | "slash" | "unknown" => {
-    const trimmedCode = code.trim();
-
-    // KCG形式の判定
-    if (trimmedCode.startsWith("KCG-")) {
-      return "kcg";
-    }
-
-    // スラッシュ区切り形式の判定
-    // カードIDパターンをチェック
-    const cardIdPattern = /^([A-Z]|ex|prm)(A|S|M|D)-\d+$/;
-    const cardIds = trimmedCode.split("/");
-    if (
-      cardIds.length > 0 &&
-      cardIds.every((id) => cardIdPattern.test(id.trim()))
-    ) {
-      return "slash";
-    }
-
+    const s = code.trim();
+    if (s.startsWith("KCG-")) return "kcg";
+    if (s.includes("/")) return "slash"; // 詳細検証は Schema 側へ委譲
     return "unknown";
   };
 
@@ -184,7 +177,6 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
         deckCards.push({ card, count });
       } else {
         missingCardIds.push(id);
-        console.warn(`カードIDが見つかりません: ${id}`);
       }
     }
 
@@ -216,18 +208,6 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
     }
 
     const trimmedCode = importDeckCode.value.trim();
-
-    // デッキコードの最大長チェック
-    const MAX_DECK_CODE_LENGTH = GAME_CONSTANTS.MAX_DECK_CODE_LENGTH;
-    if (trimmedCode.length > MAX_DECK_CODE_LENGTH) {
-      const warningMessage = `デッキコードが長すぎます（最大${MAX_DECK_CODE_LENGTH}文字）`;
-      console.warn(warningMessage);
-      error.value = new DeckCodeError({
-        type: "validation",
-        message: warningMessage,
-      });
-      return;
-    }
 
     // デッキコード形式を判定
     const format = detectDeckCodeFormat(trimmedCode);
@@ -307,13 +287,11 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
           trimmedCode,
         );
 
-        // スラッシュ区切り形式の基本的な形式チェック
-        if (
-          trimmedCode.includes("//") ||
-          trimmedCode.startsWith("/") ||
-          trimmedCode.endsWith("/")
-        ) {
-          const warningMessage = "無効なデッキコード形式です";
+        // スラッシュ区切り形式の詳細検証（valibot）
+        const parsed = safeParse(SlashDeckCodeSchema, trimmedCode);
+        if (!parsed.success) {
+          const warningMessage =
+            parsed.issues[0]?.message || "無効なデッキコード形式です";
           console.warn(warningMessage);
           error.value = new DeckCodeError({
             type: "validation",

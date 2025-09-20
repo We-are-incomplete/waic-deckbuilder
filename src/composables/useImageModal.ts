@@ -3,11 +3,11 @@
  * 仕様:
  * - selectedIndex: デッキに存在しないカードは null
  * - ナビゲーション対象: 引数で受け取る sortedDeckCards（外部から提供されるリアクティブ配列）
- * - 外部I/O: 画像URLキャッシュ(globalImageUrlCache)のみ／例外は発生させない
+ * - 外部I/O: 画像URL取得のみ／例外は発生させない
  */
 import { shallowRef, computed, triggerRef, watch, type Ref } from "vue";
 import type { Card, DeckCard } from "../types";
-import { getCardImageUrlSafe, globalImageUrlCache } from "../utils";
+import { getCardImageUrl } from "../utils";
 import { useCardsStore } from "../stores";
 
 /**
@@ -36,21 +36,6 @@ export function useImageModal(sortedDeckCards: Ref<readonly DeckCard[]>) {
   const cardsStore = useCardsStore();
 
   /**
-   * 画像URLをキャッシュから高速取得
-   */
-  const getCachedImageUrl = (cardId: string): string => {
-    const cached = globalImageUrlCache.get(cardId);
-    if (cached) {
-      return cached;
-    }
-
-    // getCardImageUrlSafe は内部でフォールバックを処理するため直接呼び出し
-    const imageUrl = getCardImageUrlSafe(cardId);
-    globalImageUrlCache.set(cardId, imageUrl);
-    return imageUrl;
-  };
-
-  /**
    * Vue 3.5の新機能: より効率的な状態更新
    */
   const updateImageModalState = (updates: Partial<ImageModalState>) => {
@@ -72,7 +57,7 @@ export function useImageModal(sortedDeckCards: Ref<readonly DeckCard[]>) {
       updateImageModalState({
         selectedCard: card,
         selectedIndex: idxInDeck >= 0 ? idxInDeck : null,
-        selectedImage: getCachedImageUrl(cardId),
+        selectedImage: getCardImageUrl(cardId),
         isVisible: true,
       });
     } else {
@@ -119,7 +104,7 @@ export function useImageModal(sortedDeckCards: Ref<readonly DeckCard[]>) {
     updateImageModalState({
       selectedCard: newDeckCard.card,
       selectedIndex: newIndex,
-      selectedImage: getCachedImageUrl(newDeckCard.card.id),
+      selectedImage: getCardImageUrl(newDeckCard.card.id),
     });
   };
 
