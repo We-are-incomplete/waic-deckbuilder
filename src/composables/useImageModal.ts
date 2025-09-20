@@ -60,8 +60,6 @@ export function useImageModal(sortedDeckCards: Ref<readonly DeckCard[]>) {
         selectedImage: getCardImageUrl(cardId),
         isVisible: true,
       });
-    } else {
-      console.warn("[useImageModal] カード未検出", { cardId });
     }
   };
 

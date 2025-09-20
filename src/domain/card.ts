@@ -165,10 +165,6 @@ export const createCard = (
 };
 
 // カードが特定のタグを持つかチェック
-export const hasTag = (card: Card, tag: string): boolean => {
-  return card.tags?.includes(tag) ?? false;
-};
-
 // カード名による検索
 export const searchCardsByName = (
   cards: readonly Card[],
@@ -184,42 +180,4 @@ export const searchCardsByName = (
       card.name.toLowerCase().includes(normalizedSearchText) ||
       card.id.toLowerCase().includes(normalizedSearchText),
   );
-};
-
-// カード種別による検索
-export const filterCardsByKind = (
-  cards: readonly Card[],
-  kinds: readonly CardKind[],
-): readonly Card[] => {
-  if (kinds.length === 0) {
-    return cards;
-  }
-
-  return cards.filter((card) => kinds.some((kind) => kind === card.kind));
-};
-
-// カードタイプによる検索
-export const filterCardsByType = (
-  cards: readonly Card[],
-  types: readonly CardType[],
-): readonly Card[] => {
-  if (types.length === 0) {
-    return cards;
-  }
-
-  return cards.filter((card) => {
-    return types.some((filterType) => card.type.includes(filterType));
-  });
-};
-
-// タグによる検索
-export const filterCardsByTags = (
-  cards: readonly Card[],
-  tags: readonly string[],
-): readonly Card[] => {
-  if (tags.length === 0) {
-    return cards;
-  }
-
-  return cards.filter((card) => tags.every((tag) => hasTag(card, tag)));
 };

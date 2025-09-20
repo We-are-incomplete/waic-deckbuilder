@@ -1,9 +1,5 @@
-import type { Card, DeckCard } from "../types";
-import {
-  createNaturalSort,
-  createKindSort,
-  createTypeSort,
-} from "../utils/sort";
+import type { Card, DeckCard, CardType } from "../types";
+import { CARD_KINDS, CARD_TYPES } from "../constants";
 
 /**
  * @file カードとデッキカードのソートに関するドメインロジックを定義する。
@@ -13,6 +9,53 @@ import {
  * - カード配列およびデッキカード配列をソートする関数
  * - 副作用を避け、不変データ構造を優先する関数型アプローチを採用
  */
+
+// --- 内蔵ソート実装（utils/sort の重複を排除） ---
+export type SortComparator<T> = (a: T, b: T) => number;
+
+const createNaturalSort = (): SortComparator<string> => {
+  const collator = new Intl.Collator("ja", {
+    numeric: true,
+    sensitivity: "base",
+  });
+  return (a: string, b: string): number => collator.compare(a, b);
+};
+
+const createKindSort = (): SortComparator<Pick<Card, "kind">> => {
+  return (a: Pick<Card, "kind">, b: Pick<Card, "kind">): number => {
+    const indexA = CARD_KINDS.indexOf(a.kind);
+    const indexB = CARD_KINDS.indexOf(b.kind);
+    const finalIndexA = indexA === -1 ? CARD_KINDS.length : indexA;
+    const finalIndexB = indexB === -1 ? CARD_KINDS.length : indexB;
+    return finalIndexA - finalIndexB;
+  };
+};
+
+const TYPE_INDEX: ReadonlyMap<CardType, number> = new Map(
+  CARD_TYPES.map((t, i) => [t, i] as const),
+);
+
+const createTypeSort = (): SortComparator<Pick<Card, "type">> => {
+  const getEarliestTypeIndex = (
+    cardTypes: CardType | readonly CardType[],
+  ): number => {
+    const types: readonly CardType[] = Array.isArray(cardTypes)
+      ? cardTypes
+      : [cardTypes];
+    let minIndex: number = CARD_TYPES.length;
+    for (const type of types) {
+      const index = TYPE_INDEX.get(type) ?? CARD_TYPES.length;
+      if (index < minIndex) minIndex = index;
+    }
+    return minIndex;
+  };
+
+  return (a: Pick<Card, "type">, b: Pick<Card, "type">): number => {
+    const indexA = getEarliestTypeIndex(a.type);
+    const indexB = getEarliestTypeIndex(b.type);
+    return indexA - indexB;
+  };
+};
 
 // ソート関数インスタンス（シングルトン）
 const naturalSort = createNaturalSort();
