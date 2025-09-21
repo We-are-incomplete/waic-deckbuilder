@@ -4,7 +4,6 @@
  */
 import { defineStore } from "pinia";
 import { ref, readonly } from "vue";
-import { generateFileName, downloadCanvas } from "../utils";
 import { getCardImageUrl } from "../utils";
 import { useDeckStore } from "./deck";
 
@@ -197,14 +196,34 @@ export const useExportStore = defineStore("export", () => {
         }
       }
 
-      // ダウンロード
-      const filename = generateFileName(deckName);
-      downloadCanvas(canvas, filename);
+      const canvasToBlob = (
+        canvas: HTMLCanvasElement,
+        type: string,
+      ): Promise<Blob> =>
+        new Promise((resolve, reject) =>
+          canvas.toBlob(
+            (b) => (b ? resolve(b) : reject(new Error("toBlob failed"))),
+            type,
+          ),
+        );
 
-      console.debug(`デッキ画像を保存しました: ${filename}`);
+      // ファイル名を生成（予約文字と制御文字を除去）
+      const timestamp = new Date()
+        .toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" })
+        .replace(/\//g, "-");
+      const filename = `${deckName || "デッキ"}_${timestamp}.png`;
+      // キャンバスをBlob化してダウンロード（メモリ効率）
+      const blob = await canvasToBlob(canvas, "image/png");
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.download = filename;
+      link.href = url;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     } catch (e) {
       const errorMessage = "デッキ画像の保存に失敗しました";
-      console.error(errorMessage + ":", e);
       if (e instanceof ExportError) {
         throw e;
       }

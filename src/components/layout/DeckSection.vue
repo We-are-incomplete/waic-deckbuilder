@@ -7,12 +7,11 @@
  Constraints: MAX_DECK_SIZE, MAX_CARD_COPIES を超えない
 -->
 <script setup lang="ts">
-import { computed } from "vue";
 import { GAME_CONSTANTS } from "../../constants";
 import { getCardImageUrl, handleImageError } from "../../utils";
-import { useDeckStore } from "../../stores";
+import { useAppStore, useDeckStore } from "../../stores";
 import { storeToRefs } from "pinia";
-import { useLongPressImageModal } from "../../composables/useLongPressImageModal";
+import { onLongPress } from "@vueuse/core";
 
 // Vue 3.5の新機能: 改善されたdefineProps with better TypeScript support
 interface Props {
@@ -33,6 +32,7 @@ const emit = defineEmits<Emits>();
 
 // ストアとコンポーザブルの初期化
 const deckStore = useDeckStore();
+const appStore = useAppStore();
 
 // デッキ操作（ストアを直接呼び出し）
 const handleIncrementCard = (cardId: string) => {
@@ -46,9 +46,9 @@ const handleDecrementCard = (cardId: string) => {
 const { deckCards, deckName, sortedDeckCards, totalDeckCards } =
   storeToRefs(deckStore);
 
-// デッキ名の更新（ストアメソッドを直接使用）
+// デッキ名の更新（Appストア経由で一元化）
 const updateDeckName = (value: string) => {
-  deckStore.setDeckName(value);
+  appStore.setDeckName(value);
 };
 
 // カード画像を拡大表示
@@ -56,10 +56,13 @@ const openImageModal = (cardId: string) => {
   emit("openImageModal", cardId);
 };
 
-const { setCardRef: setDeckCardRef } = useLongPressImageModal(
-  openImageModal,
-  computed(() => sortedDeckCards.value.map((dc) => dc.card)),
-);
+// 長押し検知: VueUse onLongPress を使用
+const setDeckCardRef = (el: unknown, cardId: string) => {
+  if (!(el instanceof HTMLElement)) return;
+  onLongPress(el, () => {
+    openImageModal(cardId);
+  });
+};
 
 const resetDeck = () => {
   emit("resetDeck");

@@ -82,7 +82,7 @@ function tokenizeCardTypes(value: unknown): string[] {
     }
     if (!matched) {
       // どのトークンにも一致しない場合は、最初の1文字を消費して続行
-      const char = remaining[0];
+      const char = remaining.charAt(0);
       result.push(char);
       remaining = remaining.substring(1);
     }
@@ -162,9 +162,6 @@ const toCardTypeArray = (tokens: string[]): CardType[] => {
 };
 
 export async function loadCardsFromCsv(csvPath: string): Promise<Card[]> {
-  if (import.meta.env?.DEV)
-    console.debug("Attempting to fetch CSV from:", csvPath);
-
   try {
     const response = await fetch(csvPath, {
       method: "GET",
@@ -189,9 +186,6 @@ export async function loadCardsFromCsv(csvPath: string): Promise<Card[]> {
       });
     }
 
-    if (import.meta.env?.DEV)
-      console.debug("CSV data fetched successfully, length:", csvText.length);
-
     return parseCsv(csvText);
   } catch (error) {
     if (error instanceof CardDataConverterError) throw error;
@@ -205,7 +199,6 @@ export async function loadCardsFromCsv(csvPath: string): Promise<Card[]> {
 }
 
 function parseCsv(csvText: string): Card[] {
-  if (import.meta.env?.DEV) console.debug("Parsing CSV text with PapaParse...");
   const parseResult = Papa.parse<CsvCardRow>(csvText, {
     header: true, // ヘッダー行をオブジェクトのキーとして使用
     skipEmptyLines: true, // 空行をスキップ
@@ -228,8 +221,8 @@ function parseCsv(csvText: string): Card[] {
     console.error("PapaParse errors:", parseResult.errors);
     throw new CardDataConverterError({
       type: "ParseError",
-      message: `CSVパースエラー: ${parseResult.errors[0].message}`,
-      originalError: parseResult.errors[0],
+      message: `CSVパースエラー: ${parseResult.errors[0]?.message ?? "unknown"}`,
+      originalError: parseResult.errors[0] ?? undefined,
     });
   }
 
@@ -248,10 +241,6 @@ function parseCsv(csvText: string): Card[] {
     // 追加: CardIdSchema による ID の厳格検証
     const idResult = v.safeParse(CardIdSchema, parsed.output.id);
     if (!idResult.success) {
-      console.error(
-        `無効なカードIDを検出したためこの行をスキップします: id="${parsed.output.id}"`,
-        idResult.issues,
-      );
       continue; // 無効IDの行はスキップ
     }
 
@@ -265,17 +254,21 @@ function parseCsv(csvText: string): Card[] {
     }
 
     const types = toCardTypeArray(parsed.output.type);
-    cards.push({
+    const base = {
       id: idResult.output,
       name: parsed.output.name,
       kind: kindResult.output,
       type: types,
-      effect: parsed.output.effect,
-      tags: parsed.output.tags,
-    });
+      tags: parsed.output.tags as readonly string[],
+    } satisfies Omit<Card, "effect">;
+
+    const card: Card =
+      parsed.output.effect !== undefined && parsed.output.effect !== ""
+        ? { ...base, effect: parsed.output.effect }
+        : base;
+
+    cards.push(card);
   }
 
-  if (import.meta.env?.DEV)
-    console.debug("Successfully parsed cards:", cards.length);
   return cards;
 }

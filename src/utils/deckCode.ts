@@ -43,14 +43,11 @@ export const decodeDeckCode = (
   }
 
   const cardIds = parsed.output.split("/").filter((id) => id.trim() !== "");
-  console.debug("分割されたカードID:", cardIds);
 
   // availableCardsをMapに変換して高速ルックアップを可能にする
-  const availableCardsMap = new Map<string, Card>();
-  for (const card of availableCards) {
-    availableCardsMap.set(card.id, card);
-  }
-  console.debug("利用可能カードマップのサイズ:", availableCardsMap.size);
+  const availableCardsMap = new Map<string, Card>(
+    availableCards.map((c) => [c.id, c] as const),
+  );
 
   const cardCounts = new Map<string, number>();
 
@@ -61,25 +58,16 @@ export const decodeDeckCode = (
     cardCounts.set(normalized, (cardCounts.get(normalized) || 0) + 1);
   }
 
-  console.debug("カードID別枚数:", Object.fromEntries(cardCounts));
-
   const deckCards: DeckCard[] = [];
   const missingCardIds: string[] = [];
-  let foundCount = 0;
 
   for (const [id, count] of cardCounts) {
     const card = availableCardsMap.get(id); // Mapから直接取得
     if (card) {
       deckCards.push({ card, count });
-      foundCount++;
     } else {
       missingCardIds.push(id);
     }
-  }
-
-  console.debug(`見つかったカード: ${foundCount}/${cardCounts.size}`);
-  if (missingCardIds.length > 0) {
-    console.warn("見つからなかったカードID:", missingCardIds);
   }
 
   return { deckCards, missingCardIds };
@@ -95,7 +83,6 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
   try {
     // --- 1. 入力チェックと初期処理 ---
     if (!deckCode || !deckCode.startsWith("KCG-")) {
-      console.error("Invalid deck code format: Must start with 'KCG-'.");
       throw new DeckCodeError({
         type: "validation",
         message: "デッキコードは'KCG-'で始まる必要があります",
@@ -104,7 +91,6 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
 
     const rawPayloadWithVersion = deckCode.substring(4);
     if (rawPayloadWithVersion.length === 0) {
-      console.error("Invalid deck code: Payload is empty.");
       throw new DeckCodeError({
         type: "validation",
         message: "デッキコードのペイロードが空です",
@@ -113,7 +99,6 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
 
     for (const char of rawPayloadWithVersion) {
       if (CHAR_MAP.indexOf(char) === -1) {
-        console.error(`Invalid character in deck code: ${char}`);
         throw new DeckCodeError({
           type: "validation",
           message: `デッキコードに無効な文字が含まれています: ${char}`,
@@ -123,7 +108,7 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
 
     // --- 2. パディングビット数の計算 ---
     // 先頭文字のインデックスから削除するビット数を決定
-    const fifthCharOriginal = rawPayloadWithVersion[0];
+    const fifthCharOriginal = rawPayloadWithVersion.charAt(0);
     const indexFifthChar = CHAR_MAP.indexOf(fifthCharOriginal) + 1;
 
     let deckCodeFifthCharQuotient = Math.floor(indexFifthChar / 8);
@@ -151,7 +136,7 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
     let initialBinaryPayload = "";
     const payload = rawPayloadWithVersion.substring(1);
     for (let i = 0; i < payload.length; i++) {
-      const char = payload[i];
+      const char = payload.charAt(i);
       const charIndex = CHAR_MAP.indexOf(char);
       initialBinaryPayload += charIndex.toString(2).padStart(6, "0");
     }
@@ -234,7 +219,6 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
     const decodedEntries: { cardIdPart: string; originalC5Value: number }[] =
       [];
     if (finalNumericString.length % 5 !== 0) {
-      console.error("Final numeric string length is not a multiple of 5.");
       throw new DeckCodeError({
         type: "validation",
         message: "最終的な数値文字列の長さが5の倍数ではありません",
@@ -244,11 +228,11 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
     for (let i = 0; i < finalNumericString.length; i += 5) {
       const fiveDigitChunk = finalNumericString.substring(i, i + 5);
 
-      const c1 = parseInt(fiveDigitChunk[0], 10);
-      const c2 = parseInt(fiveDigitChunk[1], 10);
-      const c3 = parseInt(fiveDigitChunk[2], 10);
-      const c4 = parseInt(fiveDigitChunk[3], 10);
-      const c5 = parseInt(fiveDigitChunk[4], 10);
+      const c1 = parseInt(fiveDigitChunk.charAt(0), 10);
+      const c2 = parseInt(fiveDigitChunk.charAt(1), 10);
+      const c3 = parseInt(fiveDigitChunk.charAt(2), 10);
+      const c4 = parseInt(fiveDigitChunk.charAt(3), 10);
+      const c5 = parseInt(fiveDigitChunk.charAt(4), 10);
 
       let expansionMap: string;
       if (c5 >= 1 && c5 <= 4) {
@@ -264,7 +248,7 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
         // 無効なC1インデックスの場合はスキップ
         continue;
       }
-      const selectedCharFromMap = expansionMap[c1];
+      const selectedCharFromMap = expansionMap.charAt(c1);
 
       let expansion: string;
       if (selectedCharFromMap === "e") {
@@ -313,10 +297,8 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
       }
     }
 
-    console.debug("KCGデッキコードのデコード完了:", deckListOutput);
     return deckListOutput;
   } catch (error) {
-    console.error("KCGデッキコードのデコード中にエラーが発生:", error);
     throw new DeckCodeError({
       type: "decode",
       message: "デッキコードのデコード中に予期しないエラーが発生しました",
@@ -365,23 +347,54 @@ export const encodeKcgDeckCode = (cardIds: string[]): string => {
     for (let r = 1; r <= 9; r++) F[r.toString()] = "0" + r;
 
     for (const [id, count] of Object.entries(cardCounts)) {
-      const [prefix, numberPart] = id.split("-");
+      const splitIdx = id.indexOf("-");
+      if (splitIdx === -1) {
+        throw new DeckCodeError({
+          type: "generation",
+          message: `不正なカードID形式です: ${id}`,
+          invalidId: id,
+        });
+      }
+      const prefix = id.substring(0, splitIdx);
+      const numberPart = id.substring(splitIdx + 1);
       const expansion = prefix.slice(0, -1);
       const type = prefix.slice(-1);
 
       let c1 = "";
       let isExpansionOver9 = false;
-      if (O[expansion]) {
-        if (parseInt(O[expansion]) >= 10) {
+      const oVal = O[expansion];
+      if (oVal !== undefined) {
+        const parsedVal = parseInt(oVal, 10);
+        if (parsedVal >= 10) {
           isExpansionOver9 = true;
-          c1 = (parseInt(O[expansion]) - 10).toString();
+          c1 = (parsedVal - 10).toString();
         } else {
-          c1 = O[expansion];
+          c1 = oVal;
         }
+      } else {
+        throw new DeckCodeError({
+          type: "generation",
+          message: `未知のエキスパンションです: ${expansion}`,
+          invalidId: id,
+        });
       }
 
       const c2 = D[type];
+      if (!c2) {
+        throw new DeckCodeError({
+          type: "generation",
+          message: `未知のタイプです: ${type}`,
+          invalidId: id,
+        });
+      }
       const c3c4 = F[numberPart] || numberPart;
+      if (count < 1 || count > 4) {
+        throw new DeckCodeError({
+          type: "generation",
+          message: `枚数が範囲外です (1..4): ${count} (${id})`,
+          invalidId: id,
+        });
+      }
       const c5 = isExpansionOver9 ? count + 5 : count;
 
       numericString += `${c1}${c2}${c3c4}${c5}`;
@@ -424,16 +437,36 @@ export const encodeKcgDeckCode = (cardIds: string[]): string => {
       ["H", "P", "X", "f", "n", "v", "4", "/"],
     ];
 
-    for (let d = 0; d < i.length; d += 2) {
-      u += U[i[d]][i[d + 1]];
+    for (let d = 0; d + 1 < i.length; d += 2) {
+      const row = i[d] ?? -1;
+      const col = i[d + 1] ?? -1;
+      if (row >= 0 && row < U.length) {
+        const rowArr = U[row];
+        if (rowArr && col >= 0 && col < rowArr.length) {
+          u += rowArr[col];
+        }
+      }
     }
 
     const s = 7 - paddingZeros;
     const c = 7 - (o.filter((e) => e === "000").length % 8);
 
-    return `KCG-${U[s][c]}${u}`;
+    if (s < 0 || s >= U.length) {
+      throw new DeckCodeError({ type: "generation", message: "不正なs値です" });
+    }
+    const rowArr = U[s];
+    if (!rowArr) {
+      throw new DeckCodeError({
+        type: "generation",
+        message: "不正な行参照です",
+      });
+    }
+    if (c < 0 || c >= rowArr.length) {
+      throw new DeckCodeError({ type: "generation", message: "不正なc値です" });
+    }
+    const head = rowArr[c]!;
+    return `KCG-${head}${u}`;
   } catch (error) {
-    console.error("KCGデッキコードのエンコード中にエラーが発生:", error);
     throw new DeckCodeError({
       type: "generation",
       message: "デッキコードのエンコード中に予期しないエラーが発生しました",

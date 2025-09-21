@@ -76,8 +76,12 @@ export class DeckOperationError extends Error {
     this.name = "DeckOperationError";
     this.type = params.type;
     this.cardId = params.cardId;
-    this.maxCount = params.maxCount;
-    this.count = params.count;
+    if (params.maxCount !== undefined) {
+      this.maxCount = params.maxCount;
+    }
+    if (params.count !== undefined) {
+      this.count = params.count;
+    }
     Object.setPrototypeOf(this, DeckOperationError.prototype);
   }
 }
@@ -105,9 +109,15 @@ export class DeckCodeError extends Error {
     super(params.message);
     this.name = "DeckCodeError";
     this.type = params.type;
-    this.invalidId = params.invalidId;
-    this.notFoundIds = params.notFoundIds;
-    this.originalError = params.originalError;
+    if (params.invalidId !== undefined) {
+      this.invalidId = params.invalidId;
+    }
+    if (params.notFoundIds !== undefined) {
+      this.notFoundIds = params.notFoundIds;
+    }
+    if (params.originalError !== undefined) {
+      this.originalError = params.originalError;
+    }
     Object.setPrototypeOf(this, DeckCodeError.prototype);
   }
 }
