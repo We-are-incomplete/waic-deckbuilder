@@ -31,6 +31,19 @@ const KCG_CHAR_MAP: string = KCG_CHAR_MATRIX.map((row) => row.join("")).join(
   "",
 );
 
+const MAP1_EXPANSION = "eABCDEFGHI";
+const MAP2_EXPANSION = "pJKLMNOPQR";
+
+// 逆引きインデックスと存在判定用Set（および重複検出）
+const KCG_CHAR_INDEX = new Map<string, number>(
+  Array.from(KCG_CHAR_MAP).map((ch, idx) => [ch, idx]),
+);
+const KCG_CHAR_SET = new Set(KCG_CHAR_INDEX.keys());
+if (KCG_CHAR_INDEX.size !== 64) {
+  // マップの改変・編集ミスを即時検知
+  throw new Error("KCG_CHAR_MAP must contain 64 unique characters.");
+}
+
 /**
  * デッキコードをデコード
  */
@@ -103,7 +116,7 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
     }
 
     for (const char of rawPayloadWithVersion) {
-      if (KCG_CHAR_MAP.indexOf(char) === -1) {
+      if (!KCG_CHAR_SET.has(char)) {
         throw new DeckCodeError({
           type: "validation",
           message: `デッキコードに無効な文字が含まれています: ${char}`,
@@ -113,11 +126,11 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
 
     // --- 2. パディングビット数の計算 ---
     // 先頭文字のインデックスから削除するビット数を決定
-    const fifthCharOriginal = rawPayloadWithVersion.charAt(0);
-    const indexFifthChar = KCG_CHAR_MAP.indexOf(fifthCharOriginal) + 1;
+    const headChar = rawPayloadWithVersion.charAt(0);
+    const headIndex1Based = (KCG_CHAR_INDEX.get(headChar) ?? -1) + 1;
 
-    let deckCodeFifthCharQuotient = Math.floor(indexFifthChar / 8);
-    const remainderFifthChar = indexFifthChar % 8;
+    let deckCodeFifthCharQuotient = Math.floor(headIndex1Based / 8);
+    const remainderFifthChar = headIndex1Based % 8;
 
     let charsToRemoveFromPayloadEnd: number;
     if (remainderFifthChar === 0) {
@@ -132,7 +145,7 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
     const payload = rawPayloadWithVersion.substring(1);
     for (let i = 0; i < payload.length; i++) {
       const char = payload.charAt(i);
-      const charIndex = KCG_CHAR_MAP.indexOf(char);
+      const charIndex = KCG_CHAR_INDEX.get(char)!;
       initialBinaryPayload += charIndex.toString(2).padStart(6, "0");
     }
 
@@ -216,9 +229,6 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
         message: "最終的な数値文字列の長さが5の倍数ではありません",
       });
     }
-
-    const MAP1_EXPANSION = "eABCDEFGHI";
-    const MAP2_EXPANSION = "pJKLMNOPQR";
 
     for (let i = 0; i < finalNumericString.length; i += 5) {
       const fiveDigitChunk = finalNumericString.substring(i, i + 5);
@@ -304,7 +314,7 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
  * @param cardIds カードIDの配列
  * @returns エンコードされたKCGデッキコード文字列
  */
-export const encodeKcgDeckCode = (cardIds: string[]): string => {
+export const encodeKcgDeckCode = (cardIds: readonly string[]): string => {
   try {
     const cardCounts: { [key: string]: number } = {};
     cardIds.forEach((id) => {
