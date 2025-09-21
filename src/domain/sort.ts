@@ -64,8 +64,11 @@ const naturalSort = createNaturalSort();
 const kindSort = createKindSort();
 const typeSort = createTypeSort();
 
+// ex/prm で始まるID検出用（大文字小文字無視）
+const EX_PRM_ID_RE = /^(?:ex|prm)/i;
+
 /**
- * カードの標準比較関数（種類 → タイプ → IDの順）
+ * カードの標準比較関数（種類 → タイプ → ex/prm 末尾ルール → IDの順）
  */
 export const compareCards = (a: Card, b: Card): number => {
   // 実際のカードデータ形式に対応した比較
@@ -77,12 +80,17 @@ export const compareCards = (a: Card, b: Card): number => {
   const typeComparison = typeSort({ type: a.type }, { type: b.type });
   if (typeComparison !== 0) return typeComparison;
 
-  // IDで比較（自然順ソート）
+  // ex/prm で始まるIDは末尾へ
+  const aExPrm = EX_PRM_ID_RE.test(a.id);
+  const bExPrm = EX_PRM_ID_RE.test(b.id);
+  if (aExPrm !== bExPrm) return aExPrm ? 1 : -1;
+
+  // IDで比較（ex/prm 末尾ルール適用後、自然順ソート）
   return naturalSort(a.id, b.id);
 };
 
 /**
- * デッキカードの標準比較関数（種類 → タイプ → IDの順）
+ * デッキカードの標準比較関数
  */
 export const compareDeckCards = (a: DeckCard, b: DeckCard): number => {
   return compareCards(a.card, b.card);
