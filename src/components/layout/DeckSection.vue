@@ -59,12 +59,9 @@ const openImageModal = (cardId: string) => {
 // 長押し検知: VueUse onLongPress を使用
 const setDeckCardRef = (el: unknown, cardId: string) => {
   if (!(el instanceof HTMLElement)) return;
-  onLongPress(
-    el,
-    () => {
-      openImageModal(cardId);
-    },
-  );
+  onLongPress(el, () => {
+    openImageModal(cardId);
+  });
 };
 
 const resetDeck = () => {

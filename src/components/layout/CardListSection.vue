@@ -104,13 +104,10 @@ const handleCardClick = (card: Card) => {
 let suppressNextClick = false;
 const setCardRef = (el: unknown, cardId: string) => {
   if (!(el instanceof HTMLElement)) return;
-  onLongPress(
-    el,
-    () => {
-      suppressNextClick = true;
-      openImageModal(cardId);
-    },
-  );
+  onLongPress(el, () => {
+    suppressNextClick = true;
+    openImageModal(cardId);
+  });
 };
 
 const onListImageError = (e: Event) => {

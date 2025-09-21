@@ -432,7 +432,10 @@ export const encodeKcgDeckCode = (cardIds: string[]): string => {
     }
     const rowArr = U[s];
     if (!rowArr) {
-      throw new DeckCodeError({ type: "generation", message: "不正な行参照です" });
+      throw new DeckCodeError({
+        type: "generation",
+        message: "不正な行参照です",
+      });
     }
     if (c < 0 || c >= rowArr.length) {
       throw new DeckCodeError({ type: "generation", message: "不正なc値です" });
