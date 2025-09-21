@@ -88,7 +88,6 @@ export const PRIORITY_TAGS: readonly string[] = [
   "魔力Ω参照",
   "魔力Ω消費",
   "魔力Ω消失",
-  "VOL獲得",
   "VOL消失",
   "VOLノイズ",
   // --- サーチ ---
