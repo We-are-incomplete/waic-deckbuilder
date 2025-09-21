@@ -10,22 +10,6 @@ import { DeckCodeError } from "../types";
 import * as v from "valibot";
 import { SlashDeckCodeSchema, CardIdSchema } from "../domain";
 
-// --- KCGデッキコード用定数 ---
-const CHAR_MAP =
-  "AIQYgow5BJRZhpx6CKSaiqy7DLTbjrz8EMUcks19FNVdlt2!GOWemu3?HPXfnv4/";
-const MAP1_EXPANSION = "eABCDEFGHI";
-const MAP2_EXPANSION = "pJKLMNOPQR";
-
-/**
- * デッキコードをエンコード
- */
-export const encodeDeckCode = (deck: readonly DeckCard[]): string => {
-  const cardIds = deck.flatMap((item: DeckCard) =>
-    Array(item.count).fill(item.card.id),
-  );
-  return cardIds.join("/");
-};
-
 /**
  * デッキコードをデコード
  */
@@ -97,6 +81,9 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
       });
     }
 
+    const CHAR_MAP =
+      "AIQYgow5BJRZhpx6CKSaiqy7DLTbjrz8EMUcks19FNVdlt2!GOWemu3?HPXfnv4/";
+
     for (const char of rawPayloadWithVersion) {
       if (CHAR_MAP.indexOf(char) === -1) {
         throw new DeckCodeError({
@@ -114,21 +101,11 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
     let deckCodeFifthCharQuotient = Math.floor(indexFifthChar / 8);
     const remainderFifthChar = indexFifthChar % 8;
 
-    /*
-     * パディングビット数の計算ロジック:
-     * - 6ビット文字を8ビット境界に合わせるためのパディングを計算
-     * - remainderFifthChar が 0 の場合: パディングは不要
-     * - remainderFifthChar が 0 以外の場合:
-     *   1. quotientを1増加させる（次の8ビット境界に進む）
-     *   2. 削除するビット数 = 8 - quotient
-     *      これは8ビット境界から実際のデータビット数を引いた余分なパディングビット数
-     */
     let charsToRemoveFromPayloadEnd: number;
     if (remainderFifthChar === 0) {
       charsToRemoveFromPayloadEnd = 0;
     } else {
       deckCodeFifthCharQuotient++;
-      // 8ビット境界に合わせるために追加されたパディングビットを削除
       charsToRemoveFromPayloadEnd = 8 - deckCodeFifthCharQuotient;
     }
 
@@ -160,7 +137,6 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
     for (let i = 0; i + 10 <= processedBinaryPayload.length; i += 10) {
       const tenBitChunk = processedBinaryPayload.substring(i, i + 10);
 
-      // 10ビットの2の補数を10進数に変換
       let signedDecimalVal: number;
       if (tenBitChunk[0] === "1") {
         const unsignedVal = parseInt(tenBitChunk, 2);
@@ -190,7 +166,6 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
       let stringAsArray = intermediateString.split("");
       let removedXCount = 0;
 
-      // まず末尾から優先的に 'X' を削除
       for (
         let i = stringAsArray.length - 1;
         i >= 0 && removedXCount < charsToActuallyRemove;
@@ -202,7 +177,6 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
         }
       }
 
-      // それでも足りなければ、残りの文字を末尾から削除
       const remainingCharsToRemove = charsToActuallyRemove - removedXCount;
       if (remainingCharsToRemove > 0) {
         stringAsArray.splice(
@@ -225,6 +199,9 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
       });
     }
 
+    const MAP1_EXPANSION = "eABCDEFGHI";
+    const MAP2_EXPANSION = "pJKLMNOPQR";
+
     for (let i = 0; i < finalNumericString.length; i += 5) {
       const fiveDigitChunk = finalNumericString.substring(i, i + 5);
 
@@ -240,12 +217,10 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
       } else if (c5 >= 6 && c5 <= 9) {
         expansionMap = MAP2_EXPANSION;
       } else {
-        // 無効なC5値の場合はスキップ
         continue;
       }
 
       if (c1 >= expansionMap.length) {
-        // 無効なC1インデックスの場合はスキップ
         continue;
       }
       const selectedCharFromMap = expansionMap.charAt(c1);
@@ -274,13 +249,11 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
           type = "D";
           break;
         default:
-          // 無効なC2値の場合はスキップ
           continue;
       }
 
       const numberPartInt = c3 * 10 + c4;
       if (numberPartInt < 1 || numberPartInt > 50) {
-        // 無効な番号の場合はスキップ
         continue;
       }
 
