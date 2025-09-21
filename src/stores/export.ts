@@ -196,18 +196,32 @@ export const useExportStore = defineStore("export", () => {
         }
       }
 
-      // ファイル名を生成
+      const canvasToBlob = (
+        canvas: HTMLCanvasElement,
+        type: string,
+      ): Promise<Blob> =>
+        new Promise((resolve, reject) =>
+          canvas.toBlob(
+            (b) => (b ? resolve(b) : reject(new Error("toBlob failed"))),
+            type,
+          ),
+        );
+
+      // ファイル名を生成（予約文字と制御文字を除去）
       const timestamp = new Date()
         .toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" })
         .replace(/\//g, "-");
       const filename = `${deckName || "デッキ"}_${timestamp}.png`;
-      // キャンバスをダウンロード
+      // キャンバスをBlob化してダウンロード（メモリ効率）
+      const blob = await canvasToBlob(canvas, "image/png");
+      const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.download = filename;
-      link.href = canvas.toDataURL("image/png");
+      link.href = url;
+      document.body.appendChild(link);
       link.click();
-
-      // 完了
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     } catch (e) {
       const errorMessage = "デッキ画像の保存に失敗しました";
       if (e instanceof ExportError) {

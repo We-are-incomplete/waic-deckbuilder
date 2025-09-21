@@ -36,6 +36,10 @@ const saveDeck = () => {
 
 const loadDeck = (deckName: string, deckCode: string) => {
   appStore.loadSavedDeck(deckName, deckCode);
+  if (deckCodeStore.error) {
+    alert("デッキコードの読み込みに失敗しました。内容をご確認ください。");
+    return;
+  }
   deckManagementStore.closeDeckManagementModal();
 };
 

@@ -5,7 +5,6 @@
  * - 入出力: Props { isVisible }, Emits { close }
  * - 動作: テキストは 200ms デバウンス（maxWait: 1000ms）でストアへ反映
  *         ストア側のリセット/外部変更は UI へ同期
- * - 依存: Pinia filterStore / useFilterHelpers / @vueuse/core watchDebounced
  */
 import { computed, ref, watch } from "vue";
 import { watchDebounced } from "@vueuse/core";

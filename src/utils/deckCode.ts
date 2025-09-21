@@ -349,7 +349,11 @@ export const encodeKcgDeckCode = (cardIds: string[]): string => {
     for (const [id, count] of Object.entries(cardCounts)) {
       const splitIdx = id.indexOf("-");
       if (splitIdx === -1) {
-        continue;
+        throw new DeckCodeError({
+          type: "generation",
+          message: `不正なカードID形式です: ${id}`,
+          invalidId: id,
+        });
       }
       const prefix = id.substring(0, splitIdx);
       const numberPart = id.substring(splitIdx + 1);
@@ -367,10 +371,30 @@ export const encodeKcgDeckCode = (cardIds: string[]): string => {
         } else {
           c1 = oVal;
         }
+      } else {
+        throw new DeckCodeError({
+          type: "generation",
+          message: `未知のエキスパンションです: ${expansion}`,
+          invalidId: id,
+        });
       }
 
-      const c2 = D[type] ?? "";
+      const c2 = D[type];
+      if (!c2) {
+        throw new DeckCodeError({
+          type: "generation",
+          message: `未知のタイプです: ${type}`,
+          invalidId: id,
+        });
+      }
       const c3c4 = F[numberPart] || numberPart;
+      if (count < 1 || count > 4) {
+        throw new DeckCodeError({
+          type: "generation",
+          message: `枚数が範囲外です (1..4): ${count} (${id})`,
+          invalidId: id,
+        });
+      }
       const c5 = isExpansionOver9 ? count + 5 : count;
 
       numericString += `${c1}${c2}${c3c4}${c5}`;

@@ -23,33 +23,35 @@ const createNaturalSort = (): SortComparator<string> => {
 
 const createKindSort = (): SortComparator<Pick<Card, "kind">> => {
   return (a: Pick<Card, "kind">, b: Pick<Card, "kind">): number => {
-    const indexA = CARD_KINDS.indexOf(a.kind);
-    const indexB = CARD_KINDS.indexOf(b.kind);
-    const finalIndexA = indexA === -1 ? CARD_KINDS.length : indexA;
-    const finalIndexB = indexB === -1 ? CARD_KINDS.length : indexB;
-    return finalIndexA - finalIndexB;
+    const indexA = KIND_INDEX.get(a.kind) ?? CARD_KINDS.length;
+    const indexB = KIND_INDEX.get(b.kind) ?? CARD_KINDS.length;
+    return indexA - indexB;
   };
 };
+
+const KIND_INDEX: ReadonlyMap<Card["kind"], number> = new Map(
+  CARD_KINDS.map((k, i) => [k, i] as const),
+);
 
 const TYPE_INDEX: ReadonlyMap<CardType, number> = new Map(
   CARD_TYPES.map((t, i) => [t, i] as const),
 );
 
-const createTypeSort = (): SortComparator<Pick<Card, "type">> => {
-  const getEarliestTypeIndex = (
-    cardTypes: CardType | readonly CardType[],
-  ): number => {
-    const types: readonly CardType[] = Array.isArray(cardTypes)
-      ? cardTypes
-      : [cardTypes];
-    let minIndex: number = CARD_TYPES.length;
-    for (const type of types) {
-      const index = TYPE_INDEX.get(type) ?? CARD_TYPES.length;
-      if (index < minIndex) minIndex = index;
-    }
-    return minIndex;
-  };
+const getEarliestTypeIndex = (
+  cardTypes: CardType | readonly CardType[],
+): number => {
+  const types: readonly CardType[] = Array.isArray(cardTypes)
+    ? cardTypes
+    : [cardTypes];
+  let minIndex: number = CARD_TYPES.length;
+  for (const type of types) {
+    const index = TYPE_INDEX.get(type) ?? CARD_TYPES.length;
+    if (index < minIndex) minIndex = index;
+  }
+  return minIndex;
+};
 
+const createTypeSort = (): SortComparator<Pick<Card, "type">> => {
   return (a: Pick<Card, "type">, b: Pick<Card, "type">): number => {
     const indexA = getEarliestTypeIndex(a.type);
     const indexB = getEarliestTypeIndex(b.type);

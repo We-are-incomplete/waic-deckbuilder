@@ -155,14 +155,7 @@ export const useFilterStore = defineStore("filter", () => {
     const result: Card[] = [];
     for (const card of cards) {
       if (!card) continue;
-      let hasMatchingType = false;
-      for (const t of card.type) {
-        if (typeSet.has(t)) {
-          hasMatchingType = true;
-          break;
-        }
-      }
-      if (hasMatchingType) {
+      if (card.type.some((t) => typeSet.has(t))) {
         result.push(card);
       }
     }
@@ -185,14 +178,7 @@ export const useFilterStore = defineStore("filter", () => {
     const result: Card[] = [];
     for (const card of cards) {
       if (!card || !card.tags) continue;
-      let hasMatchingTag = false;
-      for (const tag of card.tags) {
-        if (tagSet.has(tag)) {
-          hasMatchingTag = true;
-          break;
-        }
-      }
-      if (hasMatchingTag) {
+      if (card.tags.some((t) => tagSet.has(t))) {
         result.push(card);
       }
     }

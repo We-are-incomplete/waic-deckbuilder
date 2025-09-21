@@ -27,7 +27,7 @@ export const useCardsStore = defineStore("cards", () => {
   const error = ref<CardStoreError | null>(null);
 
   // パフォーマンス改善のためのキャッシュ（markRawで最適化）
-  const cardByIdCache = markRaw(new Map<string, Card>());
+  const cardByIdCache = markRaw(new Map<string, Readonly<Card>>());
 
   // シンプルな検索処理
 
@@ -137,13 +137,12 @@ export const useCardsStore = defineStore("cards", () => {
     // IDキャッシュの更新（バッチ処理で最適化）
     cardByIdCache.clear();
     for (const card of cards) {
-      if (!card) continue;
-      cardByIdCache.set(card.id, card);
+      cardByIdCache.set(card.id, readonly(card));
     }
   };
 
   /**
-   * カードを名前で検索（メモ化版）
+   * カードを名前で検索
    */
   const searchCardsByName = (searchText: string): readonly Card[] => {
     if (!searchText || searchText.trim().length === 0) {
@@ -155,7 +154,7 @@ export const useCardsStore = defineStore("cards", () => {
   /**
    * カードをIDで取得（最適化版）
    */
-  const getCardById = (cardId: string): Card | undefined => {
+  const getCardById = (cardId: string): Readonly<Card> | undefined => {
     return cardByIdCache.get(cardId);
   };
 
