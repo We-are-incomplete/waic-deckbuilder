@@ -37,18 +37,14 @@ export const useCardsStore = defineStore("cards", () => {
     if (e instanceof CardDataConverterError) {
       switch (e.type) {
         case "FetchError": {
-          const httpHint =
-            typeof e.originalError === "object" &&
-            e.originalError &&
-            "message" in e.originalError &&
-            typeof (e.originalError as any).message === "string" &&
-            (e.originalError as any).message.startsWith("HTTP error!");
+          const httpMatch = /^HTTP\s+(\d{3})\b/.exec(e.message ?? "");
+          const httpStatus = httpMatch ? Number(httpMatch[1]) : 0;
           return {
             type: "fetch",
-            status: httpHint ? 500 : 0,
+            status: httpStatus,
             message:
               e.message ??
-              (httpHint
+              (httpStatus
                 ? "サーバーエラーが発生しました"
                 : "ネットワークエラーが発生しました"),
           };
