@@ -11,6 +11,7 @@ import { GAME_CONSTANTS } from "../../constants";
 import { getCardImageUrl, handleImageError } from "../../utils";
 import { useAppStore, useDeckStore } from "../../stores";
 import { storeToRefs } from "pinia";
+import { onLongPress } from "@vueuse/core";
 
 // Vue 3.5の新機能: 改善されたdefineProps with better TypeScript support
 interface Props {
@@ -55,22 +56,15 @@ const openImageModal = (cardId: string) => {
   emit("openImageModal", cardId);
 };
 
-// 長押し検知（最小実装）
+// 長押し検知: VueUse onLongPress を使用
 const setDeckCardRef = (el: unknown, cardId: string) => {
   if (!(el instanceof HTMLElement)) return;
-  let timer: number | null = null;
-  const clear = () => {
-    if (timer !== null) {
-      window.clearTimeout(timer);
-      timer = null;
-    }
-  };
-  el.addEventListener("touchstart", () => {
-    timer = window.setTimeout(() => openImageModal(cardId), 500);
-  });
-  el.addEventListener("touchend", clear);
-  el.addEventListener("touchmove", clear);
-  el.addEventListener("touchcancel", clear);
+  onLongPress(
+    el,
+    () => {
+      openImageModal(cardId);
+    },
+  );
 };
 
 const resetDeck = () => {

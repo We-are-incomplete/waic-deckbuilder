@@ -10,7 +10,7 @@ import { computed } from "vue";
 import { GAME_CONSTANTS } from "../../constants";
 import type { Card, DeckCard } from "../../types";
 import { handleImageError, getCardImageUrl } from "../../utils";
-import { useStorage } from "@vueuse/core";
+import { useStorage, onLongPress } from "@vueuse/core";
 
 interface Props {
   availableCards: readonly Card[];
@@ -88,6 +88,10 @@ const openImageModal = (cardId: string) => {
 
 // カードクリック処理
 const handleCardClick = (card: Card) => {
+  if (suppressNextClick) {
+    suppressNextClick = false;
+    return;
+  }
   const currentCount = getCardInDeck(card.id);
   if (currentCount === 0) {
     emit("addCard", card);
@@ -96,22 +100,17 @@ const handleCardClick = (card: Card) => {
   }
 };
 
-// 長押し検知（最小実装）
+// 長押し検知: VueUse onLongPress を使用
+let suppressNextClick = false;
 const setCardRef = (el: unknown, cardId: string) => {
   if (!(el instanceof HTMLElement)) return;
-  let timer: number | null = null;
-  const clear = () => {
-    if (timer !== null) {
-      window.clearTimeout(timer);
-      timer = null;
-    }
-  };
-  el.addEventListener("touchstart", () => {
-    timer = window.setTimeout(() => openImageModal(cardId), 500);
-  });
-  el.addEventListener("touchend", clear);
-  el.addEventListener("touchmove", clear);
-  el.addEventListener("touchcancel", clear);
+  onLongPress(
+    el,
+    () => {
+      suppressNextClick = true;
+      openImageModal(cardId);
+    },
+  );
 };
 
 const onListImageError = (e: Event) => {
