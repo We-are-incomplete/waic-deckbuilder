@@ -77,6 +77,12 @@ export const compareCards = (a: Card, b: Card): number => {
   const typeComparison = typeSort({ type: a.type }, { type: b.type });
   if (typeComparison !== 0) return typeComparison;
 
+  // ex/prm で始まるIDは末尾へ
+  const isExOrPrm = (id: string): boolean => /^(ex|prm)/i.test(id);
+  const aExPrm = isExOrPrm(a.id);
+  const bExPrm = isExOrPrm(b.id);
+  if (aExPrm !== bExPrm) return aExPrm ? 1 : -1;
+
   // IDで比較（自然順ソート）
   return naturalSort(a.id, b.id);
 };
