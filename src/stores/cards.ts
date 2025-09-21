@@ -37,18 +37,14 @@ export const useCardsStore = defineStore("cards", () => {
     if (e instanceof CardDataConverterError) {
       switch (e.type) {
         case "FetchError": {
-          const httpHint =
-            typeof e.originalError === "object" &&
-            e.originalError &&
-            "message" in e.originalError &&
-            typeof (e.originalError as any).message === "string" &&
-            (e.originalError as any).message.startsWith("HTTP error!");
+          const httpMatch = /\bHTTP\s+(\d{3})\b/.exec(e.message ?? "");
+          const httpStatus = httpMatch ? Number(httpMatch[1]) : 0;
           return {
             type: "fetch",
-            status: httpHint ? 500 : 0,
+            status: httpStatus,
             message:
               e.message ??
-              (httpHint
+              (httpStatus >= 400
                 ? "サーバーエラーが発生しました"
                 : "ネットワークエラーが発生しました"),
           };
@@ -167,9 +163,9 @@ export const useCardsStore = defineStore("cards", () => {
     error.value = null;
 
     try {
-      const cards = await loadCardsFromCsv(
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBSkAVMH16J4iOgia3JKSwgpNG9gIWGu5a7OzdnuPmM2lvYW0MjchCBvy1i4ZS8aXJEPooubEivEfc/pub?gid=1598481515&single=true&output=csv",
-      );
+      const base = import.meta.env.BASE_URL || "/";
+      const normalized = base.endsWith("/") ? base : `${base}/`;
+      const cards = await loadCardsFromCsv(`${normalized}card-data.csv`);
 
       const validCards = validateCards(cards);
       const ensuredCards = ensureValidCards(validCards);

@@ -12,7 +12,6 @@ import { useClipboard } from "@vueuse/core";
 import type { Card, DeckCard } from "../types";
 import { DeckCodeError } from "../types";
 import {
-  encodeDeckCode,
   decodeDeckCode,
   decodeKcgDeckCode,
   encodeKcgDeckCode,
@@ -58,7 +57,7 @@ export const useDeckCodeStore = defineStore("deckCode", () => {
           Array(item.count).fill(item.card.id),
         );
 
-        slashDeckCode.value = encodeDeckCode(sortedDeck);
+        slashDeckCode.value = cardIds.join("/");
         try {
           kcgDeckCode.value = encodeKcgDeckCode(cardIds);
         } catch (e) {

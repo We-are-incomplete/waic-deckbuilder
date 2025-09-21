@@ -3,7 +3,7 @@
 // 画面全体のレイアウトと各ストア/セクション/モーダルの配線を担うコンテナ。
 // 初期化（カード読込・デッキ生成）とキャッシュ掃除などの副作用を集約し、
 // 画像モーダルには deckCards を外部参照として渡してスワイプナビゲーションの基準を統一する。
-import { onMounted, computed, useTemplateRef, watch } from "vue";
+import { onMounted, computed } from "vue";
 
 import { useAppStore } from "./stores";
 import {
@@ -30,10 +30,6 @@ const {
   exportStore,
 } = appStore;
 
-// Vue 3.5の新機能: useTemplateRef でテンプレート参照を管理
-const deckSectionRef =
-  useTemplateRef<InstanceType<typeof DeckSection>>("deckSection");
-
 // コンポーザブルの初期化
 const {
   isVisible: imageModalVisible,
@@ -47,16 +43,6 @@ const {
 
 // アプリケーションの初期化
 onMounted(appStore.initializeApp);
-
-// 簡素化により、定期クリーンアップは不要
-
-watch(
-  deckSectionRef,
-  (el) => {
-    appStore.deckSectionRef = el ?? null;
-  },
-  { immediate: true },
-);
 
 // モーダル表示の条件
 const modalVisibility = computed(() => ({
@@ -110,7 +96,6 @@ const cardImageModalProps = computed(() => ({
     <div class="flex flex-col lg:flex-row flex-1 overflow-hidden">
       <!-- デッキセクション -->
       <DeckSection
-        ref="deckSection"
         v-bind="deckSectionProps"
         @generate-deck-code="deckCodeStore.generateAndShowDeckCode"
         @reset-deck="appStore.resetDeck"

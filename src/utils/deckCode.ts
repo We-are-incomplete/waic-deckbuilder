@@ -10,21 +10,39 @@ import { DeckCodeError } from "../types";
 import * as v from "valibot";
 import { SlashDeckCodeSchema, CardIdSchema } from "../domain";
 
-// --- KCGデッキコード用定数 ---
-const CHAR_MAP =
-  "AIQYgow5BJRZhpx6CKSaiqy7DLTbjrz8EMUcks19FNVdlt2!GOWemu3?HPXfnv4/";
+/**
+ * KCGデッキコードで使用する文字マップ（共通）
+ * - 行列形式（8x8）と、フラットな連結文字列の両方を提供
+ * - デコード側は連結文字列による indexOf を利用
+ * - エンコード側は行列の行・列インデックスを利用
+ */
+const KCG_CHAR_MATRIX = [
+  ["A", "I", "Q", "Y", "g", "o", "w", "5"],
+  ["B", "J", "R", "Z", "h", "p", "x", "6"],
+  ["C", "K", "S", "a", "i", "q", "y", "7"],
+  ["D", "L", "T", "b", "j", "r", "z", "8"],
+  ["E", "M", "U", "c", "k", "s", "1", "9"],
+  ["F", "N", "V", "d", "l", "t", "2", "!"],
+  ["G", "O", "W", "e", "m", "u", "3", "?"],
+  ["H", "P", "X", "f", "n", "v", "4", "/"],
+] as const;
+
+const KCG_CHAR_MAP: string = KCG_CHAR_MATRIX.map((row) => row.join("")).join(
+  "",
+);
+
 const MAP1_EXPANSION = "eABCDEFGHI";
 const MAP2_EXPANSION = "pJKLMNOPQR";
 
-/**
- * デッキコードをエンコード
- */
-export const encodeDeckCode = (deck: readonly DeckCard[]): string => {
-  const cardIds = deck.flatMap((item: DeckCard) =>
-    Array(item.count).fill(item.card.id),
-  );
-  return cardIds.join("/");
-};
+// 逆引きインデックスと存在判定用Set（および重複検出）
+const KCG_CHAR_INDEX = new Map<string, number>(
+  Array.from(KCG_CHAR_MAP).map((ch, idx) => [ch, idx]),
+);
+const KCG_CHAR_SET = new Set(KCG_CHAR_INDEX.keys());
+if (KCG_CHAR_INDEX.size !== 64) {
+  // マップの改変・編集ミスを即時検知
+  throw new Error("KCG_CHAR_MAP must contain 64 unique characters.");
+}
 
 /**
  * デッキコードをデコード
@@ -98,7 +116,7 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
     }
 
     for (const char of rawPayloadWithVersion) {
-      if (CHAR_MAP.indexOf(char) === -1) {
+      if (!KCG_CHAR_SET.has(char)) {
         throw new DeckCodeError({
           type: "validation",
           message: `デッキコードに無効な文字が含まれています: ${char}`,
@@ -108,27 +126,17 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
 
     // --- 2. パディングビット数の計算 ---
     // 先頭文字のインデックスから削除するビット数を決定
-    const fifthCharOriginal = rawPayloadWithVersion.charAt(0);
-    const indexFifthChar = CHAR_MAP.indexOf(fifthCharOriginal) + 1;
+    const headChar = rawPayloadWithVersion.charAt(0);
+    const headIndex1Based = (KCG_CHAR_INDEX.get(headChar) ?? -1) + 1;
 
-    let deckCodeFifthCharQuotient = Math.floor(indexFifthChar / 8);
-    const remainderFifthChar = indexFifthChar % 8;
+    let deckCodeFifthCharQuotient = Math.floor(headIndex1Based / 8);
+    const remainderFifthChar = headIndex1Based % 8;
 
-    /*
-     * パディングビット数の計算ロジック:
-     * - 6ビット文字を8ビット境界に合わせるためのパディングを計算
-     * - remainderFifthChar が 0 の場合: パディングは不要
-     * - remainderFifthChar が 0 以外の場合:
-     *   1. quotientを1増加させる（次の8ビット境界に進む）
-     *   2. 削除するビット数 = 8 - quotient
-     *      これは8ビット境界から実際のデータビット数を引いた余分なパディングビット数
-     */
     let charsToRemoveFromPayloadEnd: number;
     if (remainderFifthChar === 0) {
       charsToRemoveFromPayloadEnd = 0;
     } else {
       deckCodeFifthCharQuotient++;
-      // 8ビット境界に合わせるために追加されたパディングビットを削除
       charsToRemoveFromPayloadEnd = 8 - deckCodeFifthCharQuotient;
     }
 
@@ -137,7 +145,7 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
     const payload = rawPayloadWithVersion.substring(1);
     for (let i = 0; i < payload.length; i++) {
       const char = payload.charAt(i);
-      const charIndex = CHAR_MAP.indexOf(char);
+      const charIndex = KCG_CHAR_INDEX.get(char)!;
       initialBinaryPayload += charIndex.toString(2).padStart(6, "0");
     }
 
@@ -160,7 +168,6 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
     for (let i = 0; i + 10 <= processedBinaryPayload.length; i += 10) {
       const tenBitChunk = processedBinaryPayload.substring(i, i + 10);
 
-      // 10ビットの2の補数を10進数に変換
       let signedDecimalVal: number;
       if (tenBitChunk[0] === "1") {
         const unsignedVal = parseInt(tenBitChunk, 2);
@@ -190,7 +197,6 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
       let stringAsArray = intermediateString.split("");
       let removedXCount = 0;
 
-      // まず末尾から優先的に 'X' を削除
       for (
         let i = stringAsArray.length - 1;
         i >= 0 && removedXCount < charsToActuallyRemove;
@@ -202,7 +208,6 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
         }
       }
 
-      // それでも足りなければ、残りの文字を末尾から削除
       const remainingCharsToRemove = charsToActuallyRemove - removedXCount;
       if (remainingCharsToRemove > 0) {
         stringAsArray.splice(
@@ -240,12 +245,10 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
       } else if (c5 >= 6 && c5 <= 9) {
         expansionMap = MAP2_EXPANSION;
       } else {
-        // 無効なC5値の場合はスキップ
         continue;
       }
 
       if (c1 >= expansionMap.length) {
-        // 無効なC1インデックスの場合はスキップ
         continue;
       }
       const selectedCharFromMap = expansionMap.charAt(c1);
@@ -274,13 +277,11 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
           type = "D";
           break;
         default:
-          // 無効なC2値の場合はスキップ
           continue;
       }
 
       const numberPartInt = c3 * 10 + c4;
       if (numberPartInt < 1 || numberPartInt > 50) {
-        // 無効な番号の場合はスキップ
         continue;
       }
 
@@ -299,6 +300,7 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
 
     return deckListOutput;
   } catch (error) {
+    if (error instanceof DeckCodeError) throw error;
     throw new DeckCodeError({
       type: "decode",
       message: "デッキコードのデコード中に予期しないエラーが発生しました",
@@ -312,7 +314,7 @@ export const decodeKcgDeckCode = (deckCode: string): string[] => {
  * @param cardIds カードIDの配列
  * @returns エンコードされたKCGデッキコード文字列
  */
-export const encodeKcgDeckCode = (cardIds: string[]): string => {
+export const encodeKcgDeckCode = (cardIds: readonly string[]): string => {
   try {
     const cardCounts: { [key: string]: number } = {};
     cardIds.forEach((id) => {
@@ -426,22 +428,12 @@ export const encodeKcgDeckCode = (cardIds: string[]): string => {
     const i = o.map((e) => parseInt(e, 2));
 
     let u = "";
-    const U = [
-      ["A", "I", "Q", "Y", "g", "o", "w", "5"],
-      ["B", "J", "R", "Z", "h", "p", "x", "6"],
-      ["C", "K", "S", "a", "i", "q", "y", "7"],
-      ["D", "L", "T", "b", "j", "r", "z", "8"],
-      ["E", "M", "U", "c", "k", "s", "1", "9"],
-      ["F", "N", "V", "d", "l", "t", "2", "!"],
-      ["G", "O", "W", "e", "m", "u", "3", "?"],
-      ["H", "P", "X", "f", "n", "v", "4", "/"],
-    ];
 
     for (let d = 0; d + 1 < i.length; d += 2) {
       const row = i[d] ?? -1;
       const col = i[d + 1] ?? -1;
-      if (row >= 0 && row < U.length) {
-        const rowArr = U[row];
+      if (row >= 0 && row < KCG_CHAR_MATRIX.length) {
+        const rowArr = KCG_CHAR_MATRIX[row];
         if (rowArr && col >= 0 && col < rowArr.length) {
           u += rowArr[col];
         }
@@ -451,10 +443,10 @@ export const encodeKcgDeckCode = (cardIds: string[]): string => {
     const s = 7 - paddingZeros;
     const c = 7 - (o.filter((e) => e === "000").length % 8);
 
-    if (s < 0 || s >= U.length) {
+    if (s < 0 || s >= KCG_CHAR_MATRIX.length) {
       throw new DeckCodeError({ type: "generation", message: "不正なs値です" });
     }
-    const rowArr = U[s];
+    const rowArr = KCG_CHAR_MATRIX[s];
     if (!rowArr) {
       throw new DeckCodeError({
         type: "generation",
@@ -467,6 +459,7 @@ export const encodeKcgDeckCode = (cardIds: string[]): string => {
     const head = rowArr[c]!;
     return `KCG-${head}${u}`;
   } catch (error) {
+    if (error instanceof DeckCodeError) throw error;
     throw new DeckCodeError({
       type: "generation",
       message: "デッキコードのエンコード中に予期しないエラーが発生しました",
