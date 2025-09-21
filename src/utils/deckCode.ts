@@ -449,6 +449,7 @@ export const encodeKcgDeckCode = (cardIds: string[]): string => {
     const head = rowArr[c]!;
     return `KCG-${head}${u}`;
   } catch (error) {
+    if (error instanceof DeckCodeError) throw error;
     throw new DeckCodeError({
       type: "generation",
       message: "デッキコードのエンコード中に予期しないエラーが発生しました",
