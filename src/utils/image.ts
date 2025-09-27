@@ -3,7 +3,7 @@
  * - BASE_URL 正規化と画像 URL 構築のみ
  */
 
-const getNormalizedBaseUrl = (): string => {
+export const getNormalizedBaseUrl = (): string => {
   const base = import.meta.env.BASE_URL || "/";
   return base.endsWith("/") ? base : `${base}/`;
 };
@@ -19,7 +19,7 @@ export const getCardImageUrl = (cardId: string): string => {
   return `${getNormalizedBaseUrl()}cards/${encodeURIComponent(safeId)}.avif`;
 };
 
-const getPlaceholderSrc = (): string =>
+export const getPlaceholderSrc = (): string =>
   `${getNormalizedBaseUrl()}placeholder.avif`;
 
 /**

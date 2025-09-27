@@ -4,7 +4,11 @@
  */
 import { defineStore } from "pinia";
 import { ref, readonly } from "vue";
-import { getCardImageUrl } from "../utils";
+import {
+  getCardImageUrl,
+  getPlaceholderSrc,
+  getNormalizedBaseUrl,
+} from "../utils";
 import { useDeckStore } from "./deck";
 
 // エクスポートストア専用のエラー型
@@ -66,17 +70,10 @@ export const useExportStore = defineStore("export", () => {
   };
 
   const getBackgroundImageUrl = (cardCount: number): string => {
-    const base = import.meta.env.BASE_URL || "/";
-    const normalized = base.endsWith("/") ? base : `${base}/`;
+    const normalized = getNormalizedBaseUrl();
     if (cardCount <= TWO_ROWS_THRESHOLD) return `${normalized}sheet2.avif`;
     if (cardCount <= THREE_ROWS_THRESHOLD) return `${normalized}sheet.avif`;
     return `${normalized}sheet_nogrid.avif`;
-  };
-
-  const getPlaceholderImageUrl = (): string => {
-    const base = import.meta.env.BASE_URL || "/";
-    const normalized = base.endsWith("/") ? base : `${base}/`;
-    return `${normalized}placeholder.avif`;
   };
 
   const loadImageElement = (src: string): Promise<HTMLImageElement> => {
@@ -92,8 +89,7 @@ export const useExportStore = defineStore("export", () => {
 
   const ensureShipporiMinchoLoaded = async (): Promise<void> => {
     try {
-      const base = import.meta.env.BASE_URL || "/";
-      const normalized = base.endsWith("/") ? base : `${base}/`;
+      const normalized = getNormalizedBaseUrl();
       const url = `${normalized}ShipporiMincho-Bold.ttf`;
       const font = new FontFace("Shippori Mincho", `url(${url})`, {
         style: "normal",
@@ -167,7 +163,7 @@ export const useExportStore = defineStore("export", () => {
       let inRow = 0;
 
       // 事前に画像を読み込み（失敗許容: allSettled + プレースホルダ代替）
-      const placeholderImg = await loadImageElement(getPlaceholderImageUrl());
+      const placeholderImg = await loadImageElement(getPlaceholderSrc());
       const results = await Promise.allSettled(
         deckCards.map((dc) => loadImageElement(getCardImageUrl(dc.card.id))),
       );

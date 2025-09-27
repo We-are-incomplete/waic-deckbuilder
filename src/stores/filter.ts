@@ -7,6 +7,7 @@ import type { Card, CardKind, CardType, FilterCriteria } from "../types";
 import { CARD_KINDS, CARD_TYPES, PRIORITY_TAGS } from "../constants";
 import { useCardsStore } from "./cards";
 import { searchCardsByName, sortCards } from "../domain";
+import { useFavoritesStore } from "./favorites";
 
 export const useFilterStore = defineStore("filter", () => {
   // ストアの公開APIの型定義
@@ -27,6 +28,7 @@ export const useFilterStore = defineStore("filter", () => {
     toggleTypeFilter: typeof toggleTypeFilter;
     toggleTagFilter: typeof toggleTagFilter;
     toggleEntryConditionFilter: typeof toggleEntryConditionFilter;
+    toggleOnlyFavoritesFilter: typeof toggleOnlyFavoritesFilter;
     isEmptyFilter: ComputedRef<boolean>;
   };
 
@@ -36,7 +38,8 @@ export const useFilterStore = defineStore("filter", () => {
     kind: [],
     type: [],
     tags: [],
-    hasEntryCondition: false, // 初期値を追加
+    hasEntryCondition: false,
+    onlyFavorites: false,
   });
 
   // シンプルなソート関数
@@ -201,6 +204,7 @@ export const useFilterStore = defineStore("filter", () => {
     const hasTypeFilter = criteria.type.length > 0;
     const hasTagFilter = criteria.tags.length > 0;
     const hasEntryConditionFilter = criteria.hasEntryCondition === true;
+    const hasOnlyFavoritesFilter = criteria.onlyFavorites === true;
 
     // 早期リターンによる最適化
     if (
@@ -208,7 +212,8 @@ export const useFilterStore = defineStore("filter", () => {
       !hasKindFilter &&
       !hasTypeFilter &&
       !hasTagFilter &&
-      !hasEntryConditionFilter
+      !hasEntryConditionFilter &&
+      !hasOnlyFavoritesFilter
     ) {
       return filteredCards;
     }
@@ -236,6 +241,12 @@ export const useFilterStore = defineStore("filter", () => {
 
     if (hasEntryConditionFilter) {
       filteredCards = filteredCards.filter((card) => card.hasEntryCondition);
+    }
+
+    if (hasOnlyFavoritesFilter) {
+      const favoritesStore = useFavoritesStore();
+      const favs = favoritesStore.favoriteIdSet;
+      filteredCards = filteredCards.filter((c) => favs.has(c.id));
     }
 
     return filteredCards;
@@ -303,6 +314,7 @@ export const useFilterStore = defineStore("filter", () => {
     if (criteria.type.length > 0) return false;
     if (criteria.tags.length > 0) return false;
     if (criteria.hasEntryCondition) return false;
+    if (criteria.onlyFavorites) return false;
     return true;
   };
 
@@ -336,7 +348,8 @@ export const useFilterStore = defineStore("filter", () => {
       kind: [],
       type: [],
       tags: [],
-      hasEntryCondition: false, // リセット時にもfalseに設定
+      hasEntryCondition: false,
+      onlyFavorites: false,
     };
   };
 
@@ -417,6 +430,13 @@ export const useFilterStore = defineStore("filter", () => {
     };
   };
 
+  const toggleOnlyFavoritesFilter = (): void => {
+    filterCriteria.value = {
+      ...filterCriteria.value,
+      onlyFavorites: !filterCriteria.value.onlyFavorites,
+    };
+  };
+
   return {
     // リアクティブな状態
     isFilterModalOpen,
@@ -439,6 +459,7 @@ export const useFilterStore = defineStore("filter", () => {
     toggleTypeFilter,
     toggleTagFilter,
     toggleEntryConditionFilter, // 追加
+    toggleOnlyFavoritesFilter,
 
     // ユーティリティ
     isEmptyFilter: computed(() => isEmptyFilter(filterCriteria.value)),
