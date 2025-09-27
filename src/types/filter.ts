@@ -32,4 +32,5 @@ export interface FilterCriteria {
   readonly type: readonly CardType[];
   readonly tags: readonly string[];
   readonly hasEntryCondition: boolean;
+  readonly onlyFavorites: boolean;
 }

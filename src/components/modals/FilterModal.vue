@@ -157,78 +157,93 @@ const resetFilters = () => {
           </div>
         </div>
 
-        <!-- 種類フィルター -->
-        <div class="mb-4">
-          <label class="block text-sm font-medium mb-2">
-            種類で絞り込み
-            <span
-              v-if="filterCriteria.kind.length > 0"
-              class="text-blue-400 ml-1"
-            >
-              ({{ filterCriteria.kind.length }} 選択中)
-            </span>
-          </label>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
-            <label
-              v-for="kind in allKinds"
-              :key="kind"
-              class="flex items-center cursor-pointer hover:bg-gray-700 p-1 rounded transition-colors"
-            >
-              <input
-                type="checkbox"
-                :checked="isKindSelected(kind)"
-                @change="toggleKind(kind)"
-                class="form-checkbox h-4 w-4 min-h-5 min-w-5 text-blue-600 bg-gray-700 border-gray-600 rounded"
-              />
-              <span class="ml-2">{{ kind }}</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- タイプフィルター -->
-        <div class="mb-4">
-          <label class="block text-sm font-medium mb-2">
-            タイプで絞り込み
-            <span
-              v-if="filterCriteria.type.length > 0"
-              class="text-blue-400 ml-1"
-            >
-              ({{ filterCriteria.type.length }} 選択中)
-            </span>
-          </label>
-          <div
-            class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 text-sm"
-          >
-            <label
-              v-for="type in allTypes"
-              :key="type"
-              class="flex items-center cursor-pointer hover:bg-gray-700 p-1 rounded transition-colors"
-            >
-              <input
-                type="checkbox"
-                :checked="isTypeSelected(type)"
-                @change="toggleType(type)"
-                class="form-checkbox h-4 w-4 min-h-5 min-w-5 text-blue-600 bg-gray-700 border-gray-600 rounded"
-              />
-              <span class="ml-2">{{ type }}</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- 登場条件フィルター -->
+        <!-- お気に入りのみフィルター -->
         <div class="mb-4">
           <label
             class="flex items-center cursor-pointer hover:bg-gray-700 p-1 rounded transition-colors"
           >
             <input
               type="checkbox"
-              :checked="filterCriteria.hasEntryCondition"
-              @change="filterStore.toggleEntryConditionFilter()"
-              class="form-checkbox h-4 w-4 min-h-5 min-w-5 text-blue-600 bg-gray-700 border-gray-600 rounded"
+              :checked="filterCriteria.onlyFavorites"
+              @change="filterStore.toggleOnlyFavoritesFilter()"
+              class="form-checkbox h-4 w-4 min-h-5 min-w-5 text-yellow-500 bg-gray-700 border-gray-600 rounded"
             />
-            <span class="ml-2 text-sm font-medium">【登場条件】で絞り込み</span>
+            <span class="ml-2 text-sm font-medium">お気に入りのみ</span>
           </label>
         </div>
+      </div>
+
+      <!-- 種類フィルター -->
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-2">
+          種類で絞り込み
+          <span
+            v-if="filterCriteria.kind.length > 0"
+            class="text-blue-400 ml-1"
+          >
+            ({{ filterCriteria.kind.length }} 選択中)
+          </span>
+        </label>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+          <label
+            v-for="kind in allKinds"
+            :key="kind"
+            class="flex items-center cursor-pointer hover:bg-gray-700 p-1 rounded transition-colors"
+          >
+            <input
+              type="checkbox"
+              :checked="isKindSelected(kind)"
+              @change="toggleKind(kind)"
+              class="form-checkbox h-4 w-4 min-h-5 min-w-5 text-blue-600 bg-gray-700 border-gray-600 rounded"
+            />
+            <span class="ml-2">{{ kind }}</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- タイプフィルター -->
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-2">
+          タイプで絞り込み
+          <span
+            v-if="filterCriteria.type.length > 0"
+            class="text-blue-400 ml-1"
+          >
+            ({{ filterCriteria.type.length }} 選択中)
+          </span>
+        </label>
+        <div
+          class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 text-sm"
+        >
+          <label
+            v-for="type in allTypes"
+            :key="type"
+            class="flex items-center cursor-pointer hover:bg-gray-700 p-1 rounded transition-colors"
+          >
+            <input
+              type="checkbox"
+              :checked="isTypeSelected(type)"
+              @change="toggleType(type)"
+              class="form-checkbox h-4 w-4 min-h-5 min-w-5 text-blue-600 bg-gray-700 border-gray-600 rounded"
+            />
+            <span class="ml-2">{{ type }}</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- 登場条件フィルター -->
+      <div class="mb-4">
+        <label
+          class="flex items-center cursor-pointer hover:bg-gray-700 p-1 rounded transition-colors"
+        >
+          <input
+            type="checkbox"
+            :checked="filterCriteria.hasEntryCondition"
+            @change="filterStore.toggleEntryConditionFilter()"
+            class="form-checkbox h-4 w-4 min-h-5 min-w-5 text-blue-600 bg-gray-700 border-gray-600 rounded"
+          />
+          <span class="ml-2 text-sm font-medium">【登場条件】で絞り込み</span>
+        </label>
       </div>
 
       <!-- タグフィルター（残りの領域を全て使用） -->

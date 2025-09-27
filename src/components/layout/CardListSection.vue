@@ -10,7 +10,8 @@ import { computed } from "vue";
 import { GAME_CONSTANTS } from "../../constants";
 import type { Card, DeckCard } from "../../types";
 import { handleImageError, getCardImageUrl } from "../../utils";
-import { useStorage, onLongPress } from "@vueuse/core";
+import { onLongPress } from "@vueuse/core";
+import { useFavoritesStore } from "../../stores/favorites";
 
 interface Props {
   availableCards: readonly Card[];
@@ -31,20 +32,11 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-// お気に入りカードIDの管理（useStorage で配列を永続化）
-const FAVORITE_CARDS_STORAGE_KEY = "waic-deckbuilder-favorite-cards";
-const favoriteIds = useStorage<string[]>(FAVORITE_CARDS_STORAGE_KEY, []);
-const favoriteCardIds = computed<ReadonlySet<string>>(
-  () => new Set(favoriteIds.value),
-);
-
-const isFavorite = (cardId: string) => favoriteCardIds.value.has(cardId);
-
-const toggleFavorite = (cardId: string) => {
-  const next = new Set(favoriteCardIds.value);
-  next.has(cardId) ? next.delete(cardId) : next.add(cardId);
-  favoriteIds.value = [...next].sort();
-};
+// お気に入りはストアを使用
+const favoritesStore = useFavoritesStore();
+const isFavorite = (cardId: string) => favoritesStore.isFavorite(cardId);
+const toggleFavorite = (cardId: string) =>
+  favoritesStore.toggleFavorite(cardId);
 
 // 純関数: お気に入り優先で並べ替え
 const prioritizeFavorites = (
@@ -63,7 +55,7 @@ const prioritizeFavorites = (
 const displayedCards = computed<readonly Card[]>(() => {
   return prioritizeFavorites(
     props.sortedAndFilteredCards,
-    favoriteCardIds.value,
+    favoritesStore.favoriteIdSet,
   );
 });
 
