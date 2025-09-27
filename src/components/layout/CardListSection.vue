@@ -38,27 +38,6 @@ const isFavorite = (cardId: string) => favoritesStore.isFavorite(cardId);
 const toggleFavorite = (cardId: string) =>
   favoritesStore.toggleFavorite(cardId);
 
-// 純関数: お気に入り優先で並べ替え
-const prioritizeFavorites = (
-  cards: readonly Card[],
-  favs: ReadonlySet<string>,
-): readonly Card[] => {
-  const fav: Card[] = [];
-  const other: Card[] = [];
-  for (const c of cards) {
-    (favs.has(c.id) ? fav : other).push(c);
-  }
-  return [...fav, ...other];
-};
-
-// お気に入りカードを優先的にソートした表示用カードリスト
-const displayedCards = computed<readonly Card[]>(() => {
-  return prioritizeFavorites(
-    props.sortedAndFilteredCards,
-    favoritesStore.favoriteIdSet,
-  );
-});
-
 // デッキにあるカードのマップを作成（パフォーマンス向上のため）
 const deckCardMap = computed(() => {
   const map = new Map<string, number>();
@@ -229,7 +208,7 @@ const onListImageError = (e: Event) => {
 
       <div
         v-else
-        v-for="card in displayedCards"
+        v-for="card in props.sortedAndFilteredCards"
         :key="card.id"
         class="group flex flex-col items-center relative transition-all duration-200"
         :title="
