@@ -6,7 +6,7 @@ import { CardDataConverterError } from "../utils/cardDataConverter";
 import { defineStore } from "pinia";
 import { ref, shallowRef, readonly, computed, markRaw } from "vue";
 import type { Card } from "../types";
-import { loadCardsFromCsv } from "../utils";
+import { loadCardsFromCsv, getNormalizedBaseUrl } from "../utils";
 import * as CardDomain from "../domain";
 
 // メモ化は削除し、シンプルな検索に戻す
@@ -163,8 +163,7 @@ export const useCardsStore = defineStore("cards", () => {
     error.value = null;
 
     try {
-      const base = import.meta.env.BASE_URL || "/";
-      const normalized = base.endsWith("/") ? base : `${base}/`;
+      const normalized = getNormalizedBaseUrl();
       const cards = await loadCardsFromCsv(`${normalized}card-data.csv`);
 
       const validCards = validateCards(cards);
