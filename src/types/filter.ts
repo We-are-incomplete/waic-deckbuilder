@@ -25,6 +25,7 @@ export type FilterCondition =
  * @property type - フィルタリング対象のカードタイプ（例: "赤", "即時"）。
  * @property tags - フィルタリング対象のタグ。
  * @property hasEntryCondition - 【登場条件】を持つカードで絞り込むかどうかのフラグ。
+ * @property onlyFavorites - お気に入りのカードで絞り込むかどうかのフラグ。
  */
 export interface FilterCriteria {
   readonly text: string;
